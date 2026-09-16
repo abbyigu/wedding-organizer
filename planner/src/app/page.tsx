@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Dashboard from "@/components/Dashboard";
+import { displayName } from "@/lib/auth-names";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -11,5 +12,15 @@ export default async function DashboardPage() {
     .select("*")
     .order("sort_order", { ascending: true });
 
-  return <Dashboard initialVenues={venues ?? []} userEmail={user?.email ?? ""} />;
+  const coverPaths = (venues ?? [])
+    .map((v) => v.photos?.[0]?.path)
+    .filter((p): p is string => Boolean(p));
+
+  let photoUrls: Record<string, string> = {};
+  if (coverPaths.length) {
+    const { data } = await supabase.storage.from("venue-photos").createSignedUrls(coverPaths, 3600);
+    photoUrls = Object.fromEntries((data ?? []).map((d) => [d.path ?? "", d.signedUrl ?? ""]));
+  }
+
+  return <Dashboard initialVenues={venues ?? []} userName={displayName(user?.email)} photoUrls={photoUrls} />;
 }

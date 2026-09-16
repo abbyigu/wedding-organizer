@@ -26,9 +26,18 @@ function firstLine(s: string) {
   return s.split(/\r?\n/).map((x) => x.trim()).find(Boolean);
 }
 
-export default function Dashboard({ initialVenues, userEmail }: { initialVenues: Venue[]; userEmail: string }) {
+export default function Dashboard({
+  initialVenues,
+  userName,
+  photoUrls,
+}: {
+  initialVenues: Venue[];
+  userName: string;
+  photoUrls: Record<string, string>;
+}) {
   const [venues, setVenues] = useState(initialVenues);
   const [seeding, setSeeding] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [error, setError] = useState("");
   const as = DEFAULT_ASSUMPTIONS;
   const sharedVals = useMemo(() => [], []);
@@ -101,13 +110,34 @@ export default function Dashboard({ initialVenues, userEmail }: { initialVenues:
               Budget
             </Link>
           </nav>
-          <div className="ml-auto flex items-center gap-3">
-            <span className="hidden text-sm text-ink-2 sm:inline">{userEmail}</span>
-            <form action="/logout" method="post">
-              <button className="rounded-full border border-line px-3 py-1.5 text-sm font-semibold hover:border-sage-deep">
-                Sign out
-              </button>
-            </form>
+          <div className="relative ml-auto">
+            <button
+              onClick={() => setAccountOpen((o) => !o)}
+              aria-label={`Account: ${userName}`}
+              aria-expanded={accountOpen}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-sage-deep font-serif text-sm font-semibold text-[#F7F3EA]"
+            >
+              {userName.charAt(0) || "?"}
+            </button>
+            {accountOpen && (
+              <>
+                <button
+                  aria-label="Close menu"
+                  onClick={() => setAccountOpen(false)}
+                  className="fixed inset-0 z-40 cursor-default"
+                />
+                <div className="absolute right-0 top-11 z-50 w-44 overflow-hidden rounded-xl border border-line bg-paper shadow-md">
+                  <p className="border-b border-line px-4 py-2.5 text-sm text-ink-2">
+                    Signed in as <b className="text-ink">{userName}</b>
+                  </p>
+                  <form action="/logout" method="post">
+                    <button className="w-full px-4 py-2.5 text-left text-sm font-semibold text-wine hover:bg-bg">
+                      Sign out
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -179,7 +209,7 @@ export default function Dashboard({ initialVenues, userEmail }: { initialVenues:
                     <div className="relative aspect-[4/3] bg-line">
                       {photo ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={photo.path} alt={v.name} className="h-full w-full object-cover" />
+                        <img src={photoUrls[photo.path]} alt={v.name} className="h-full w-full object-cover" />
                       ) : (
                         <div
                           className="flex h-full w-full items-center justify-center font-serif text-5xl text-white"
