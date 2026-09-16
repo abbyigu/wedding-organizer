@@ -16,29 +16,42 @@ const LINKS = [
 export default function NavBar({ userName }: { userName: string }) {
   const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  function isActive(href: string) {
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  }
 
   return (
     <div className="sticky top-0 z-30 border-b border-line bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+        <button
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label="Menu"
+          aria-expanded={menuOpen}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink hover:bg-bg sm:hidden"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+          </svg>
+        </button>
         <Link href="/" className="shrink-0 font-serif text-base font-medium">
           Our Wedding Room
         </Link>
-        <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-          {LINKS.map((l) => {
-            const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
-            return (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
-                  active ? "bg-green text-[#F7F3EA]" : "text-ink-2 hover:bg-bg hover:text-ink"
-                }`}
-              >
-                {l.label}
-              </Link>
-            );
-          })}
+        <nav className="hidden min-w-0 flex-1 gap-1 overflow-x-auto sm:flex">
+          {LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                isActive(l.href) ? "bg-green text-[#F7F3EA]" : "text-ink-2 hover:bg-bg hover:text-ink"
+              }`}
+            >
+              {l.label}
+            </Link>
+          ))}
         </nav>
+        <div className="flex-1 sm:hidden" />
         <div className="relative shrink-0">
           <button
             onClick={() => setAccountOpen((o) => !o)}
@@ -69,6 +82,22 @@ export default function NavBar({ userName }: { userName: string }) {
           )}
         </div>
       </div>
+      {menuOpen && (
+        <nav className="flex flex-col gap-1 border-t border-line px-4 py-3 sm:hidden">
+          {LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              onClick={() => setMenuOpen(false)}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                isActive(l.href) ? "bg-green text-[#F7F3EA]" : "text-ink-2 hover:bg-bg hover:text-ink"
+              }`}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
