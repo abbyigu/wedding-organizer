@@ -29,6 +29,7 @@ function firstLine(s: string) {
 export default function Dashboard({ initialVenues, userEmail }: { initialVenues: Venue[]; userEmail: string }) {
   const [venues, setVenues] = useState(initialVenues);
   const [seeding, setSeeding] = useState(false);
+  const [error, setError] = useState("");
   const as = DEFAULT_ASSUMPTIONS;
   const sharedVals = useMemo(() => [], []);
 
@@ -68,24 +69,28 @@ export default function Dashboard({ initialVenues, userEmail }: { initialVenues:
 
   async function seed() {
     setSeeding(true);
+    setError("");
     const supabase = createClient();
     const rows = STARTERS.map((s) => ({
       ...s,
       budget_lines: defaultLines(s.key ?? null),
     }));
     const { data, error } = await supabase.from("venues").insert(rows).select();
-    if (!error && data) setVenues((v) => [...v, ...(data as Venue[])]);
+    if (error) setError(error.message);
+    else if (data) setVenues((v) => [...v, ...(data as Venue[])]);
     setSeeding(false);
   }
 
   async function addPlace() {
+    setError("");
     const supabase = createClient();
     const { data, error } = await supabase
       .from("venues")
       .insert({ name: "New place", sort_order: venues.length + 1, budget_lines: defaultLines(null) })
       .select()
       .single();
-    if (!error && data) setVenues((v) => [...v, data as Venue]);
+    if (error) setError(error.message);
+    else if (data) setVenues((v) => [...v, data as Venue]);
   }
 
   return (
@@ -128,6 +133,7 @@ export default function Dashboard({ initialVenues, userEmail }: { initialVenues:
             >
               {seeding ? "Adding…" : "Add the 6 shortlisted venues"}
             </button>
+            {error && <p className="mt-3 text-sm text-wine">{error}</p>}
           </div>
         ) : (
           <>
