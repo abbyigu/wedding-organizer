@@ -1,0 +1,186 @@
+export type BudgetLine = [label: string, rate: number, unit: "flat" | "adult" | "kid" | "adult+kid", noServiceCharge?: 0];
+
+export type Photo = { path: string; caption: string; addedAt: string };
+
+export type Venue = {
+  id: string;
+  key: string | null;
+  name: string;
+  location: string;
+  status: "finalist" | "keep" | "hold" | "new" | "out";
+  website: string;
+  capacity: string;
+  contact: string;
+  notes: string;
+  pros: string;
+  cons: string;
+  questions: string;
+  period: string;
+  turnkey: string;
+  diy: string;
+  team: string;
+  themes: string;
+  colors: string;
+  quote_received: boolean;
+  budget_note: string;
+  budget_lines: BudgetLine[];
+  photos: Photo[];
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export const STATUSES: Record<Venue["status"], string> = {
+  finalist: "Finalist",
+  keep: "Keep",
+  hold: "On hold",
+  new: "New",
+  out: "Out",
+};
+
+export const GENERIC_LINES: BudgetLine[] = [
+  ["Ceremony fee", 1000, "flat"],
+  ["Cocktail-hour bites", 20, "adult+kid"],
+  ["Dinner", 90, "adult"],
+  ["Children's meals", 40, "kid"],
+  ["Bar / wine", 35, "adult"],
+  ["Late-night food", 15, "adult+kid"],
+  ["Rentals beyond venue", 0, "flat", 0],
+  ["Guest shuttle", 0, "flat", 0],
+  ["Wedding-night suite", 0, "flat", 0],
+];
+
+const DEFAULT_LINES: Record<string, BudgetLine[]> = {
+  cap: [
+    ["Ceremony fee", 800, "flat"],
+    ["Cocktail-hour bites", 20, "adult+kid"],
+    ["Family-style dinner", 75, "adult"],
+    ["Children's meals", 35, "kid"],
+    ["Hosted wine + signature cocktails", 35, "adult"],
+    ["Late-night food", 12, "adult+kid"],
+    ["Rentals / décor uplift", 500, "flat", 0],
+    ["Ferry + shuttle coordination", 600, "flat", 0],
+    ["Wedding-night suite", 400, "flat", 0],
+  ],
+  montebello: [
+    ["Ceremony (gazebo, chairs, rain backup)", 550, "flat"],
+    ["Canapés, 4 per guest", 15, "adult+kid"],
+    ["Elegance plated dinner (Dream: $195)", 105, "adult"],
+    ["Children's meals (12 and under)", 35, "kid"],
+    ["Hosted wine + signature cocktails", 40, "adult"],
+    ["Poutine bar (before 11 pm)", 14, "adult+kid"],
+    ["Outside cake/cupcake fee", 285, "flat", 0],
+    ["Guest shuttle (all on site)", 0, "flat", 0],
+    ["Couple's night (included)", 0, "flat", 0],
+  ],
+  germain: [
+    ["Ceremony fee", 1500, "flat"],
+    ["Cocktail-hour bites", 25, "adult+kid"],
+    ["Family-style dinner", 95, "adult"],
+    ["Children's meals", 45, "kid"],
+    ["Hosted wine + signature cocktails", 40, "adult"],
+    ["Late-night food", 15, "adult+kid"],
+    ["Rentals beyond venue", 0, "flat", 0],
+    ["Guest shuttle", 500, "flat", 0],
+    ["Wedding-night suite", 600, "flat", 0],
+  ],
+  leste: [
+    ["Ceremony fee", 1000, "flat"],
+    ["Cocktail-hour bites", 22, "adult+kid"],
+    ["3-course dinner", 90, "adult"],
+    ["Children's meals", 45, "kid"],
+    ["Hosted wine + cocktails (venue only)", 40, "adult"],
+    ["Late-night food", 15, "adult+kid"],
+    ["Unoccupied-room liability", 3000, "flat"],
+    ["Guest shuttle (all on site)", 0, "flat", 0],
+    ["Wedding-night cottage", 500, "flat", 0],
+  ],
+  manoir: [
+    ["Ceremony fee (golf-cliff site)", 2500, "flat"],
+    ["Cocktail-hour bites", 35, "adult+kid"],
+    ["Plated or family-style dinner", 99, "adult"],
+    ["Children's meals", 50, "kid"],
+    ["Hosted wine + signature cocktails", 50, "adult"],
+    ["Late-night food", 20, "adult+kid"],
+    ["Rentals beyond venue", 0, "flat", 0],
+    ["Guest shuttle", 300, "flat", 0],
+    ["Wedding-night suite", 900, "flat", 0],
+  ],
+  bacchus: [
+    ["Site / ceremony fee", 3000, "flat"],
+    ["Cocktail-hour bites (caterer)", 25, "adult+kid"],
+    ["Family-style dinner (caterer)", 85, "adult"],
+    ["Children's meals", 40, "kid"],
+    ["Wine (their own) + bar service", 35, "adult"],
+    ["Late-night food", 15, "adult+kid"],
+    ["Tent, rentals, power, washrooms", 10000, "flat"],
+    ["Guest shuttle (no lodging on site)", 2000, "flat", 0],
+    ["Suite off-site", 400, "flat", 0],
+  ],
+};
+
+export function defaultLines(key: string | null): BudgetLine[] {
+  return structuredClone(key && DEFAULT_LINES[key] ? DEFAULT_LINES[key] : GENERIC_LINES);
+}
+
+export const BUDGET_NOTES: Record<string, string> = {
+  cap: "No published wedding pricing. Per-person numbers are set a notch below Le Germain on purpose — this is the venue to beat on value.",
+  montebello:
+    "From the published 2024 menu: Elegance $105 plated dinner, canapés priced by the dozen (~$15/guest for 4 pieces), kids $35, ceremony $550, poutine bar $14. Service is 18% here — set the slider.",
+  germain: "Published sharing dinner ~$95. Ceremony, cocktail, bar and late-night are placeholders until the quote.",
+  leste: "Published ~$90 dinner and ~$45 kids. Includes a $3K placeholder for unoccupied-room liability if full privatization is required.",
+  manoir: "Uses the top of the published $68–$99 catering range; Fairmont service and admin charges are usually the highest on the list — confirm the real percentage.",
+  bacchus: "Assumes a site fee, an outside caterer, and ~$10K of tent, tables, chairs, linens, lighting, power, washrooms and bar staff. If the vineyard provides more, this drops fast.",
+};
+
+export const STARTERS: Partial<Venue>[] = [
+  { key: "cap", name: "Hôtel Cap-aux-Pierres", location: "Isle-aux-Coudres, Charlevoix", status: "finalist", website: "https://www.originehotels.com/en/hotels-and-inns/charlevoix/hotel-cap-aux-pierres", capacity: "400, comfortable", turnkey: "Full turnkey", period: "Late Aug – mid Sept 2029", pros: "Likely the lowest-pressure hotel option if wedding packages are reasonable.", sort_order: 1 },
+  { key: "montebello", name: "Fairmont Le Château Montebello", location: "Montebello, Outaouais", status: "keep", website: "https://www.fairmont.com/en/hotels/montebello/fairmont-le-chateau-montebello/weddings.html", capacity: "400+, comfortable", turnkey: "Full turnkey plus", period: "Late Aug – mid Sept 2029", cons: "~4h30 drive — the guest-travel question.", sort_order: 2 },
+  { key: "germain", name: "Hôtel & Spa Le Germain Charlevoix", location: "Baie-Saint-Paul, Charlevoix", status: "finalist", website: "https://www.germainhotels.com/en/le-germain-hotel-and-spa/charlevoix/spaces-and-events", capacity: "100, ask about 95–102 with dancing", turnkey: "Full turnkey", period: "Late Aug – mid Sept 2029", pros: "Strongest overall fit; sharing-style dinner matches the vision.", cons: "Capacity at 102 with dancing needs confirming.", sort_order: 3 },
+  { key: "leste", name: "Auberge du Cap au Leste", location: "Sainte-Rose-du-Nord, Saguenay Fjord", status: "keep", website: "https://capauleste.com/en/wedding/", capacity: "100, right at the edge", turnkey: "Full turnkey (closed)", period: "Late Aug – mid Sept 2029", cons: "Most remote; room-buyout terms unclear.", sort_order: 4 },
+  { key: "manoir", name: "Fairmont Le Manoir Richelieu", location: "La Malbaie, Charlevoix", status: "keep", website: "https://www.fairmont.com/en/hotels/charlevoix/fairmont-le-manoir-richelieu/weddings.html", capacity: "820, comfortable", turnkey: "Full turnkey plus", period: "Late Aug – mid Sept 2029", pros: "Philosophy match — lots for guests to do, none mandatory.", cons: "Risk of drifting toward $50K+.", sort_order: 5 },
+  { key: "bacchus", name: "Vignoble Isle de Bacchus", location: "Saint-Pierre, Île d'Orléans", status: "finalist", website: "https://www.isledebacchusenligne.com/", capacity: "~100, unconfirmed", turnkey: "DIY-heavy", period: "Late Aug – mid Sept 2029", pros: 'Highest emotional upside — deeply "you".', cons: "Highest logistical risk; needs ~$10K of rentals.", sort_order: 6 },
+];
+
+export const SHARED_LINES: [label: string, amount: number, note: string][] = [
+  ["Day-of coordinator", 2000, "must-have"],
+  ["Photographer (documentary, full day)", 4000, "splurge"],
+  ["Childcare (2–3 sitters, evening)", 900, "splurge"],
+  ["Officiant + marriage paperwork", 700, ""],
+  ["Attire (dress, suit, shoes, alterations)", 3500, ""],
+  ["Hair & makeup", 600, ""],
+  ["Simple florals", 1500, ""],
+  ["Décor, café lights, signage (DIY)", 1000, "DIY, done 30 days out"],
+  ["Wedding website (paperless invites)", 100, ""],
+  ["Couple's cake + Mlle Cupcake", 600, ""],
+  ["Music via app + sound/AV", 400, "live cocktail musician: +$800 nice-to-have"],
+  ["Gifts, favours, thank-yous", 500, ""],
+];
+
+export type Assumptions = { adults: number; kids: number; svcPct: number; contPct: number; tax: boolean };
+export const TAX_RATE = 1.14975;
+export const DEFAULT_ASSUMPTIONS: Assumptions = { adults: 80, kids: 15, svcPct: 15, contPct: 8, tax: true };
+
+export function calcVenue(v: Pick<Venue, "budget_lines">, as: Assumptions, sharedVals: number[]) {
+  const svc = 1 + as.svcPct / 100;
+  const cont = as.contPct / 100;
+  const tax = as.tax ? TAX_RATE : 1;
+  let vt = 0;
+  const rows = (v.budget_lines.length ? v.budget_lines : GENERIC_LINES).map(([label, rate, unit, noSvc]) => {
+    const qty = unit === "adult" ? as.adults : unit === "kid" ? as.kids : unit === "adult+kid" ? as.adults + as.kids : 1;
+    const total = rate * qty * (noSvc === 0 ? 1 : svc) * tax;
+    vt += total;
+    return { label, unit, noSvc: noSvc === 0, total };
+  });
+  let st = 0;
+  SHARED_LINES.forEach((l, i) => {
+    st += (sharedVals[i] ?? l[1]) * tax;
+  });
+  const contAmt = (vt + st) * cont;
+  const grand = vt + st + contAmt;
+  return { rows, vt, st, cont: contAmt, grand };
+}
+
+export function fmt(n: number) {
+  return "$" + Math.round(n).toLocaleString("en-CA");
+}
