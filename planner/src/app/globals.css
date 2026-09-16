@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f7f3ea;
+  --paper: #fffdf8;
+  --ink: #24301f;
+  --ink-2: #4e5a47;
+  --line: #d9d2c2;
+  --sage: #9fb39a;
+  --sage-deep: #5f7a5a;
+  --gold: #c9a86a;
+  --wood: #a5764c;
+  --wine: #6e2a36;
+  --green: #2e4a32;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b211a;
+    --paper: #232b22;
+    --ink: #efe9dc;
+    --ink-2: #b9b3a3;
+    --line: #3a4438;
+    --sage: #7e9479;
+    --sage-deep: #a9c3a2;
+    --gold: #d6b679;
+    --wood: #c08e63;
+    --wine: #c97b87;
+    --green: #b7d0b5;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1b211a;
+  --paper: #232b22;
+  --ink: #efe9dc;
+  --ink-2: #b9b3a3;
+  --line: #3a4438;
+  --sage: #7e9479;
+  --sage-deep: #a9c3a2;
+  --gold: #d6b679;
+  --wood: #c08e63;
+  --wine: #c97b87;
+  --green: #b7d0b5;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-sage: var(--sage);
+  --color-sage-deep: var(--sage-deep);
+  --color-gold: var(--gold);
+  --color-wood: var(--wood);
+  --color-wine: var(--wine);
+  --color-green: var(--green);
+  --font-serif: var(--font-fraunces);
+  --font-sans: var(--font-instrument-sans);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-instrument-sans), system-ui, sans-serif;
+}
