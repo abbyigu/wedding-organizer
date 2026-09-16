@@ -197,6 +197,19 @@ export default function VenueProfile({
               </div>
             </div>
             <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
+              <h3 className="mb-2 font-semibold">Character</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <span className="mb-1 block text-sm font-semibold">Themes</span>
+                  <input {...field("themes")} placeholder="e.g. rustic, coastal, garden" className="w-full rounded-lg border border-line bg-bg px-3 py-2 outline-none focus:border-sage-deep" />
+                </div>
+                <div>
+                  <span className="mb-1 block text-sm font-semibold">Colors on site</span>
+                  <input {...field("colors")} placeholder="e.g. stone grey, deep green" className="w-full rounded-lg border border-line bg-bg px-3 py-2 outline-none focus:border-sage-deep" />
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
               <h3 className="mb-2 font-semibold">Questions to ask</h3>
               <textarea {...field("questions")} rows={5} className="w-full rounded-lg border border-line bg-bg p-3 outline-none focus:border-sage-deep" />
             </div>
