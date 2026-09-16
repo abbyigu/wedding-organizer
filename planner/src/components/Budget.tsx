@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import NavBar from "@/components/NavBar";
 import { SHARED_LINES, calcVenue, fmt, type Assumptions, type BudgetLine, type Venue } from "@/lib/venues";
 
 function unitLabel(u: BudgetLine[2]) {
   return u === "adult" ? "per adult" : u === "kid" ? "per child" : u === "adult+kid" ? "per guest" : "flat";
 }
 
-export default function Budget({ initialVenues }: { initialVenues: Venue[] }) {
+export default function Budget({ initialVenues, userName }: { initialVenues: Venue[]; userName: string }) {
   const [venues, setVenues] = useState(initialVenues);
   const [curId, setCurId] = useState(initialVenues[0]?.id ?? "");
   const [as, setAs] = useState<Assumptions>({ adults: 80, kids: 15, svcPct: 15, contPct: 8, tax: true });
@@ -31,9 +31,11 @@ export default function Budget({ initialVenues }: { initialVenues: Venue[] }) {
 
   if (!cur) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <Link href="/" className="text-sm text-ink-2 underline">← Dashboard</Link>
-        <p className="mt-6 text-ink-2">No venues yet — add some from the dashboard first.</p>
+      <div className="min-h-screen">
+        <NavBar userName={userName} />
+        <div className="mx-auto max-w-3xl px-4 py-12">
+          <p className="text-ink-2">No venues yet — add some from the dashboard first.</p>
+        </div>
       </div>
     );
   }
@@ -53,9 +55,9 @@ export default function Budget({ initialVenues }: { initialVenues: Venue[] }) {
 
   return (
     <div className="min-h-screen">
+      <NavBar userName={userName} />
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <Link href="/" className="text-sm text-ink-2 underline underline-offset-2">← Dashboard</Link>
-        <h1 className="mt-2 font-serif text-3xl font-medium">Full wedding budget builder</h1>
+        <h1 className="font-serif text-3xl font-medium">Full wedding budget builder</h1>
         <p className="mt-2 max-w-2xl text-ink-2">
           Pick a venue, set the guest count, and edit any line — every venue keeps its own numbers.
         </p>

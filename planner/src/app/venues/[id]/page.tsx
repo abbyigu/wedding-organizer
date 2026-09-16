@@ -1,10 +1,16 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import VenueProfile from "@/components/VenueProfile";
+import { displayName } from "@/lib/auth-names";
+
+export const dynamic = "force-dynamic";
 
 export default async function VenuePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data: venue } = await supabase.from("venues").select("*").eq("id", id).single();
   if (!venue) notFound();
 
@@ -15,5 +21,5 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
     signedUrls = Object.fromEntries((data ?? []).map((d) => [d.path ?? "", d.signedUrl ?? ""]));
   }
 
-  return <VenueProfile venue={venue} signedUrls={signedUrls} />;
+  return <VenueProfile venue={venue} signedUrls={signedUrls} userName={displayName(user?.email)} />;
 }

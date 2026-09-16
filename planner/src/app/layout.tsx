@@ -16,7 +16,7 @@ const instrumentSans = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "The Wedding Room",
+  title: "Our Wedding Room",
   description: "Planning workspace for Ariel & Fred's wedding.",
 };
 

@@ -14,7 +14,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-8 shadow-sm">
         <p className="font-serif italic text-wine text-lg">Come as you are, stay as long as you like.</p>
-        <h1 className="mt-2 font-serif text-3xl font-medium">The Wedding Room</h1>
+        <h1 className="mt-2 font-serif text-3xl font-medium">Our Wedding Room</h1>
 
         {mode === "signin" ? (
           <form action={signInAction} className="mt-6 flex flex-col gap-3">

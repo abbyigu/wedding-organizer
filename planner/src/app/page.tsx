@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import Dashboard from "@/components/Dashboard";
 import { displayName } from "@/lib/auth-names";
 
+// Always read fresh from Supabase — this page must never show stale data
+// (e.g. a photo just added on a venue's profile) from Next's route cache.
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {

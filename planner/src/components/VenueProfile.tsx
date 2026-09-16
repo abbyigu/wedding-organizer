@@ -4,11 +4,20 @@ import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import NavBar from "@/components/NavBar";
 import { calcVenue, DEFAULT_ASSUMPTIONS, fmt, STATUSES, type Photo, type Venue } from "@/lib/venues";
 
 const TURNKEY_OPTIONS = ["", "Full turnkey", "Full turnkey plus", "Semi-turnkey", "DIY-heavy", "Full DIY"];
 
-export default function VenueProfile({ venue, signedUrls }: { venue: Venue; signedUrls: Record<string, string> }) {
+export default function VenueProfile({
+  venue,
+  signedUrls,
+  userName,
+}: {
+  venue: Venue;
+  signedUrls: Record<string, string>;
+  userName: string;
+}) {
   const router = useRouter();
   const [v, setV] = useState(venue);
   const [urls, setUrls] = useState(signedUrls);
@@ -81,14 +90,16 @@ export default function VenueProfile({ venue, signedUrls }: { venue: Venue; sign
     setV((p) => ({ ...p, photos: newPhotos }));
     setUrls(newUrls);
     setUploading(false);
-    save({ photos: newPhotos });
+    await save({ photos: newPhotos });
+    router.refresh();
   }
 
   async function removePhoto(path: string) {
     const next = (v.photos ?? []).filter((p) => p.path !== path);
     setV((p) => ({ ...p, photos: next }));
-    save({ photos: next });
+    await save({ photos: next });
     await supabase.storage.from("venue-photos").remove([path]);
+    router.refresh();
   }
 
   function setCaption(path: string, caption: string) {
@@ -102,6 +113,7 @@ export default function VenueProfile({ venue, signedUrls }: { venue: Venue; sign
 
   return (
     <div className="min-h-screen">
+      <NavBar userName={userName} />
       <div className="mx-auto max-w-4xl px-4 py-8">
         <Link href="/" className="text-sm text-ink-2 underline underline-offset-2">← Dashboard</Link>
 

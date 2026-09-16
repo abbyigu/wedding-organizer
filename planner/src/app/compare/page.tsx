@@ -1,10 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import Budget from "@/components/Budget";
+import Compare from "@/components/Compare";
 import { displayName } from "@/lib/auth-names";
 
 export const dynamic = "force-dynamic";
 
-export default async function BudgetPage() {
+export default async function ComparePage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,5 +14,5 @@ export default async function BudgetPage() {
     .select("*")
     .order("sort_order", { ascending: true });
 
-  return <Budget initialVenues={venues ?? []} userName={displayName(user?.email)} />;
+  return <Compare venues={venues ?? []} userName={displayName(user?.email)} />;
 }

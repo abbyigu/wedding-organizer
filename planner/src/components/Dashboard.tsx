@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import NavBar from "@/components/NavBar";
 import {
   STARTERS,
   DEFAULT_ASSUMPTIONS,
@@ -37,7 +38,6 @@ export default function Dashboard({
 }) {
   const [venues, setVenues] = useState(initialVenues);
   const [seeding, setSeeding] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
   const [error, setError] = useState("");
   const as = DEFAULT_ASSUMPTIONS;
   const sharedVals = useMemo(() => [], []);
@@ -101,46 +101,7 @@ export default function Dashboard({
 
   return (
     <div className="min-h-screen">
-      <div className="sticky top-0 z-30 border-b border-line bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
-          <span className="font-serif text-base">Ariel &amp; Fred</span>
-          <nav className="flex gap-1">
-            <span className="rounded-full bg-green px-3 py-1.5 text-sm font-semibold text-[#F7F3EA]">Dashboard</span>
-            <Link href="/budget" className="rounded-full px-3 py-1.5 text-sm font-semibold text-ink-2 hover:bg-bg hover:text-ink">
-              Budget
-            </Link>
-          </nav>
-          <div className="relative ml-auto">
-            <button
-              onClick={() => setAccountOpen((o) => !o)}
-              aria-label={`Account: ${userName}`}
-              aria-expanded={accountOpen}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-sage-deep font-serif text-sm font-semibold text-[#F7F3EA]"
-            >
-              {userName.charAt(0) || "?"}
-            </button>
-            {accountOpen && (
-              <>
-                <button
-                  aria-label="Close menu"
-                  onClick={() => setAccountOpen(false)}
-                  className="fixed inset-0 z-40 cursor-default"
-                />
-                <div className="absolute right-0 top-11 z-50 w-44 overflow-hidden rounded-xl border border-line bg-paper shadow-md">
-                  <p className="border-b border-line px-4 py-2.5 text-sm text-ink-2">
-                    Signed in as <b className="text-ink">{userName}</b>
-                  </p>
-                  <form action="/logout" method="post">
-                    <button className="w-full px-4 py-2.5 text-left text-sm font-semibold text-wine hover:bg-bg">
-                      Sign out
-                    </button>
-                  </form>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      <NavBar userName={userName} />
 
       <div className="mx-auto max-w-5xl px-4 py-8">
         <p className="font-serif italic text-wine">Come as you are, stay as long as you like.</p>
@@ -166,24 +127,29 @@ export default function Dashboard({
           <>
             <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line shadow-sm sm:grid-cols-4">
               <div className="bg-paper p-4">
-                <b className="font-serif text-2xl">{stats.active}</b>
-                <span className="mt-1 block text-xs uppercase tracking-wide text-ink-2">Active contenders</span>
+                <span className="text-lg">🏛️</span>
+                <b className="mt-1 block font-serif text-2xl">{stats.active}</b>
+                <span className="mt-0.5 block text-xs uppercase tracking-wide text-ink-2">Active venues</span>
               </div>
               <div className="bg-paper p-4">
-                <b className="font-serif text-2xl leading-tight">{stats.favourite}</b>
-                <span className="mt-1 block text-xs uppercase tracking-wide text-ink-2">Current favourite</span>
+                <span className="text-lg">💛</span>
+                <b className="mt-1 block font-serif text-2xl leading-tight">{stats.favourite}</b>
+                <span className="mt-0.5 block text-xs uppercase tracking-wide text-ink-2">Current favourite</span>
               </div>
               <div className="bg-paper p-4">
-                <b className="font-serif text-2xl">{stats.lowest}</b>
-                <span className="mt-1 block text-xs uppercase tracking-wide text-ink-2">Lowest estimated cost</span>
+                <span className="text-lg">💰</span>
+                <b className="mt-1 block font-serif text-2xl">{stats.lowest}</b>
+                <span className="mt-0.5 block text-xs uppercase tracking-wide text-ink-2">Lowest estimate</span>
               </div>
               <div className="bg-paper p-4">
-                <b className="font-serif text-2xl">{stats.needQuote}</b>
-                <span className="mt-1 block text-xs uppercase tracking-wide text-ink-2">Quotes still needed</span>
+                <span className="text-lg">📄</span>
+                <b className="mt-1 block font-serif text-2xl">{stats.needQuote}</b>
+                <span className="mt-0.5 block text-xs uppercase tracking-wide text-ink-2">Quotes needed</span>
               </div>
               <div className="col-span-2 bg-paper p-4 sm:col-span-4">
-                <b className="text-wine">{stats.nextAction}</b>
-                <span className="mt-1 block text-xs uppercase tracking-wide text-ink-2">Next action</span>
+                <span className="text-lg">👉</span>
+                <b className="mt-1 block text-wine">{stats.nextAction}</b>
+                <span className="mt-0.5 block text-xs uppercase tracking-wide text-ink-2">Next action</span>
               </div>
             </div>
 
@@ -235,6 +201,9 @@ export default function Dashboard({
                       {love && <p className="text-sm text-wine">♥ {love}</p>}
                       {warn && <p className="text-sm text-[var(--wait,#a87a25)]">⚠ {warn}</p>}
                       {v.quote_received && <span className="text-xs font-semibold text-sage-deep">✓ Quote received</span>}
+                      <span className="mt-auto pt-2 text-sm font-semibold text-sage-deep group-hover:underline">
+                        View venue →
+                      </span>
                     </div>
                   </Link>
                 );
