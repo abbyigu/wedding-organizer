@@ -35,6 +35,8 @@ export type Venue = {
   deposit_paid: boolean;
   balance_due: string | null;
   balance_paid: boolean;
+  is_final: boolean;
+  final_reason: string;
   photos: Photo[];
   sort_order: number;
   created_at: string;
@@ -184,6 +186,8 @@ export function blankVenue(over: Partial<Venue> = {}): Partial<Venue> {
     deposit_paid: false,
     balance_due: null,
     balance_paid: false,
+    is_final: false,
+    final_reason: "",
     photos: [],
     sort_order: 0,
     ...over,

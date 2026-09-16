@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/board", label: "Status Board" },
   { href: "/compare", label: "Detailed Comparison" },
   { href: "/budget", label: "Budget" },
+  { href: "/decide", label: "Decide" },
 ];
 
 export default function NavBar({ userName }: { userName: string }) {
