@@ -4,7 +4,12 @@ import { displayName } from "@/lib/auth-names";
 
 export const dynamic = "force-dynamic";
 
-export default async function ComparePage() {
+export default async function ComparePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ids?: string }>;
+}) {
+  const { ids } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,5 +19,8 @@ export default async function ComparePage() {
     .select("*")
     .order("sort_order", { ascending: true });
 
-  return <Compare venues={venues ?? []} userName={displayName(user?.email)} />;
+  const idList = ids ? ids.split(",").filter(Boolean) : [];
+  const filtered = idList.length ? (venues ?? []).filter((v) => idList.includes(v.id)) : venues ?? [];
+
+  return <Compare venues={filtered} allCount={(venues ?? []).length} filtered={idList.length > 0} userName={displayName(user?.email)} />;
 }

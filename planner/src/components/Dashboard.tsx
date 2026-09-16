@@ -2,26 +2,33 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import {
   STARTERS,
+  STATUS_ORDER,
+  STATUSES,
   DEFAULT_ASSUMPTIONS,
   blankVenue,
   calcVenue,
+  checklistPercent,
   fmt,
+  type Status,
   type Venue,
 } from "@/lib/venues";
 
-const STATUS_STYLE: Record<Venue["status"], string> = {
+const STATUS_STYLE: Record<Status, string> = {
+  researching: "bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] text-ink-2",
+  contacted: "bg-[color-mix(in_srgb,var(--new,#4A6C8A)_25%,var(--paper))] text-[var(--new,#4A6C8A)]",
+  tour_booked: "bg-[color-mix(in_srgb,var(--gold)_30%,var(--paper))] text-[var(--wood)]",
+  quote_received: "bg-[color-mix(in_srgb,var(--wood)_25%,var(--paper))] text-[var(--wood)]",
   finalist: "bg-[color-mix(in_srgb,var(--sage)_35%,var(--paper))] text-[var(--sage-deep)]",
-  keep: "bg-[color-mix(in_srgb,var(--gold)_30%,var(--paper))] text-[var(--wood)]",
-  hold: "bg-[color-mix(in_srgb,var(--wood)_25%,var(--paper))] text-[var(--wood)]",
-  new: "bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] text-ink-2",
   out: "bg-[color-mix(in_srgb,var(--wine)_20%,var(--paper))] text-wine",
 };
 
 const CARD_COLORS = ["var(--sage-deep)", "var(--wood)", "var(--wine)", "var(--green)", "var(--gold)", "var(--sage)"];
+const MAX_COMPARE = 3;
 
 function firstLine(s: string) {
   return s.split(/\r?\n/).map((x) => x.trim()).find(Boolean);
@@ -36,9 +43,11 @@ export default function Dashboard({
   userName: string;
   photoUrls: Record<string, string>;
 }) {
+  const router = useRouter();
   const [venues, setVenues] = useState(initialVenues);
   const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState("");
+  const [compareIds, setCompareIds] = useState<string[]>([]);
   const as = DEFAULT_ASSUMPTIONS;
   const sharedVals = useMemo(() => [], []);
 
@@ -47,21 +56,21 @@ export default function Dashboard({
     const withCost = active
       .map((v) => ({ v, g: calcVenue(v, as, sharedVals).grand }))
       .sort((a, b) => a.g - b.g);
-    const favourite = withCost.find((x) => x.v.status === "finalist") ?? withCost[0];
+    const favourite = active.find((v) => v.is_favourite) ?? withCost.find((x) => x.v.status === "finalist")?.v;
     const needQuote = active.filter((v) => !v.quote_received).length;
     const finalistNoQuote = active.find((v) => v.status === "finalist" && !v.quote_received);
-    const keepNoQuote = active.find((v) => v.status === "keep" && !v.quote_received);
+    const inProgress = active.find((v) => (v.status === "contacted" || v.status === "tour_booked") && !v.quote_received);
     const missingCapacity = active.find((v) => !v.capacity);
     const nextAction = finalistNoQuote
       ? `Get the quote from ${finalistNoQuote.name}`
-      : keepNoQuote
-      ? `Decide whether to pursue a quote from ${keepNoQuote.name}`
+      : inProgress
+      ? `Follow up on ${inProgress.name}`
       : missingCapacity
       ? `Confirm capacity at ${missingCapacity.name}`
       : "All active venues have quotes — time to compare and decide.";
     return {
       active: active.length,
-      favourite: favourite?.v.name ?? "—",
+      favourite: favourite?.name ?? "—",
       lowest: withCost[0] ? fmt(withCost[0].g) : "—",
       needQuote,
       nextAction,
@@ -69,9 +78,9 @@ export default function Dashboard({
   }, [venues, as, sharedVals]);
 
   const sorted = useMemo(() => {
-    const order: Record<Venue["status"], number> = { finalist: 0, keep: 1, new: 2, hold: 3, out: 4 };
     return [...venues].sort((a, b) => {
-      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+      const oa = STATUS_ORDER.indexOf(a.status), ob = STATUS_ORDER.indexOf(b.status);
+      if (oa !== ob) return oa - ob;
       return calcVenue(a, as, sharedVals).grand - calcVenue(b, as, sharedVals).grand;
     });
   }, [venues, as, sharedVals]);
@@ -99,8 +108,23 @@ export default function Dashboard({
     else if (data) setVenues((v) => [...v, data as Venue]);
   }
 
+  function toggleCompare(id: string) {
+    setCompareIds((ids) => {
+      if (ids.includes(id)) return ids.filter((x) => x !== id);
+      if (ids.length >= MAX_COMPARE) return ids;
+      return [...ids, id];
+    });
+  }
+
+  async function toggleFavourite(v: Venue) {
+    const next = !v.is_favourite;
+    setVenues((vs) => vs.map((x) => (x.id === v.id ? { ...x, is_favourite: next } : x)));
+    const supabase = createClient();
+    await supabase.from("venues").update({ is_favourite: next }).eq("id", v.id);
+  }
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-20">
       <NavBar userName={userName} />
 
       <div className="mx-auto max-w-5xl px-4 py-8">
@@ -153,8 +177,10 @@ export default function Dashboard({
               </div>
             </div>
 
-            <div className="mt-8 flex items-center justify-between">
-              <p className="text-sm text-ink-2">{venues.length} venue{venues.length === 1 ? "" : "s"}</p>
+            <div className="mt-8 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-sm text-ink-2">
+                {venues.length} venue{venues.length === 1 ? "" : "s"} · tick <b>Compare</b> on 2–3 to see them side by side
+              </p>
               <button onClick={addPlace} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-[#F7F3EA]">
                 ＋ Add a place
               </button>
@@ -166,13 +192,15 @@ export default function Dashboard({
                 const photo = v.photos?.[0];
                 const love = firstLine(v.pros);
                 const warn = firstLine(v.cons) || (!v.capacity ? "Capacity not confirmed" : undefined);
+                const pct = checklistPercent(v);
+                const checked = compareIds.includes(v.id);
+                const compareDisabled = !checked && compareIds.length >= MAX_COMPARE;
                 return (
-                  <Link
+                  <div
                     key={v.id}
-                    href={`/venues/${v.id}`}
                     className="group flex flex-col overflow-hidden rounded-[20px] bg-paper shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                   >
-                    <div className="relative aspect-[4/3] bg-line">
+                    <Link href={`/venues/${v.id}`} className="relative block aspect-[4/3] bg-line">
                       {photo ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={photoUrls[photo.path]} alt={v.name} className="h-full w-full object-cover" />
@@ -185,14 +213,34 @@ export default function Dashboard({
                         </div>
                       )}
                       <span className={`absolute right-2.5 top-2.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[v.status]}`}>
-                        {v.status === "finalist" ? "Finalist" : v.status === "keep" ? "Keep" : v.status === "hold" ? "On hold" : v.status === "out" ? "Out" : "New"}
+                        {STATUSES[v.status]}
                       </span>
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-7 text-white">
                         <span className="block font-serif text-lg font-semibold">{v.name}</span>
                         <span className="text-sm opacity-90">{v.location}</span>
                       </div>
+                    </Link>
+                    <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
+                      <label className={`flex items-center gap-1.5 text-sm font-semibold ${compareDisabled ? "text-ink-2 opacity-50" : "text-ink-2"}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={compareDisabled}
+                          onChange={() => toggleCompare(v.id)}
+                          className="h-4 w-4 accent-sage-deep"
+                        />
+                        Compare
+                      </label>
+                      <button
+                        onClick={() => toggleFavourite(v)}
+                        aria-label={v.is_favourite ? "Remove favourite" : "Mark as favourite"}
+                        aria-pressed={v.is_favourite}
+                        className={`text-lg ${v.is_favourite ? "" : "grayscale opacity-40 hover:opacity-70"}`}
+                      >
+                        ★
+                      </button>
                     </div>
-                    <div className="flex flex-1 flex-col gap-2 p-4">
+                    <Link href={`/venues/${v.id}`} className="flex flex-1 flex-col gap-2 p-4">
                       <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-sm text-ink-2">
                         <span>≈ <b className="text-ink">{fmt(calc.grand)}</b></span>
                         <span><b className="text-ink">{v.capacity || "capacity TBD"}</b></span>
@@ -200,18 +248,32 @@ export default function Dashboard({
                       </div>
                       {love && <p className="text-sm text-wine">♥ {love}</p>}
                       {warn && <p className="text-sm text-[var(--wait,#a87a25)]">⚠ {warn}</p>}
-                      {v.quote_received && <span className="text-xs font-semibold text-sage-deep">✓ Quote received</span>}
+                      <div className="mt-1 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
+                          <div className="h-full rounded-full bg-sage-deep" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-semibold text-ink-2">{pct}% quote</span>
+                      </div>
                       <span className="mt-auto pt-2 text-sm font-semibold text-sage-deep group-hover:underline">
                         View venue →
                       </span>
-                    </div>
-                  </Link>
+                    </Link>
+                  </div>
                 );
               })}
             </div>
           </>
         )}
       </div>
+
+      {compareIds.length >= 2 && (
+        <button
+          onClick={() => router.push(`/compare?ids=${compareIds.join(",")}`)}
+          className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full bg-green px-5 py-3 text-sm font-semibold text-[#F7F3EA] shadow-md"
+        >
+          Compare {compareIds.length} venue{compareIds.length === 1 ? "" : "s"}
+        </button>
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
-import { calcVenue, DEFAULT_ASSUMPTIONS, fmt, STATUSES, type Photo, type Venue } from "@/lib/venues";
+import { calcVenue, checklistPercent, CHECKLIST_ITEMS, DEFAULT_ASSUMPTIONS, fmt, STATUSES, type Photo, type Venue } from "@/lib/venues";
 
 const TURNKEY_OPTIONS = ["", "Full turnkey", "Full turnkey plus", "Semi-turnkey", "DIY-heavy", "Full DIY"];
 
@@ -66,6 +66,18 @@ export default function VenueProfile({
     save({ quote_received: next });
   }
 
+  async function toggleFavourite() {
+    const next = !v.is_favourite;
+    setV((p) => ({ ...p, is_favourite: next }));
+    save({ is_favourite: next });
+  }
+
+  function toggleChecklistItem(key: string) {
+    const next = { ...v.quote_checklist, [key]: !v.quote_checklist?.[key] };
+    setV((p) => ({ ...p, quote_checklist: next }));
+    save({ quote_checklist: next });
+  }
+
   async function removeVenue() {
     if (!confirm(`Remove ${v.name}? Its notes and photos will be deleted.`)) return;
     await Promise.all((v.photos ?? []).map((p) => supabase.storage.from("venue-photos").remove([p.path])));
@@ -123,6 +135,14 @@ export default function VenueProfile({
             <input {...field("location")} placeholder="Where is it?" className="mt-1 w-full border-b border-transparent bg-transparent text-ink-2 outline-none focus:border-gold" aria-label="Location" />
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleFavourite}
+              aria-label={v.is_favourite ? "Remove favourite" : "Mark as favourite"}
+              aria-pressed={v.is_favourite}
+              className={`text-xl ${v.is_favourite ? "" : "grayscale opacity-40 hover:opacity-70"}`}
+            >
+              ★
+            </button>
             <select
               value={v.status}
               onChange={(e) => setStatus(e.target.value as Venue["status"])}
@@ -195,6 +215,29 @@ export default function VenueProfile({
                     {TURNKEY_OPTIONS.map((t) => <option key={t} value={t}>{t || "—"}</option>)}
                   </select>
                 </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
+              <h3 className="mb-1 flex items-center justify-between font-semibold">
+                Quote checklist
+                <span className="text-sm font-normal text-ink-2">{checklistPercent(v)}% complete</span>
+              </h3>
+              <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
+                <div className="h-full rounded-full bg-sage-deep" style={{ width: `${checklistPercent(v)}%` }} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {CHECKLIST_ITEMS.map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!!v.quote_checklist?.[key]}
+                      onChange={() => toggleChecklistItem(key)}
+                      className="h-4 w-4 accent-sage-deep"
+                    />
+                    {label}
+                  </label>
+                ))}
               </div>
             </div>
 

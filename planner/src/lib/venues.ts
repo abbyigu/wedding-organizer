@@ -2,12 +2,14 @@ export type BudgetLine = [label: string, rate: number, unit: "flat" | "adult" | 
 
 export type Photo = { path: string; caption: string; addedAt: string };
 
+export type Status = "researching" | "contacted" | "tour_booked" | "quote_received" | "finalist" | "out";
+
 export type Venue = {
   id: string;
   key: string | null;
   name: string;
   location: string;
-  status: "finalist" | "keep" | "hold" | "new" | "out";
+  status: Status;
   website: string;
   capacity: string;
   contact: string;
@@ -22,6 +24,8 @@ export type Venue = {
   themes: string;
   colors: string;
   quote_received: boolean;
+  is_favourite: boolean;
+  quote_checklist: Record<string, boolean>;
   budget_note: string;
   budget_lines: BudgetLine[];
   photos: Photo[];
@@ -30,13 +34,34 @@ export type Venue = {
   updated_at: string;
 };
 
-export const STATUSES: Record<Venue["status"], string> = {
+// The pipeline every venue moves through, left to right.
+export const STATUS_ORDER: Status[] = ["researching", "contacted", "tour_booked", "quote_received", "finalist", "out"];
+
+export const STATUSES: Record<Status, string> = {
+  researching: "Researching",
+  contacted: "Contacted",
+  tour_booked: "Tour booked",
+  quote_received: "Quote received",
   finalist: "Finalist",
-  keep: "Keep",
-  hold: "On hold",
-  new: "New",
   out: "Out",
 };
+
+// Items that make up a "complete" quote — checked off as answers come in.
+export const CHECKLIST_ITEMS: [key: string, label: string][] = [
+  ["capacity", "Capacity confirmed"],
+  ["family_style", "Family-style meal available"],
+  ["wine", "Wine / corkage confirmed"],
+  ["kids_pricing", "Children's meal pricing"],
+  ["accommodation", "Accommodation block"],
+  ["suite", "Couple's suite"],
+  ["rain_plan", "Rain backup"],
+  ["all_in_total", "Total including service and tax"],
+];
+
+export function checklistPercent(v: Pick<Venue, "quote_checklist">): number {
+  const checked = CHECKLIST_ITEMS.filter(([key]) => v.quote_checklist?.[key]).length;
+  return Math.round((checked / CHECKLIST_ITEMS.length) * 100);
+}
 
 export const GENERIC_LINES: BudgetLine[] = [
   ["Ceremony fee", 1000, "flat"],
@@ -127,7 +152,7 @@ export function blankVenue(over: Partial<Venue> = {}): Partial<Venue> {
     key: null,
     name: "New place",
     location: "",
-    status: "new",
+    status: "researching",
     website: "",
     capacity: "",
     contact: "",
@@ -142,6 +167,8 @@ export function blankVenue(over: Partial<Venue> = {}): Partial<Venue> {
     themes: "",
     colors: "",
     quote_received: false,
+    is_favourite: false,
+    quote_checklist: {},
     budget_note: over.key ? BUDGET_NOTES[over.key] ?? "" : "",
     photos: [],
     sort_order: 0,
@@ -166,10 +193,10 @@ export const BUDGET_NOTES: Record<string, string> = {
 
 export const STARTERS: Partial<Venue>[] = [
   { key: "cap", name: "Hôtel Cap-aux-Pierres", location: "Isle-aux-Coudres, Charlevoix", status: "finalist", website: "https://www.originehotels.com/en/hotels-and-inns/charlevoix/hotel-cap-aux-pierres", capacity: "400, comfortable", turnkey: "Full turnkey", period: "Late Aug – mid Sept 2029", pros: "Likely the lowest-pressure hotel option if wedding packages are reasonable.", sort_order: 1 },
-  { key: "montebello", name: "Fairmont Le Château Montebello", location: "Montebello, Outaouais", status: "keep", website: "https://www.fairmont.com/en/hotels/montebello/fairmont-le-chateau-montebello/weddings.html", capacity: "400+, comfortable", turnkey: "Full turnkey plus", period: "Late Aug – mid Sept 2029", cons: "~4h30 drive — the guest-travel question.", sort_order: 2 },
+  { key: "montebello", name: "Fairmont Le Château Montebello", location: "Montebello, Outaouais", status: "contacted", website: "https://www.fairmont.com/en/hotels/montebello/fairmont-le-chateau-montebello/weddings.html", capacity: "400+, comfortable", turnkey: "Full turnkey plus", period: "Late Aug – mid Sept 2029", cons: "~4h30 drive — the guest-travel question.", sort_order: 2 },
   { key: "germain", name: "Hôtel & Spa Le Germain Charlevoix", location: "Baie-Saint-Paul, Charlevoix", status: "finalist", website: "https://www.germainhotels.com/en/le-germain-hotel-and-spa/charlevoix/spaces-and-events", capacity: "100, ask about 95–102 with dancing", turnkey: "Full turnkey", period: "Late Aug – mid Sept 2029", pros: "Strongest overall fit; sharing-style dinner matches the vision.", cons: "Capacity at 102 with dancing needs confirming.", sort_order: 3 },
-  { key: "leste", name: "Auberge du Cap au Leste", location: "Sainte-Rose-du-Nord, Saguenay Fjord", status: "keep", website: "https://capauleste.com/en/wedding/", capacity: "100, right at the edge", turnkey: "Full turnkey (closed)", period: "Late Aug – mid Sept 2029", cons: "Most remote; room-buyout terms unclear.", sort_order: 4 },
-  { key: "manoir", name: "Fairmont Le Manoir Richelieu", location: "La Malbaie, Charlevoix", status: "keep", website: "https://www.fairmont.com/en/hotels/charlevoix/fairmont-le-manoir-richelieu/weddings.html", capacity: "820, comfortable", turnkey: "Full turnkey plus", period: "Late Aug – mid Sept 2029", pros: "Philosophy match — lots for guests to do, none mandatory.", cons: "Risk of drifting toward $50K+.", sort_order: 5 },
+  { key: "leste", name: "Auberge du Cap au Leste", location: "Sainte-Rose-du-Nord, Saguenay Fjord", status: "contacted", website: "https://capauleste.com/en/wedding/", capacity: "100, right at the edge", turnkey: "Full turnkey (closed)", period: "Late Aug – mid Sept 2029", cons: "Most remote; room-buyout terms unclear.", sort_order: 4 },
+  { key: "manoir", name: "Fairmont Le Manoir Richelieu", location: "La Malbaie, Charlevoix", status: "quote_received", website: "https://www.fairmont.com/en/hotels/charlevoix/fairmont-le-manoir-richelieu/weddings.html", capacity: "820, comfortable", turnkey: "Full turnkey plus", period: "Late Aug – mid Sept 2029", pros: "Philosophy match — lots for guests to do, none mandatory.", cons: "Risk of drifting toward $50K+.", sort_order: 5 },
   { key: "bacchus", name: "Vignoble Isle de Bacchus", location: "Saint-Pierre, Île d'Orléans", status: "finalist", website: "https://www.isledebacchusenligne.com/", capacity: "~100, unconfirmed", turnkey: "DIY-heavy", period: "Late Aug – mid Sept 2029", pros: 'Highest emotional upside — deeply "you".', cons: "Highest logistical risk; needs ~$10K of rentals.", sort_order: 6 },
 ];
 
