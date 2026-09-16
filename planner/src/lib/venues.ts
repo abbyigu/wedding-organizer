@@ -119,6 +119,37 @@ const DEFAULT_LINES: Record<string, BudgetLine[]> = {
   ],
 };
 
+// PostgREST turns a bulk insert of objects with different key sets into one
+// SQL statement with a shared column list — any row missing a key gets an
+// explicit NULL, not the column default. Always normalize before inserting.
+export function blankVenue(over: Partial<Venue> = {}): Partial<Venue> {
+  return {
+    key: null,
+    name: "New place",
+    location: "",
+    status: "new",
+    website: "",
+    capacity: "",
+    contact: "",
+    notes: "",
+    pros: "",
+    cons: "",
+    questions: "",
+    period: "",
+    turnkey: "",
+    diy: "",
+    team: "",
+    themes: "",
+    colors: "",
+    quote_received: false,
+    budget_note: over.key ? BUDGET_NOTES[over.key] ?? "" : "",
+    photos: [],
+    sort_order: 0,
+    ...over,
+    budget_lines: over.budget_lines ?? defaultLines(over.key ?? null),
+  };
+}
+
 export function defaultLines(key: string | null): BudgetLine[] {
   return structuredClone(key && DEFAULT_LINES[key] ? DEFAULT_LINES[key] : GENERIC_LINES);
 }

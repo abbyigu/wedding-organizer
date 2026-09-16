@@ -6,8 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import {
   STARTERS,
   DEFAULT_ASSUMPTIONS,
+  blankVenue,
   calcVenue,
-  defaultLines,
   fmt,
   type Venue,
 } from "@/lib/venues";
@@ -71,10 +71,7 @@ export default function Dashboard({ initialVenues, userEmail }: { initialVenues:
     setSeeding(true);
     setError("");
     const supabase = createClient();
-    const rows = STARTERS.map((s) => ({
-      ...s,
-      budget_lines: defaultLines(s.key ?? null),
-    }));
+    const rows = STARTERS.map((s) => blankVenue(s));
     const { data, error } = await supabase.from("venues").insert(rows).select();
     if (error) setError(error.message);
     else if (data) setVenues((v) => [...v, ...(data as Venue[])]);
@@ -86,7 +83,7 @@ export default function Dashboard({ initialVenues, userEmail }: { initialVenues:
     const supabase = createClient();
     const { data, error } = await supabase
       .from("venues")
-      .insert({ name: "New place", sort_order: venues.length + 1, budget_lines: defaultLines(null) })
+      .insert(blankVenue({ name: "New place", sort_order: venues.length + 1 }))
       .select()
       .single();
     if (error) setError(error.message);
