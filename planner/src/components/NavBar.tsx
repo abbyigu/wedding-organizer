@@ -80,6 +80,15 @@ export default function NavBar({ userName }: { userName: string }) {
                 >
                   Decide
                 </Link>
+                <Link
+                  href="/private"
+                  onClick={() => setAccountOpen(false)}
+                  className={`block border-b border-line px-4 py-2.5 text-sm font-semibold ${
+                    isActive("/private") ? "text-sage-deep" : "text-ink hover:bg-bg"
+                  }`}
+                >
+                  Private
+                </Link>
                 <form action="/logout" method="post">
                   <button className="w-full px-4 py-2.5 text-left text-sm font-semibold text-wine hover:bg-bg">
                     Sign out
