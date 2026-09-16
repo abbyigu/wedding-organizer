@@ -29,7 +29,7 @@ export default function NavBar({ userName }: { userName: string }) {
           onClick={() => setMenuOpen((o) => !o)}
           aria-label="Menu"
           aria-expanded={menuOpen}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink hover:bg-bg sm:hidden"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink hover:bg-bg lg:hidden"
         >
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
@@ -38,7 +38,7 @@ export default function NavBar({ userName }: { userName: string }) {
         <Link href="/" className="shrink-0 font-serif text-base font-medium">
           Our Wedding Room
         </Link>
-        <nav className="hidden min-w-0 flex-1 gap-1 overflow-x-auto sm:flex">
+        <nav className="hidden min-w-0 flex-1 gap-1 overflow-x-auto lg:flex">
           {LINKS.map((l) => (
             <Link
               key={l.href}
@@ -51,7 +51,7 @@ export default function NavBar({ userName }: { userName: string }) {
             </Link>
           ))}
         </nav>
-        <div className="flex-1 sm:hidden" />
+        <div className="flex-1 lg:hidden" />
         <div className="relative shrink-0">
           <button
             onClick={() => setAccountOpen((o) => !o)}
@@ -83,7 +83,7 @@ export default function NavBar({ userName }: { userName: string }) {
         </div>
       </div>
       {menuOpen && (
-        <nav className="flex flex-col gap-1 border-t border-line px-4 py-3 sm:hidden">
+        <nav className="flex flex-col gap-1 border-t border-line px-4 py-3 lg:hidden">
           {LINKS.map((l) => (
             <Link
               key={l.href}
