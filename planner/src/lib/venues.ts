@@ -28,6 +28,13 @@ export type Venue = {
   quote_checklist: Record<string, boolean>;
   budget_note: string;
   budget_lines: BudgetLine[];
+  quoted_total: number | null;
+  contracted_total: number | null;
+  deposit_amount: number;
+  deposit_due: string | null;
+  deposit_paid: boolean;
+  balance_due: string | null;
+  balance_paid: boolean;
   photos: Photo[];
   sort_order: number;
   created_at: string;
@@ -170,6 +177,13 @@ export function blankVenue(over: Partial<Venue> = {}): Partial<Venue> {
     is_favourite: false,
     quote_checklist: {},
     budget_note: over.key ? BUDGET_NOTES[over.key] ?? "" : "",
+    quoted_total: null,
+    contracted_total: null,
+    deposit_amount: 0,
+    deposit_due: null,
+    deposit_paid: false,
+    balance_due: null,
+    balance_paid: false,
     photos: [],
     sort_order: 0,
     ...over,
@@ -219,7 +233,52 @@ export type Assumptions = { adults: number; kids: number; svcPct: number; contPc
 export const TAX_RATE = 1.14975;
 export const DEFAULT_ASSUMPTIONS: Assumptions = { adults: 80, kids: 15, svcPct: 15, contPct: 8, tax: true };
 
-export function calcVenue(v: Pick<Venue, "budget_lines">, as: Assumptions, sharedVals: number[]) {
+export const BUDGET_TARGET = 40000;
+export const BUDGET_CEILING = 45000;
+
+// Which venue count drives the estimate — real guest-list data, not a guess.
+export type GuestScenario = "all" | "confirmed" | "custom";
+
+export type BudgetSettings = {
+  svc_pct: number;
+  cont_pct: number;
+  apply_tax: boolean;
+  guest_scenario: GuestScenario;
+  custom_adults: number;
+  custom_kids: number;
+  shared_line_amounts: number[];
+};
+
+export const DEFAULT_BUDGET_SETTINGS: BudgetSettings = {
+  svc_pct: 15,
+  cont_pct: 8,
+  apply_tax: true,
+  guest_scenario: "all",
+  custom_adults: 80,
+  custom_kids: 15,
+  shared_line_amounts: SHARED_LINES.map((l) => l[1]),
+};
+
+// Turns the chosen scenario + live guest-list totals into the adult/kid counts
+// every cost calculation uses — the single place "guest count" is decided.
+export function resolveAssumptions(
+  settings: BudgetSettings,
+  gs: { adults: number; kids: number; confirmedAdults: number; confirmedKids: number }
+): Assumptions {
+  const { adults, kids } =
+    settings.guest_scenario === "confirmed"
+      ? { adults: gs.confirmedAdults, kids: gs.confirmedKids }
+      : settings.guest_scenario === "custom"
+      ? { adults: settings.custom_adults, kids: settings.custom_kids }
+      : { adults: gs.adults, kids: gs.kids };
+  return { adults, kids, svcPct: settings.svc_pct, contPct: settings.cont_pct, tax: settings.apply_tax };
+}
+
+export function calcVenue(
+  v: Pick<Venue, "budget_lines" | "quoted_total" | "contracted_total">,
+  as: Assumptions,
+  sharedVals: number[]
+) {
   const svc = 1 + as.svcPct / 100;
   const cont = as.contPct / 100;
   const tax = as.tax ? TAX_RATE : 1;
@@ -234,9 +293,14 @@ export function calcVenue(v: Pick<Venue, "budget_lines">, as: Assumptions, share
   SHARED_LINES.forEach((l, i) => {
     st += (sharedVals[i] ?? l[1]) * tax;
   });
-  const contAmt = (vt + st) * cont;
-  const grand = vt + st + contAmt;
-  return { rows, vt, st, cont: contAmt, grand };
+  // A contract beats a quote beats the line-item model — always use the most real number we have.
+  const venueSource: "contracted" | "quoted" | "estimated" =
+    v.contracted_total != null ? "contracted" : v.quoted_total != null ? "quoted" : "estimated";
+  const venueEffective = v.contracted_total ?? v.quoted_total ?? vt;
+  const contAmt = (venueEffective + st) * cont;
+  const grand = venueEffective + st + contAmt;
+  const guestCount = as.adults + as.kids;
+  return { rows, vt, st, cont: contAmt, grand, venueEffective, venueSource, perGuest: guestCount ? grand / guestCount : 0 };
 }
 
 export function fmt(n: number) {

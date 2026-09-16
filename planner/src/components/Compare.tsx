@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import NavBar from "@/components/NavBar";
-import { calcVenue, checklistPercent, DEFAULT_ASSUMPTIONS, fmt, STATUSES, type Venue } from "@/lib/venues";
+import { calcVenue, checklistPercent, fmt, STATUSES, type Assumptions, type Venue } from "@/lib/venues";
 
 function cell(v?: string) {
   return v ? v : <span className="italic text-ink-2">—</span>;
@@ -10,11 +10,42 @@ function cell(v?: string) {
 type Row = { label: string; render: (v: Venue) => ReactNode };
 type Section = { title: string; rows: Row[] };
 
-const SECTIONS: Section[] = [
+function buildSections(assumptions: Assumptions, sharedVals: number[]): Section[] {
+  const calc = (v: Venue) => calcVenue(v, assumptions, sharedVals);
+  return [
   {
     title: "Money",
     rows: [
-      { label: "Estimated all-in", render: (v) => fmt(calcVenue(v, DEFAULT_ASSUMPTIONS, []).grand) },
+      {
+        label: "All-in estimate",
+        render: (v) => {
+          const c = calc(v);
+          return (
+            <>
+              {fmt(c.grand)}
+              {c.venueSource !== "estimated" && <span className="ml-1 text-xs font-semibold text-sage-deep">({c.venueSource})</span>}
+            </>
+          );
+        },
+      },
+      { label: "Cost per guest", render: (v) => fmt(calc(v).perGuest) },
+      { label: "Quoted", render: (v) => (v.quoted_total != null ? fmt(v.quoted_total) : cell()) },
+      { label: "Contracted", render: (v) => (v.contracted_total != null ? fmt(v.contracted_total) : cell()) },
+      {
+        label: "Deposit",
+        render: (v) =>
+          v.deposit_amount > 0 ? (
+            <>
+              {fmt(v.deposit_amount)} {v.deposit_paid ? "✓ paid" : v.deposit_due ? `due ${v.deposit_due}` : "unpaid"}
+            </>
+          ) : (
+            cell()
+          ),
+      },
+      {
+        label: "Balance",
+        render: (v) => (v.balance_due ? (v.balance_paid ? `✓ paid (due ${v.balance_due})` : `due ${v.balance_due}`) : cell()),
+      },
       { label: "Quote completion", render: (v) => `${checklistPercent(v)}%` },
       { label: "Quote received", render: (v) => (v.quote_received ? "✓ Yes" : "Not yet") },
     ],
@@ -63,19 +94,25 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-];
+  ];
+}
 
 export default function Compare({
   venues,
   allCount,
   filtered,
   userName,
+  assumptions,
+  sharedVals,
 }: {
   venues: Venue[];
   allCount: number;
   filtered: boolean;
   userName: string;
+  assumptions: Assumptions;
+  sharedVals: number[];
 }) {
+  const SECTIONS = buildSections(assumptions, sharedVals);
   return (
     <div className="min-h-screen">
       <NavBar userName={userName} />

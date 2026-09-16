@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Dashboard from "@/components/Dashboard";
 import { displayName } from "@/lib/auth-names";
+import { getBudgetContext } from "@/lib/budget-context";
 
 // Always read fresh from Supabase — this page must never show stale data
 // (e.g. a photo just added on a venue's profile) from Next's route cache.
@@ -26,5 +27,15 @@ export default async function DashboardPage() {
     photoUrls = Object.fromEntries((data ?? []).map((d) => [d.path ?? "", d.signedUrl ?? ""]));
   }
 
-  return <Dashboard initialVenues={venues ?? []} userName={displayName(user?.email)} photoUrls={photoUrls} />;
+  const { assumptions, sharedVals } = await getBudgetContext(supabase);
+
+  return (
+    <Dashboard
+      initialVenues={venues ?? []}
+      userName={displayName(user?.email)}
+      photoUrls={photoUrls}
+      assumptions={assumptions}
+      sharedVals={sharedVals}
+    />
+  );
 }

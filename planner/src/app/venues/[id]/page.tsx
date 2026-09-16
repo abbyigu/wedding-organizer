@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import VenueProfile from "@/components/VenueProfile";
 import { displayName } from "@/lib/auth-names";
+import { getBudgetContext } from "@/lib/budget-context";
 
 export const dynamic = "force-dynamic";
 
@@ -21,5 +22,15 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
     signedUrls = Object.fromEntries((data ?? []).map((d) => [d.path ?? "", d.signedUrl ?? ""]));
   }
 
-  return <VenueProfile venue={venue} signedUrls={signedUrls} userName={displayName(user?.email)} />;
+  const { assumptions, sharedVals } = await getBudgetContext(supabase);
+
+  return (
+    <VenueProfile
+      venue={venue}
+      signedUrls={signedUrls}
+      userName={displayName(user?.email)}
+      assumptions={assumptions}
+      sharedVals={sharedVals}
+    />
+  );
 }

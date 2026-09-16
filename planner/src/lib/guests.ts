@@ -39,7 +39,9 @@ export function blankGuest(over: Partial<Guest> = {}): Partial<Guest> {
 export function guestSummary(guests: Guest[], target: number) {
   const adults = guests.reduce((n, g) => n + g.party_size, 0);
   const kids = guests.reduce((n, g) => n + g.kids_count, 0);
-  const confirmed = guests.filter((g) => g.rsvp_status === "yes").reduce((n, g) => n + g.party_size + g.kids_count, 0);
+  const yes = guests.filter((g) => g.rsvp_status === "yes");
+  const confirmedAdults = yes.reduce((n, g) => n + g.party_size, 0);
+  const confirmedKids = yes.reduce((n, g) => n + g.kids_count, 0);
   const declined = guests.filter((g) => g.rsvp_status === "no").length;
   const pending = guests.filter((g) => g.rsvp_status === "pending").length;
   return {
@@ -48,7 +50,9 @@ export function guestSummary(guests: Guest[], target: number) {
     kids,
     totalWithKids: adults + kids,
     remaining: target - adults,
-    confirmed,
+    confirmed: confirmedAdults + confirmedKids,
+    confirmedAdults,
+    confirmedKids,
     declined,
     pending,
   };

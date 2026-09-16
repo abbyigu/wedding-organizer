@@ -5,7 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
-import { calcVenue, checklistPercent, CHECKLIST_ITEMS, DEFAULT_ASSUMPTIONS, fmt, STATUSES, type Photo, type Venue } from "@/lib/venues";
+import { calcVenue, checklistPercent, CHECKLIST_ITEMS, fmt, STATUSES, type Assumptions, type Photo, type Venue } from "@/lib/venues";
 
 const TURNKEY_OPTIONS = ["", "Full turnkey", "Full turnkey plus", "Semi-turnkey", "DIY-heavy", "Full DIY"];
 
@@ -13,10 +13,14 @@ export default function VenueProfile({
   venue,
   signedUrls,
   userName,
+  assumptions,
+  sharedVals,
 }: {
   venue: Venue;
   signedUrls: Record<string, string>;
   userName: string;
+  assumptions: Assumptions;
+  sharedVals: number[];
 }) {
   const router = useRouter();
   const [v, setV] = useState(venue);
@@ -78,6 +82,25 @@ export default function VenueProfile({
     save({ quote_checklist: next });
   }
 
+  function updateMoney(key: "quoted_total" | "contracted_total" | "deposit_amount", raw: string) {
+    const num = raw === "" ? (key === "deposit_amount" ? 0 : null) : Number(raw);
+    setV((p) => ({ ...p, [key]: num }));
+    clearTimeout(timers.current[key]);
+    timers.current[key] = setTimeout(() => save({ [key]: num } as Partial<Venue>), 800);
+  }
+
+  function updateDate(key: "deposit_due" | "balance_due", raw: string) {
+    const val = raw || null;
+    setV((p) => ({ ...p, [key]: val }));
+    save({ [key]: val } as Partial<Venue>);
+  }
+
+  function toggleMoneyFlag(key: "deposit_paid" | "balance_paid") {
+    const next = !v[key];
+    setV((p) => ({ ...p, [key]: next }));
+    save({ [key]: next } as Partial<Venue>);
+  }
+
   async function removeVenue() {
     if (!confirm(`Remove ${v.name}? Its notes and photos will be deleted.`)) return;
     await Promise.all((v.photos ?? []).map((p) => supabase.storage.from("venue-photos").remove([p.path])));
@@ -121,7 +144,8 @@ export default function VenueProfile({
     timers.current["photos"] = setTimeout(() => save({ photos: next }), 800);
   }
 
-  const calc = calcVenue(v, DEFAULT_ASSUMPTIONS, []);
+  const calc = calcVenue(v, assumptions, sharedVals);
+  const balance = (v.contracted_total ?? v.quoted_total ?? 0) - v.deposit_amount;
 
   return (
     <div className="min-h-screen">
@@ -183,10 +207,11 @@ export default function VenueProfile({
               <h3 className="mb-3 font-semibold">Details</h3>
               <div className="flex flex-col gap-3">
                 <div>
-                  <span className="mb-1 block text-sm font-semibold">Estimated all-in <small className="font-normal text-ink-2">(current assumptions)</small></span>
+                  <span className="mb-1 block text-sm font-semibold">All-in estimate <small className="font-normal text-ink-2">({calc.venueSource})</small></span>
                   <div className="flex items-center gap-2 rounded-lg border border-dashed border-line bg-bg px-3 py-2 font-serif text-lg">
                     {fmt(calc.grand)}
-                    <Link href="/budget" className="text-sm font-semibold text-sage-deep underline underline-offset-2">Edit cost breakdown →</Link>
+                    <span className="text-sm font-normal text-ink-2">· {fmt(calc.perGuest)}/guest</span>
+                    <Link href="/budget" className="ml-auto text-sm font-semibold text-sage-deep underline underline-offset-2">Edit breakdown →</Link>
                   </div>
                 </div>
                 <label className="flex items-center gap-2 text-sm font-semibold">
@@ -215,6 +240,74 @@ export default function VenueProfile({
                     {TURNKEY_OPTIONS.map((t) => <option key={t} value={t}>{t || "—"}</option>)}
                   </select>
                 </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
+              <h3 className="mb-3 font-semibold">Cost &amp; payments</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <span className="mb-1 block text-sm font-semibold">Quoted total</span>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="—"
+                    defaultValue={v.quoted_total ?? ""}
+                    onChange={(e) => updateMoney("quoted_total", e.target.value)}
+                    className="w-full rounded-lg border border-line bg-bg px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <span className="mb-1 block text-sm font-semibold">Contracted total</span>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="—"
+                    defaultValue={v.contracted_total ?? ""}
+                    onChange={(e) => updateMoney("contracted_total", e.target.value)}
+                    className="w-full rounded-lg border border-line bg-bg px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <span className="mb-1 block text-sm font-semibold">Deposit amount</span>
+                  <input
+                    type="number"
+                    min={0}
+                    defaultValue={v.deposit_amount}
+                    onChange={(e) => updateMoney("deposit_amount", e.target.value)}
+                    className="w-full rounded-lg border border-line bg-bg px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <span className="mb-1 block text-sm font-semibold">Deposit due</span>
+                  <input
+                    type="date"
+                    value={v.deposit_due ?? ""}
+                    onChange={(e) => updateDate("deposit_due", e.target.value)}
+                    className="w-full rounded-lg border border-line bg-bg px-3 py-2"
+                  />
+                </div>
+                <label className="col-span-2 flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={v.deposit_paid} onChange={() => toggleMoneyFlag("deposit_paid")} className="h-4 w-4 accent-sage-deep" />
+                  Deposit paid
+                </label>
+                <div>
+                  <span className="mb-1 block text-sm font-semibold">Balance <small className="font-normal text-ink-2">(auto)</small></span>
+                  <div className="rounded-lg border border-dashed border-line bg-bg px-3 py-2">{balance > 0 ? fmt(balance) : "—"}</div>
+                </div>
+                <div>
+                  <span className="mb-1 block text-sm font-semibold">Balance due</span>
+                  <input
+                    type="date"
+                    value={v.balance_due ?? ""}
+                    onChange={(e) => updateDate("balance_due", e.target.value)}
+                    className="w-full rounded-lg border border-line bg-bg px-3 py-2"
+                  />
+                </div>
+                <label className="col-span-2 flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={v.balance_paid} onChange={() => toggleMoneyFlag("balance_paid")} className="h-4 w-4 accent-sage-deep" />
+                  Balance paid
+                </label>
               </div>
             </div>
 

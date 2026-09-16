@@ -9,11 +9,11 @@ import {
   STARTERS,
   STATUS_ORDER,
   STATUSES,
-  DEFAULT_ASSUMPTIONS,
   blankVenue,
   calcVenue,
   checklistPercent,
   fmt,
+  type Assumptions,
   type Status,
   type Venue,
 } from "@/lib/venues";
@@ -38,18 +38,21 @@ export default function Dashboard({
   initialVenues,
   userName,
   photoUrls,
+  assumptions,
+  sharedVals,
 }: {
   initialVenues: Venue[];
   userName: string;
   photoUrls: Record<string, string>;
+  assumptions: Assumptions;
+  sharedVals: number[];
 }) {
   const router = useRouter();
   const [venues, setVenues] = useState(initialVenues);
   const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState("");
   const [compareIds, setCompareIds] = useState<string[]>([]);
-  const as = DEFAULT_ASSUMPTIONS;
-  const sharedVals = useMemo(() => [], []);
+  const as = assumptions;
 
   const stats = useMemo(() => {
     const active = venues.filter((v) => v.status !== "out");
@@ -131,7 +134,7 @@ export default function Dashboard({
         <p className="font-serif italic text-wine">Come as you are, stay as long as you like.</p>
         <h1 className="mt-1 font-serif text-3xl font-medium sm:text-4xl">Where do Ariel &amp; Fred get married?</h1>
         <p className="mt-2 max-w-2xl text-ink-2">
-          ~95 guests (80 adults + 15 kids, up to 102) · early Sept 2029 · $40K target, $45K ceiling.
+          {as.adults + as.kids} guests ({as.adults} adults + {as.kids} kids) · early Sept 2029 · $40K target, $45K ceiling.
         </p>
 
         {venues.length === 0 ? (
@@ -242,7 +245,13 @@ export default function Dashboard({
                     </div>
                     <Link href={`/venues/${v.id}`} className="flex flex-1 flex-col gap-2 p-4">
                       <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-sm text-ink-2">
-                        <span>≈ <b className="text-ink">{fmt(calc.grand)}</b></span>
+                        <span>
+                          {calc.venueSource === "estimated" ? "≈ " : ""}
+                          <b className="text-ink">{fmt(calc.grand)}</b>
+                          {calc.venueSource !== "estimated" && (
+                            <span className="ml-1 text-xs font-semibold text-sage-deep">({calc.venueSource})</span>
+                          )}
+                        </span>
                         <span><b className="text-ink">{v.capacity || "capacity TBD"}</b></span>
                         {v.turnkey && <span><b className="text-ink">{v.turnkey}</b></span>}
                       </div>
