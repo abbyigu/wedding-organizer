@@ -81,6 +81,15 @@ export default function NavBar({ userName }: { userName: string }) {
                   Decide
                 </Link>
                 <Link
+                  href="/ideas"
+                  onClick={() => setAccountOpen(false)}
+                  className={`block border-b border-line px-4 py-2.5 text-sm font-semibold ${
+                    isActive("/ideas") ? "text-sage-deep" : "text-ink hover:bg-bg"
+                  }`}
+                >
+                  Idea board
+                </Link>
+                <Link
                   href="/private"
                   onClick={() => setAccountOpen(false)}
                   className={`block border-b border-line px-4 py-2.5 text-sm font-semibold ${

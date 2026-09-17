@@ -1,11 +1,13 @@
+export type IdeaVisibility = "shared" | "private";
+
 export type IdeaPin = {
   id: string;
   owner_id: string;
   category: string;
   title: string;
-  pin_url: string;
   image_url: string;
   note: string;
+  visibility: IdeaVisibility;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -14,7 +16,7 @@ export type IdeaPin = {
 export const IDEA_CATEGORIES = ["Dress", "Decor", "Flowers", "Attire", "Hair & Makeup", "Other"];
 
 export function blankIdea(sortOrder: number): Partial<IdeaPin> {
-  return { category: "Other", title: "New idea", pin_url: "", image_url: "", note: "", sort_order: sortOrder };
+  return { category: "Other", title: "New idea", image_url: "", note: "", visibility: "shared", sort_order: sortOrder };
 }
 
 // A pasted Pinterest link often comes without "https://" (e.g. "pinterest.com/pin/123"

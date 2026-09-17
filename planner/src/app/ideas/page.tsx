@@ -12,5 +12,5 @@ export default async function IdeaBoardPage() {
 
   const { data: ideas } = await supabase.from("idea_pins").select("*").order("sort_order", { ascending: true });
 
-  return <IdeaBoard initialIdeas={ideas ?? []} userName={displayName(user?.email)} />;
+  return <IdeaBoard initialIdeas={ideas ?? []} userName={displayName(user?.email)} userId={user?.id ?? ""} />;
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
@@ -13,9 +12,6 @@ import {
   type Surprise,
   type SurpriseStatus,
 } from "@/lib/private";
-import { normalizeUrl, type IdeaPin } from "@/lib/ideas";
-
-type IdeaThumb = Pick<IdeaPin, "id" | "title" | "image_url">;
 
 const STATUS_STYLE: Record<SurpriseStatus, string> = {
   idea: "bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] text-ink-2",
@@ -27,15 +23,11 @@ const STATUS_STYLE: Record<SurpriseStatus, string> = {
 export default function Private({
   initialNotes,
   initialSurprises,
-  ideaThumbs,
-  ideaCount,
   userName,
   userId,
 }: {
   initialNotes: PrivateNote[];
   initialSurprises: Surprise[];
-  ideaThumbs: IdeaThumb[];
-  ideaCount: number;
   userName: string;
   userId: string;
 }) {
@@ -139,35 +131,6 @@ export default function Private({
             </div>
           )}
         </div>
-
-        <Link
-          href="/private/ideas"
-          className="mt-6 flex items-center gap-4 rounded-2xl border border-line bg-paper p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-        >
-          <div className="grid shrink-0 grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-xl" style={{ width: 72, height: 72 }}>
-            {Array.from({ length: 4 }).map((_, i) => {
-              const thumb = ideaThumbs[i];
-              return thumb?.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={thumb.id} src={normalizeUrl(thumb.image_url)} alt={thumb.title} className="h-full w-full object-cover" />
-              ) : (
-                <div
-                  key={thumb?.id ?? i}
-                  className="flex h-full w-full items-center justify-center bg-[color-mix(in_srgb,var(--wine)_12%,var(--paper))] text-sm"
-                >
-                  {thumb ? "📌" : ""}
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold">Idea board</h3>
-            <p className="text-sm text-ink-2">
-              {ideaCount === 0 ? "Nothing pinned yet" : `${ideaCount} idea${ideaCount === 1 ? "" : "s"} saved`} — dresses, decor, flowers, only visible to you.
-            </p>
-          </div>
-          <span className="shrink-0 text-sm font-semibold text-sage-deep">Open →</span>
-        </Link>
 
         <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
