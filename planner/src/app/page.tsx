@@ -29,6 +29,12 @@ export default async function DashboardPage() {
 
   const { assumptions, sharedVals } = await getBudgetContext(supabase);
 
+  const { data: ideaThumbs, count: ideaCount } = await supabase
+    .from("idea_pins")
+    .select("id, title, image_url", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .limit(4);
+
   return (
     <Dashboard
       initialVenues={venues ?? []}
@@ -36,6 +42,8 @@ export default async function DashboardPage() {
       photoUrls={photoUrls}
       assumptions={assumptions}
       sharedVals={sharedVals}
+      ideaThumbs={ideaThumbs ?? []}
+      ideaCount={ideaCount ?? 0}
     />
   );
 }

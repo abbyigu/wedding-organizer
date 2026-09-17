@@ -17,6 +17,7 @@ import {
   type Status,
   type Venue,
 } from "@/lib/venues";
+import { normalizeUrl } from "@/lib/ideas";
 
 const STATUS_STYLE: Record<Status, string> = {
   researching: "bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] text-ink-2",
@@ -34,18 +35,24 @@ function firstLine(s: string) {
   return s.split(/\r?\n/).map((x) => x.trim()).find(Boolean);
 }
 
+type IdeaThumb = { id: string; title: string; image_url: string };
+
 export default function Dashboard({
   initialVenues,
   userName,
   photoUrls,
   assumptions,
   sharedVals,
+  ideaThumbs,
+  ideaCount,
 }: {
   initialVenues: Venue[];
   userName: string;
   photoUrls: Record<string, string>;
   assumptions: Assumptions;
   sharedVals: number[];
+  ideaThumbs: IdeaThumb[];
+  ideaCount: number;
 }) {
   const router = useRouter();
   const [venues, setVenues] = useState(initialVenues);
@@ -179,6 +186,35 @@ export default function Dashboard({
                 <span className="mt-0.5 block text-xs uppercase tracking-wide text-ink-2">Next action</span>
               </div>
             </div>
+
+            <Link
+              href="/ideas"
+              className="mt-6 flex items-center gap-4 rounded-2xl border border-line bg-paper p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="grid shrink-0 grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-xl" style={{ width: 64, height: 64 }}>
+                {Array.from({ length: 4 }).map((_, i) => {
+                  const thumb = ideaThumbs[i];
+                  return thumb?.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={thumb.id} src={normalizeUrl(thumb.image_url)} alt={thumb.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <div
+                      key={thumb?.id ?? i}
+                      className="flex h-full w-full items-center justify-center bg-[color-mix(in_srgb,var(--wine)_12%,var(--paper))] text-xs"
+                    >
+                      {thumb ? "📌" : ""}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold">Idea board</h3>
+                <p className="text-sm text-ink-2">
+                  {ideaCount === 0 ? "Nothing pinned yet" : `${ideaCount} idea${ideaCount === 1 ? "" : "s"} saved`} — dresses, decor, flowers.
+                </p>
+              </div>
+              <span className="shrink-0 text-sm font-semibold text-sage-deep">Open →</span>
+            </Link>
 
             <div className="mt-8 flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm text-ink-2">
