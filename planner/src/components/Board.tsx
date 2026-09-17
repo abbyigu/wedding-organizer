@@ -389,7 +389,7 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
             {STATUS_ORDER.map((status) => {
               const items = columnItems(status);
               const isDone = status === "done";
-              const showCollapsed = isDone && doneCollapsed;
+              const showCollapsed = isDone && doneCollapsed && items.length > 0;
               return (
                 <div key={status} className="flex flex-col gap-3 rounded-2xl border border-line bg-bg p-3">
                   <div className="flex items-center justify-between px-1">
