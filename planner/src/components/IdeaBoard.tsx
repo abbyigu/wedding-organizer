@@ -181,25 +181,24 @@ export default function IdeaBoard({
           <p className="mt-2 max-w-2xl text-ink-2">Everything we want our wedding to feel like.</p>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border border-line bg-paper p-4 text-center shadow-sm">
-            <b className="block font-serif text-2xl">{ideas.length}</b>
+        <div className="mt-6 flex flex-wrap items-stretch overflow-hidden rounded-full border border-line bg-paper shadow-sm">
+          <div className="flex flex-1 items-baseline justify-center gap-1.5 border-r border-line px-3 py-2">
+            <b className="font-serif text-base">{ideas.length}</b>
             <span className="text-xs text-ink-2">saved idea{ideas.length === 1 ? "" : "s"}</span>
           </div>
-          <div className="rounded-2xl border border-line bg-paper p-4 text-center shadow-sm">
-            <b className="block font-serif text-2xl">{collectionCount}</b>
+          <div className="flex flex-1 items-baseline justify-center gap-1.5 border-r border-line px-3 py-2">
+            <b className="font-serif text-base">{collectionCount}</b>
             <span className="text-xs text-ink-2">collection{collectionCount === 1 ? "" : "s"}</span>
           </div>
-          <div className="rounded-2xl border border-line bg-paper p-4 text-center shadow-sm">
-            <b className="block font-serif text-2xl">{undecidedCount}</b>
+          <div className="flex flex-1 items-baseline justify-center gap-1.5 border-r border-line px-3 py-2">
+            <b className="font-serif text-base">{undecidedCount}</b>
             <span className="text-xs text-ink-2">undecided item{undecidedCount === 1 ? "" : "s"}</span>
           </div>
           <button
             onClick={addIdeaToCurrentTab}
-            className={`flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-sage-deep p-4 text-center font-semibold text-white shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}
+            className={`flex items-center gap-1.5 bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}
           >
-            <span className="text-lg">＋</span>
-            <span className="text-xs">Add an idea</span>
+            ＋ Add an idea
           </button>
         </div>
         {error && <p className="mt-2 text-sm text-wine">{error}</p>}
