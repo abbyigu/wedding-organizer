@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { GitCompare, Home, Images, KanbanSquare, Landmark, Scale, Users, Wallet } from "lucide-react";
+import { CalendarHeart, GitCompare, Hammer, Handshake, Home, Images, KanbanSquare, Landmark, Scale, Users, Wallet } from "lucide-react";
 
 type NavLink = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }>; indent?: boolean };
 
@@ -14,15 +14,23 @@ const NAV_GROUPS: { label: string | null; links: NavLink[] }[] = [
     links: [
       { href: "/board", label: "Planning Board", icon: KanbanSquare },
       { href: "/budget", label: "Budget", icon: Wallet },
+      { href: "/wedding-day", label: "Wedding Day", icon: CalendarHeart },
     ],
   },
-  { label: "People", links: [{ href: "/guests", label: "Guests", icon: Users }] },
+  {
+    label: "People",
+    links: [
+      { href: "/guests", label: "Guests", icon: Users },
+      { href: "/vendors", label: "Vendors", icon: Handshake },
+    ],
+  },
   {
     label: "Create",
     links: [
       { href: "/venues", label: "Venue", icon: Landmark },
       { href: "/venues?tab=compare", label: "Compare venues", icon: GitCompare, indent: true },
       { href: "/ideas", label: "Inspiration Board", icon: Images },
+      { href: "/diy", label: "DIY Projects", icon: Hammer },
     ],
   },
   { label: "Together", links: [{ href: "/decide", label: "Decide", icon: Scale }] },
