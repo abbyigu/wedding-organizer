@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { Coins, Heart, ListChecks, MapPinned, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -150,7 +151,12 @@ export default function VenueShortlist({
   const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState("");
   const [compareIds, setCompareIds] = useState<string[]>([]);
-  const [tab, setTab] = useState<"shortlist" | "compare">("shortlist");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab: "shortlist" | "compare" = searchParams.get("tab") === "compare" ? "compare" : "shortlist";
+  function setTab(next: "shortlist" | "compare") {
+    router.push(next === "compare" ? "/venues?tab=compare" : "/venues", { scroll: false });
+  }
   const [activeCompareTab, setActiveCompareTab] = useState("money");
   const [moreOpenTabs, setMoreOpenTabs] = useState<Set<string>>(new Set());
   const [showAllFields, setShowAllFields] = useState(false);

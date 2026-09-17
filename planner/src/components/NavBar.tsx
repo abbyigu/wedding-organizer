@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { Home, Images, KanbanSquare, Landmark, Scale, Users, Wallet } from "lucide-react";
+import { GitCompare, Home, Images, KanbanSquare, Landmark, Scale, Users, Wallet } from "lucide-react";
 
-type NavLink = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }> };
+type NavLink = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }>; indent?: boolean };
 
 const NAV_GROUPS: { label: string; links: NavLink[] }[] = [
   { label: "Plan", links: [{ href: "/", label: "Dashboard", icon: Home }] },
@@ -20,7 +20,8 @@ const NAV_GROUPS: { label: string; links: NavLink[] }[] = [
   {
     label: "Create",
     links: [
-      { href: "/venues", label: "Venue Shortlist", icon: Landmark },
+      { href: "/venues", label: "Venue", icon: Landmark },
+      { href: "/venues?tab=compare", label: "Compare venues", icon: GitCompare, indent: true },
       { href: "/ideas", label: "Inspiration Board", icon: Images },
     ],
   },
@@ -35,12 +36,23 @@ function partnerName(name: string) {
 
 export default function NavBar({ userName }: { userName: string }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [accountOpen, setAccountOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const partner = partnerName(userName);
 
   function isActive(href: string) {
-    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+    const [path, query] = href.split("?");
+    const pathMatches = path === "/" ? pathname === "/" : pathname.startsWith(path);
+    if (!pathMatches) return false;
+    // /venues and /venues?tab=compare share a pathname — disambiguate by the tab param
+    // so only one of "Venue Shortlist" / "Compare venues" is highlighted at a time.
+    if (path === "/venues") {
+      const wantTab = query ? new URLSearchParams(query).get("tab") : null;
+      const actualTab = searchParams.get("tab");
+      return wantTab ? actualTab === wantTab : !actualTab;
+    }
+    return true;
   }
 
   const accountItems = (
@@ -92,7 +104,7 @@ export default function NavBar({ userName }: { userName: string }) {
                 <Link
                   key={l.href}
                   href={l.href}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                  className={`flex items-center gap-2.5 rounded-lg py-2 text-sm font-semibold transition-colors ${l.indent ? "ml-3 border-l border-line pl-2.5 text-[13px]" : "px-3"} ${
                     isActive(l.href) ? "bg-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
                   }`}
                 >
@@ -165,7 +177,7 @@ export default function NavBar({ userName }: { userName: string }) {
                 key={l.href}
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                className={`flex items-center gap-2.5 rounded-lg py-2 text-sm font-semibold transition-colors ${l.indent ? "ml-3 border-l border-line pl-2.5 text-[13px]" : "px-3"} ${
                   isActive(l.href) ? "bg-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
                 }`}
               >
