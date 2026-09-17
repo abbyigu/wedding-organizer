@@ -354,9 +354,35 @@ export default function VenueShortlist({
       <NavBar userName={userName} />
 
       <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden">
+          <div>
+            <h1 className="font-serif text-3xl font-medium sm:text-4xl">Venue</h1>
+            <p className="mt-2 text-ink-2">Shortlist your options, then compare the ones that matter.</p>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/botanical-accent.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
+        </div>
+
+        {venues.length > 0 && (
+          <div className="mt-6 flex gap-5 border-b border-line">
+            <Link
+              href="/venues"
+              className={`border-b-2 pb-2.5 text-sm font-semibold ${tab === "shortlist" ? "border-green text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
+            >
+              Shortlist
+            </Link>
+            <Link
+              href="/venues?tab=compare"
+              className={`border-b-2 pb-2.5 text-sm font-semibold ${tab === "compare" ? "border-green text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
+            >
+              Compare venues
+            </Link>
+          </div>
+        )}
+
         {venues.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-paper p-8 text-center shadow-sm">
-            <h1 className="font-serif text-2xl">Nothing here yet</h1>
+          <div className="mt-6 rounded-2xl border border-line bg-paper p-8 text-center shadow-sm">
+            <h2 className="font-serif text-2xl">Nothing here yet</h2>
             <p className="mt-2 text-ink-2">Start with the six venues from the original research, or add your own.</p>
             <button
               onClick={seed}
@@ -369,11 +395,8 @@ export default function VenueShortlist({
           </div>
         ) : tab === "shortlist" ? (
           <>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h1 className="font-serif text-2xl font-medium">Venue shortlist</h1>
-                <p className="mt-1 text-sm text-ink-2">Choose 2–3 venues to compare side by side</p>
-              </div>
+            <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
+              <p className="text-sm text-ink-2">Choose 2–3 venues to compare side by side</p>
               <button onClick={addPlace} className={`rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
                 ＋ Add a place
               </button>
@@ -386,16 +409,6 @@ export default function VenueShortlist({
           </>
         ) : (
           <>
-            <nav className="text-sm text-ink-2">
-              <button onClick={() => setTab("shortlist")} className="rounded font-semibold hover:text-ink hover:underline">
-                Venue Shortlist
-              </button>
-              <span className="mx-1.5">/</span>
-              <span className="font-semibold text-ink">Compare venues</span>
-            </nav>
-            <h1 className="mt-2 font-serif text-3xl font-medium">Compare venues</h1>
-            <p className="mt-1 text-ink-2">See what matters most, side by side.</p>
-
             {compared.length < 2 ? (
               <div className="mt-8 rounded-2xl border border-line bg-paper p-8 text-center shadow-sm">
                 <p className="text-ink-2">Select 2–3 venues from your shortlist to compare.</p>
