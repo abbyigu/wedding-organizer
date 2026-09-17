@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Heart, Landmark, ListChecks, MapPin, Users, Wallet } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronRight, Clock, Heart, Landmark, ListChecks, Users, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import {
@@ -29,34 +29,6 @@ const CARD_TRANSITION = "transition hover:-translate-y-0.5 hover:shadow-md motio
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
 type IdeaThumb = { id: string; title: string; image_url: string };
-
-function ProgressRing({ pct, size = 56, strokeWidth = 5, color }: { pct: number; size?: number; strokeWidth?: number; color: string }) {
-  const r = (size - strokeWidth) / 2;
-  const c = 2 * Math.PI * r;
-  const clamped = Math.min(100, Math.max(0, pct));
-  const offset = c - (clamped / 100) * c;
-  const center = size / 2;
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90 motion-reduce:transition-none">
-        <circle cx={center} cy={center} r={r} fill="none" stroke="var(--line)" strokeWidth={strokeWidth} />
-        <circle
-          cx={center}
-          cy={center}
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-500 motion-reduce:transition-none"
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-ink">{Math.round(clamped)}%</span>
-    </div>
-  );
-}
 
 export default function Dashboard({
   initialVenues,
@@ -96,7 +68,7 @@ export default function Dashboard({
   ideaUndecidedCount: number;
   decisionsWaitingCount: number;
   decisionsWaitingVenue: string | null;
-  roadmap: { phaseLabel: string; step: number; totalSteps: number; nextMilestone: string };
+  roadmap: { phaseLabel: string; step: number; totalSteps: number; nextMilestone: string; previousPhaseLabel: string | null };
   actionItems: ActionItem[];
   initialCustomTasks: CustomTask[];
   initialEvents: UpcomingEvent[];
@@ -246,9 +218,23 @@ export default function Dashboard({
   }
 
   const guestOver = guestTotal - GUEST_CAPACITY;
-  const budgetRemaining = BUDGET_CEILING - stats.lowestNumeric;
   const budgetPct = Math.min(100, Math.max(0, (stats.lowestNumeric / BUDGET_CEILING) * 100));
-  const roadmapPct = Math.round((roadmap.step / roadmap.totalSteps) * 100);
+
+  const nextMoveQueue = useMemo(
+    () => [
+      ...actionItems.map((a) => ({ title: a.title, description: a.description, person: a.person, effort: a.effort, href: a.href })),
+      ...customTasks.map((t) => ({
+        title: t.title,
+        description: t.description || "Custom task",
+        person: t.person || userName,
+        effort: t.effort || "—",
+        href: "#next-actions",
+      })),
+    ],
+    [actionItems, customTasks, userName],
+  );
+  const nextMove = nextMoveQueue[0] ?? null;
+  const progressItems = nextMoveQueue.slice(1, 3);
 
   function venueCard(v: Venue, i: number) {
     const calc = calcVenue(v, as, sharedVals);
@@ -332,28 +318,30 @@ export default function Dashboard({
       <NavBar userName={userName} />
 
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
             <p className="font-serif italic text-wine">Come as you are, stay as long as you like.</p>
             <h1 className="mt-1 font-serif text-3xl font-medium sm:text-4xl">{greetingText}</h1>
             <p className="mt-2 text-ink-2">Your wedding at a glance · early September 2029</p>
           </div>
-          <div
-            className="relative shrink-0 overflow-hidden rounded-2xl px-6 py-4 text-center shadow-sm"
-            style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--sage) 30%, var(--paper)), color-mix(in srgb, var(--gold) 22%, var(--paper)))" }}
-          >
-            <svg
-              aria-hidden
-              viewBox="0 0 120 120"
-              className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 text-sage-deep opacity-20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M60 110C60 80 40 60 15 55C40 50 60 30 60 5C60 30 80 50 105 55C80 60 60 80 60 110Z" />
-            </svg>
-            <b className="relative block font-serif text-4xl">{daysUntilWedding}</b>
-            <span className="relative block text-xs font-semibold uppercase tracking-wide text-ink-2">days until the wedding</span>
+          <div className="flex shrink-0 items-center gap-4">
+            <div className="flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-2 shadow-sm">
+              <CalendarDays className="h-4 w-4 text-ink-2" strokeWidth={1.5} aria-hidden />
+              <span className="text-sm text-ink-2">
+                <b className="font-serif text-base font-semibold text-ink">{daysUntilWedding}</b> days to go
+              </span>
+            </div>
+            <div className="hidden items-center gap-3 lg:flex">
+              <p className="text-right font-serif text-[10px] uppercase leading-tight tracking-[0.15em] text-ink-2">
+                A more
+                <br />
+                beautiful
+                <br />
+                together
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/botanical-accent.png" alt="" aria-hidden className="h-24 w-auto opacity-80" />
+            </div>
           </div>
         </div>
 
@@ -372,225 +360,128 @@ export default function Dashboard({
           </div>
         ) : (
           <>
-            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-              <div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Link href="/guests" className={`rounded-2xl border border-line bg-paper p-5 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
-                    <div className="flex items-center justify-between">
-                      <Users className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-hidden />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-ink-2">Guests</span>
-                    </div>
-                    <b className="mt-3 block font-serif text-3xl">{guestTotal}</b>
-                    <p className={`mt-1 text-sm ${guestOver > 0 ? "font-semibold text-wine" : "text-ink-2"}`}>
-                      {guestOver > 0 ? `${guestOver} over the ${GUEST_CAPACITY} target` : `${guestAdults} adults + ${guestKids} kids`}
+            {nextMove && (
+              <div
+                className="mt-8 flex flex-col gap-4 rounded-2xl p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                style={{ background: "color-mix(in srgb, var(--sage) 14%, var(--paper))" }}
+              >
+                <div className="flex items-start gap-4">
+                  <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage-deep font-serif text-base font-semibold text-white">
+                    1
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">Your next move</p>
+                    <h2 className="mt-1 font-serif text-2xl font-medium sm:text-3xl">{nextMove.title}</h2>
+                    <p className="mt-1 text-ink-2">{nextMove.description}</p>
+                    <p className="mt-3 flex items-center gap-1.5 text-sm text-ink-2">
+                      <Clock className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                      {nextMove.person} · {nextMove.effort}
                     </p>
-                  </Link>
+                  </div>
+                </div>
+                <Link
+                  href={nextMove.href}
+                  className={`shrink-0 rounded-full bg-sage-deep px-5 py-2.5 text-center text-sm font-semibold text-white ${FOCUS_RING}`}
+                >
+                  Start task →
+                </Link>
+              </div>
+            )}
 
-                  <Link href="/budget" className={`rounded-2xl border border-line bg-paper p-5 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
-                    <div className="flex items-center justify-between">
-                      <Wallet className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-hidden />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-ink-2">Lowest estimate</span>
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <b className="block font-serif text-3xl">{stats.lowest}</b>
-                        <p className="mt-1 text-sm text-ink-2">
-                          {budgetRemaining >= 0 ? `${fmt(budgetRemaining)} below the ceiling` : `${fmt(-budgetRemaining)} over the ceiling`}
+            <div className="mt-6 grid grid-cols-2 divide-y divide-line rounded-2xl border border-line bg-paper shadow-sm sm:grid-cols-4 sm:divide-y-0 sm:divide-x">
+              <Link href="/guests" className={`flex items-center gap-3 p-5 ${FOCUS_RING}`}>
+                <Users className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
+                <div className="min-w-0">
+                  <p>
+                    <b className="font-serif text-xl">{guestTotal}</b> <span className="text-sm text-ink-2">Guests</span>
+                  </p>
+                  <p className={`text-xs ${guestOver > 0 ? "font-semibold text-wine" : "text-ink-2"}`}>
+                    {guestOver > 0 ? `${guestOver} over target` : `${guestAdults} adults + ${guestKids} kids`}
+                  </p>
+                </div>
+              </Link>
+
+              <Link href="/budget" className={`flex items-center gap-3 p-5 ${FOCUS_RING}`}>
+                <Wallet className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
+                <div className="min-w-0">
+                  <p>
+                    <b className="font-serif text-xl">{stats.lowest}</b> <span className="text-sm text-ink-2">Estimate</span>
+                  </p>
+                  <p className="text-xs text-ink-2">{Math.round(budgetPct)}% of ceiling</p>
+                </div>
+              </Link>
+
+              <Link href="#venues" className={`flex items-center gap-3 p-5 ${FOCUS_RING}`}>
+                <Landmark className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
+                <div className="min-w-0">
+                  <p>
+                    <b className="font-serif text-xl">{stats.active}</b> <span className="text-sm text-ink-2">Venues</span>
+                  </p>
+                  <p className="text-xs text-ink-2">active</p>
+                </div>
+              </Link>
+
+              <Link href="#next-actions" className={`flex items-center gap-3 p-5 ${FOCUS_RING}`}>
+                <ListChecks className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
+                <div className="min-w-0">
+                  <p>
+                    <b className="font-serif text-xl">{actionItems.length + customTasks.length}</b>{" "}
+                    <span className="text-sm text-ink-2">Open tasks</span>
+                  </p>
+                  <p className="text-xs text-ink-2">need attention</p>
+                </div>
+              </Link>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+              <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-serif text-xl font-medium">Planning progress</h3>
+                    <p className="mt-1 text-sm text-ink-2">Key steps to keep things moving forward.</p>
+                  </div>
+                  <Link href="/board" className={`shrink-0 text-sm font-semibold text-green rounded ${FOCUS_RING}`}>
+                    View roadmap →
+                  </Link>
+                </div>
+                <ol className="mt-4 flex flex-col divide-y divide-line">
+                  {roadmap.previousPhaseLabel && (
+                    <li className="flex items-center gap-3 py-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage-deep text-xs text-white">✓</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-ink-2 line-through decoration-ink-2/50">{roadmap.previousPhaseLabel}</p>
+                        <p className="text-xs text-ink-2">
+                          Step {roadmap.step - 1} of {roadmap.totalSteps}
                         </p>
                       </div>
-                      <div className="shrink-0 text-center">
-                        <ProgressRing pct={budgetPct} color="var(--gold)" />
-                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-ink-2">of ceiling</p>
-                      </div>
-                    </div>
-                  </Link>
-
-                  <Link href="#venues" className={`rounded-2xl border border-line bg-paper p-5 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
-                    <div className="flex items-center justify-between">
-                      <Landmark className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-hidden />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-ink-2">Venues</span>
-                    </div>
-                    <b className="mt-3 block font-serif text-3xl">{stats.active} active</b>
-                    <p className="mt-1 text-sm text-ink-2">
-                      {stats.quotesReceived > 0
-                        ? `${stats.quotesReceived} received · ${stats.needQuote} needed`
-                        : `${stats.needQuote} complete quote${stats.needQuote === 1 ? "" : "s"} needed`}
-                    </p>
-                  </Link>
-
-                  <Link href="#next-actions" className={`rounded-2xl border border-line bg-paper p-5 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
-                    <div className="flex items-center justify-between">
-                      <ListChecks className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-hidden />
-                      <span className="text-xs font-semibold uppercase tracking-wide text-ink-2">Tasks</span>
-                    </div>
-                    <b className="mt-3 block font-serif text-3xl">{actionItems.length + customTasks.length}</b>
-                    <p className="mt-1 text-sm text-ink-2">need your attention</p>
-                  </Link>
-                </div>
-
-                <div id="next-actions" className="mt-6 scroll-mt-20 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <h2 className="font-serif text-xl font-medium">What to do next</h2>
-                    <button
-                      onClick={addCustomTask}
-                      className={`rounded-full border border-line px-2.5 py-1 text-xs font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}
-                    >
-                      ＋ Add
-                    </button>
-                  </div>
-                  {actionItems.length === 0 && customTasks.length === 0 ? (
-                    <p className="mt-4 text-sm text-ink-2">Nothing urgent — you&apos;re all caught up.</p>
-                  ) : (
-                    <ol className="mt-4 flex flex-col gap-3">
-                      {actionItems.slice(0, 3).map((item, i) => (
-                        <li
-                          key={item.title}
-                          className={`flex flex-wrap items-start gap-3 rounded-xl border border-line bg-bg p-3 sm:flex-nowrap ${CARD_TRANSITION} hover:border-sage-deep`}
-                        >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sage-deep text-xs font-semibold text-white">
-                            {i + 1}
-                          </span>
-                          <Link href={item.href} className={`min-w-0 flex-1 rounded ${FOCUS_RING}`}>
-                            <p className="font-semibold">{item.title}</p>
-                            <p className="text-sm text-ink-2">{item.description}</p>
-                          </Link>
-                          <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2.5 py-1 text-xs font-semibold text-ink">
-                            {item.person} · {item.effort}
-                          </span>
-                        </li>
-                      ))}
-                      {customTasks.map((task) => {
-                        const completing = completingIds.includes(task.id);
-                        return (
-                        <li
-                          key={task.id}
-                          className={`flex flex-wrap items-start gap-2 rounded-xl border border-line bg-bg p-3 transition-all duration-300 motion-reduce:transition-none sm:flex-nowrap hover:border-sage-deep hover:shadow-sm ${
-                            completing ? "-translate-x-1 opacity-0" : "opacity-100"
-                          }`}
-                        >
-                          <button
-                            onClick={() => completeCustomTask(task.id)}
-                            aria-label={`Mark "${task.title}" done`}
-                            className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-sage-deep text-xs transition-colors ${
-                              completing ? "bg-sage-deep text-white" : "text-transparent hover:bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] hover:text-sage-deep"
-                            }`}
-                          >
-                            ✓
-                          </button>
-                          <div className="min-w-0 flex-1">
-                            <input
-                              defaultValue={task.title}
-                              onChange={(e) => scheduleCustomTaskSave(task.id, { title: e.target.value })}
-                              className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 font-semibold outline-none focus:border-line focus:bg-paper"
-                            />
-                            <input
-                              defaultValue={task.description}
-                              onChange={(e) => scheduleCustomTaskSave(task.id, { description: e.target.value })}
-                              placeholder="Details…"
-                              className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-ink-2 outline-none focus:border-line focus:bg-paper"
-                            />
-                            <div className="mt-1 flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2 py-0.5 text-xs font-semibold text-ink">
-                              <input
-                                defaultValue={task.person}
-                                onChange={(e) => scheduleCustomTaskSave(task.id, { person: e.target.value })}
-                                placeholder="Who"
-                                className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-ink-2"
-                              />
-                              <span>·</span>
-                              <input
-                                defaultValue={task.effort}
-                                onChange={(e) => scheduleCustomTaskSave(task.id, { effort: e.target.value })}
-                                placeholder="Effort"
-                                className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-ink-2"
-                              />
-                            </div>
-                          </div>
-                          <button onClick={() => removeCustomTask(task.id)} aria-label={`Delete ${task.title}`} className="shrink-0 self-center text-sm text-wine">×</button>
-                        </li>
-                        );
-                      })}
-                    </ol>
+                      <span className="shrink-0 text-xs font-semibold text-ink-2">Completed</span>
+                    </li>
                   )}
-                  {recentlyCompleted.length > 0 && (
-                    <details className="mt-3 border-t border-line pt-3">
-                      <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-2 marker:content-none">
-                        <span className="mr-1 inline-block transition-transform [details[open]_&]:rotate-90">▸</span>
-                        Recently completed ({recentlyCompleted.length})
-                      </summary>
-                      <ul className="mt-2 flex flex-col gap-1.5">
-                        {recentlyCompleted.map((t) => (
-                          <li key={t.id} className="flex items-center gap-2 text-sm text-ink-2">
-                            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sage-deep text-[10px] text-white">✓</span>
-                            <span className="truncate line-through decoration-ink-2/50">{t.title}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
+                  {progressItems.map((item, i) => (
+                    <li key={item.title}>
+                      <Link href={item.href} className={`flex flex-wrap items-center gap-3 rounded py-3 sm:flex-nowrap ${FOCUS_RING} hover:bg-bg`}>
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--sage)_25%,var(--paper))] text-xs font-semibold text-sage-deep">
+                          {(roadmap.previousPhaseLabel ? 2 : 1) + i}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold">{item.title}</p>
+                          <p className="text-sm text-ink-2">{item.description}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2.5 py-1 text-xs font-semibold text-ink">
+                          {item.person} · {item.effort}
+                        </span>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
+                      </Link>
+                    </li>
+                  ))}
+                  {!roadmap.previousPhaseLabel && progressItems.length === 0 && (
+                    <li className="py-3 text-sm text-ink-2">Nothing urgent — you&apos;re all caught up.</li>
                   )}
-                </div>
-
-                {topVenues.length > 0 && (
-                  <div className="mt-6">
-                    <div className="flex items-end justify-between gap-3">
-                      <h3 className="font-serif text-lg font-medium">Your shortlist</h3>
-                      <Link href="#venues" className={`text-sm font-semibold text-green rounded ${FOCUS_RING}`}>See all →</Link>
-                    </div>
-                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                      {topVenues.map((v, i) => venueCard(v, i))}
-                    </div>
-                  </div>
-                )}
+                </ol>
               </div>
 
               <div className="flex flex-col gap-4">
-                <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-serif text-lg font-medium">Planning phase</h3>
-                    <Link href="/board" className={`text-sm font-semibold text-green rounded ${FOCUS_RING}`}>Roadmap →</Link>
-                  </div>
-                  <div className="mt-3 flex items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--sage)_25%,var(--paper))] text-sage-deep">
-                      <MapPin className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                    </span>
-                    <div>
-                      <p className="font-semibold">{roadmap.phaseLabel}</p>
-                      <p className="text-sm text-ink-2">Step {roadmap.step} of {roadmap.totalSteps}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
-                    <div className="h-full rounded-full bg-green" style={{ width: `${roadmapPct}%` }} />
-                  </div>
-                  <p className="mt-3 border-t border-line pt-3 text-sm text-ink-2">
-                    <b className="text-ink">Next milestone:</b> {roadmap.nextMilestone}
-                  </p>
-                </div>
-
-                <Link href="/ideas" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--sage)_16%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
-                  <div className="grid shrink-0 grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-xl" style={{ width: 64, height: 64 }}>
-                    {ideaThumbs.length === 0 ? (
-                      <div className="col-span-2 row-span-2 flex items-center justify-center rounded-xl bg-sage-deep text-lg">📌</div>
-                    ) : (
-                      ideaThumbs.map((thumb) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={thumb.id} src={normalizeUrl(thumb.image_url)} alt="" className="h-full w-full object-cover" />
-                      ))
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-serif text-base font-medium">Inspiration Board</h3>
-                    <p className="text-sm text-ink-2">
-                      {ideaCount} saved idea{ideaCount === 1 ? "" : "s"} across {ideaCollectionCount} collection{ideaCollectionCount === 1 ? "" : "s"}
-                    </p>
-                    {ideaUndecidedCount > 0 && (
-                      <p className="text-sm text-ink-2">
-                        {ideaUndecidedCount} idea{ideaUndecidedCount === 1 ? "" : "s"} need{ideaUndecidedCount === 1 ? "s" : ""} a decision
-                      </p>
-                    )}
-                  </div>
-                  <span className="shrink-0 text-sm font-semibold text-green">Open board →</span>
-                </Link>
-
-                <Link href="/decide" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--wine)_14%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
+                <Link href="/decide" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--wine)_20%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-wine text-white">
                     <Heart className="h-5 w-5" strokeWidth={1.5} aria-hidden />
                   </span>
@@ -657,8 +548,146 @@ export default function Dashboard({
                     </ul>
                   )}
                 </div>
+
+                <Link href="/ideas" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--sage)_16%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
+                  <div className="grid shrink-0 grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-xl" style={{ width: 64, height: 64 }}>
+                    {ideaThumbs.length === 0 ? (
+                      <div className="col-span-2 row-span-2 flex items-center justify-center rounded-xl bg-sage-deep text-lg">📌</div>
+                    ) : (
+                      ideaThumbs.map((thumb) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={thumb.id} src={normalizeUrl(thumb.image_url)} alt="" className="h-full w-full object-cover" />
+                      ))
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-serif text-base font-medium">Inspiration Board</h3>
+                    <p className="text-sm text-ink-2">
+                      {ideaCount} saved idea{ideaCount === 1 ? "" : "s"} across {ideaCollectionCount} collection{ideaCollectionCount === 1 ? "" : "s"}
+                    </p>
+                    {ideaUndecidedCount > 0 && (
+                      <p className="text-sm text-ink-2">
+                        {ideaUndecidedCount} idea{ideaUndecidedCount === 1 ? "" : "s"} need{ideaUndecidedCount === 1 ? "s" : ""} a decision
+                      </p>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-green">Open board →</span>
+                </Link>
               </div>
             </div>
+
+            <div id="next-actions" className="mt-6 scroll-mt-20 rounded-2xl border border-line bg-paper p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="font-serif text-xl font-medium">All tasks</h2>
+                <button
+                  onClick={addCustomTask}
+                  className={`rounded-full border border-line px-2.5 py-1 text-xs font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}
+                >
+                  ＋ Add
+                </button>
+              </div>
+              {actionItems.length === 0 && customTasks.length === 0 ? (
+                <p className="mt-4 text-sm text-ink-2">Nothing urgent — you&apos;re all caught up.</p>
+              ) : (
+                <ol className="mt-4 flex flex-col gap-3">
+                  {actionItems.slice(0, 3).map((item, i) => (
+                    <li
+                      key={item.title}
+                      className={`flex flex-wrap items-start gap-3 rounded-xl border border-line bg-bg p-3 sm:flex-nowrap ${CARD_TRANSITION} hover:border-sage-deep`}
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sage-deep text-xs font-semibold text-white">
+                        {i + 1}
+                      </span>
+                      <Link href={item.href} className={`min-w-0 flex-1 rounded ${FOCUS_RING}`}>
+                        <p className="font-semibold">{item.title}</p>
+                        <p className="text-sm text-ink-2">{item.description}</p>
+                      </Link>
+                      <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2.5 py-1 text-xs font-semibold text-ink">
+                        {item.person} · {item.effort}
+                      </span>
+                    </li>
+                  ))}
+                  {customTasks.map((task) => {
+                    const completing = completingIds.includes(task.id);
+                    return (
+                    <li
+                      key={task.id}
+                      className={`flex flex-wrap items-start gap-2 rounded-xl border border-line bg-bg p-3 transition-all duration-300 motion-reduce:transition-none sm:flex-nowrap hover:border-sage-deep hover:shadow-sm ${
+                        completing ? "-translate-x-1 opacity-0" : "opacity-100"
+                      }`}
+                    >
+                      <button
+                        onClick={() => completeCustomTask(task.id)}
+                        aria-label={`Mark "${task.title}" done`}
+                        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-sage-deep text-xs transition-colors ${
+                          completing ? "bg-sage-deep text-white" : "text-transparent hover:bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] hover:text-sage-deep"
+                        }`}
+                      >
+                        ✓
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <input
+                          defaultValue={task.title}
+                          onChange={(e) => scheduleCustomTaskSave(task.id, { title: e.target.value })}
+                          className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 font-semibold outline-none focus:border-line focus:bg-paper"
+                        />
+                        <input
+                          defaultValue={task.description}
+                          onChange={(e) => scheduleCustomTaskSave(task.id, { description: e.target.value })}
+                          placeholder="Details…"
+                          className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-ink-2 outline-none focus:border-line focus:bg-paper"
+                        />
+                        <div className="mt-1 flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2 py-0.5 text-xs font-semibold text-ink">
+                          <input
+                            defaultValue={task.person}
+                            onChange={(e) => scheduleCustomTaskSave(task.id, { person: e.target.value })}
+                            placeholder="Who"
+                            className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-ink-2"
+                          />
+                          <span>·</span>
+                          <input
+                            defaultValue={task.effort}
+                            onChange={(e) => scheduleCustomTaskSave(task.id, { effort: e.target.value })}
+                            placeholder="Effort"
+                            className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-ink-2"
+                          />
+                        </div>
+                      </div>
+                      <button onClick={() => removeCustomTask(task.id)} aria-label={`Delete ${task.title}`} className="shrink-0 self-center text-sm text-wine">×</button>
+                    </li>
+                    );
+                  })}
+                </ol>
+              )}
+              {recentlyCompleted.length > 0 && (
+                <details className="mt-3 border-t border-line pt-3">
+                  <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-2 marker:content-none">
+                    <span className="mr-1 inline-block transition-transform [details[open]_&]:rotate-90">▸</span>
+                    Recently completed ({recentlyCompleted.length})
+                  </summary>
+                  <ul className="mt-2 flex flex-col gap-1.5">
+                    {recentlyCompleted.map((t) => (
+                      <li key={t.id} className="flex items-center gap-2 text-sm text-ink-2">
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sage-deep text-[10px] text-white">✓</span>
+                        <span className="truncate line-through decoration-ink-2/50">{t.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+
+            {topVenues.length > 0 && (
+              <div className="mt-6">
+                <div className="flex items-end justify-between gap-3">
+                  <h3 className="font-serif text-lg font-medium">Your shortlist</h3>
+                  <Link href="#venues" className={`text-sm font-semibold text-green rounded ${FOCUS_RING}`}>See all →</Link>
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {topVenues.map((v, i) => venueCard(v, i))}
+                </div>
+              </div>
+            )}
 
             <div id="venues" className="mt-10 scroll-mt-20 flex items-end justify-between gap-3 flex-wrap">
               <div>

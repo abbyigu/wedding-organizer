@@ -86,6 +86,7 @@ export function computeRoadmap(ctx: RoadmapContext) {
     step: currentIndex + 1,
     totalSteps: PHASES.length,
     nextMilestone: idx === -1 ? "All set — enjoy the day" : PHASES[currentIndex].milestone,
+    previousPhaseLabel: currentIndex > 0 ? PHASES[currentIndex - 1].label : null,
   };
 }
 
