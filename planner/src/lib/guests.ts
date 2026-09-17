@@ -96,8 +96,8 @@ export function groupByCategory(guests: Guest[]): [string, Guest[]][] {
 
 export function guestNeeds(g: Guest): string[] {
   const needs: string[] = [];
-  if (g.dietary.trim()) needs.push("dietary");
-  if (g.accessibility.trim()) needs.push("accessibility");
+  if ((g.dietary ?? "").trim()) needs.push("dietary");
+  if ((g.accessibility ?? "").trim()) needs.push("accessibility");
   if (g.accommodation_needed) needs.push("accommodation");
   if (g.transportation_needed) needs.push("transportation");
   return needs;
