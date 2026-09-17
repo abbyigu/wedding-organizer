@@ -94,6 +94,24 @@ export function groupByCategory(guests: Guest[]): [string, Guest[]][] {
   return [...map.entries()];
 }
 
+export const GUEST_GROUPS = [
+  "Family of Bride",
+  "Family of Groom",
+  "Friends of Bride",
+  "Friends of Groom",
+  "Wedding Party",
+  "Work Colleagues",
+  "Plus-ones & Partners",
+  "Other",
+];
+
+// Fixed groups first, then any custom ones already in use (e.g. existing
+// data like "Core Family" or "Bride & Groom's People").
+export function guestGroupOptions(guests: Pick<Guest, "category">[]): string[] {
+  const extra = [...new Set(guests.map((g) => g.category).filter((c) => c && !GUEST_GROUPS.includes(c)))].sort();
+  return [...GUEST_GROUPS, ...extra];
+}
+
 export function guestNeeds(g: Guest): string[] {
   const needs: string[] = [];
   if ((g.dietary ?? "").trim()) needs.push("dietary");

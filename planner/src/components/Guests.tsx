@@ -7,6 +7,7 @@ import NavBar from "@/components/NavBar";
 import {
   blankGuest,
   groupByCategory,
+  guestGroupOptions,
   guestNeeds,
   guestSummary,
   guestsToCsv,
@@ -464,11 +465,16 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Group</label>
-                  <input
-                    defaultValue={open.category}
+                  <select
+                    value={open.category}
                     onChange={(e) => scheduleSave(open.id, { category: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
-                  />
+                  >
+                    {!open.category && <option value="">Choose a group…</option>}
+                    {guestGroupOptions(guests).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Role</label>
