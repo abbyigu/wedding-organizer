@@ -32,6 +32,7 @@ export default async function DashboardPage() {
   const { data: ideaThumbs } = await supabase
     .from("idea_pins")
     .select("id, title, image_url")
+    .eq("visibility", "shared")
     .not("image_url", "eq", "")
     .order("created_at", { ascending: false })
     .limit(6);
