@@ -7,16 +7,16 @@ import { GitCompare, Home, Images, KanbanSquare, Landmark, Scale, Users, Wallet 
 
 type NavLink = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }>; indent?: boolean };
 
-const NAV_GROUPS: { label: string; links: NavLink[] }[] = [
-  { label: "Plan", links: [{ href: "/", label: "Dashboard", icon: Home }] },
-  { label: "People", links: [{ href: "/guests", label: "Guests", icon: Users }] },
+const NAV_GROUPS: { label: string | null; links: NavLink[] }[] = [
+  { label: null, links: [{ href: "/", label: "Dashboard", icon: Home }] },
   {
-    label: "Research",
+    label: "Plan",
     links: [
       { href: "/board", label: "Planning Board", icon: KanbanSquare },
       { href: "/budget", label: "Budget", icon: Wallet },
     ],
   },
+  { label: "People", links: [{ href: "/guests", label: "Guests", icon: Users }] },
   {
     label: "Create",
     links: [
@@ -98,8 +98,10 @@ export default function NavBar({ userName }: { userName: string }) {
         </Link>
         <nav className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
           {NAV_GROUPS.map((group) => (
-            <div key={group.label} className="flex flex-col gap-1">
-              <span className="px-3 text-[10px] font-semibold uppercase tracking-wide text-ink-2/70">{group.label}</span>
+            <div key={group.label ?? group.links[0].href} className="flex flex-col gap-1">
+              {group.label && (
+                <span className="px-3 text-[10px] font-semibold uppercase tracking-wide text-ink-2/70">{group.label}</span>
+              )}
               {group.links.map((l) => (
                 <Link
                   key={l.href}
