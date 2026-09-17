@@ -13,10 +13,15 @@ const LINKS = [
   { href: "/decide", label: "Decide" },
 ];
 
+function partnerName(name: string) {
+  return name.trim().toLowerCase() === "ariel" ? "Fred" : "Ariel";
+}
+
 export default function NavBar({ userName }: { userName: string }) {
   const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const partner = partnerName(userName);
 
   function isActive(href: string) {
     return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -52,12 +57,19 @@ export default function NavBar({ userName }: { userName: string }) {
           ))}
         </nav>
         <div className="flex-1 lg:hidden" />
-        <div className="relative shrink-0">
+        <div className="relative flex shrink-0 items-center -space-x-2">
+          <span
+            title={partner}
+            aria-hidden
+            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--paper)] bg-[color-mix(in_srgb,var(--sage)_35%,var(--paper))] font-serif text-xs font-semibold text-sage-deep"
+          >
+            {partner.charAt(0)}
+          </span>
           <button
             onClick={() => setAccountOpen((o) => !o)}
             aria-label={`Account: ${userName}`}
             aria-expanded={accountOpen}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-sage-deep font-serif text-sm font-semibold text-[#F7F3EA]"
+            className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[var(--paper)] bg-sage-deep font-serif text-sm font-semibold text-[#F7F3EA]"
           >
             {userName.charAt(0) || "?"}
           </button>

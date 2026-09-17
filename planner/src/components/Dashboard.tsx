@@ -29,6 +29,34 @@ const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visibl
 
 type IdeaThumb = { id: string; title: string; image_url: string };
 
+function ProgressRing({ pct, size = 56, strokeWidth = 5, color }: { pct: number; size?: number; strokeWidth?: number; color: string }) {
+  const r = (size - strokeWidth) / 2;
+  const c = 2 * Math.PI * r;
+  const clamped = Math.min(100, Math.max(0, pct));
+  const offset = c - (clamped / 100) * c;
+  const center = size / 2;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90 motion-reduce:transition-none">
+        <circle cx={center} cy={center} r={r} fill="none" stroke="var(--line)" strokeWidth={strokeWidth} />
+        <circle
+          cx={center}
+          cy={center}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          className="transition-[stroke-dashoffset] duration-500 motion-reduce:transition-none"
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-ink">{Math.round(clamped)}%</span>
+    </div>
+  );
+}
+
 export default function Dashboard({
   initialVenues,
   userName,
@@ -191,12 +219,14 @@ export default function Dashboard({
                       <Wallet className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-hidden />
                       <span className="text-xs font-semibold uppercase tracking-wide text-ink-2">Budget</span>
                     </div>
-                    <b className="mt-3 block font-serif text-3xl">{stats.lowest}</b>
-                    <p className="mt-1 text-sm text-ink-2">
-                      {budgetRemaining >= 0 ? `${fmt(budgetRemaining)} below the ceiling` : `${fmt(-budgetRemaining)} over the ceiling`}
-                    </p>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-line">
-                      <div className="h-full rounded-full bg-gold" style={{ width: `${budgetPct}%` }} />
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <b className="block font-serif text-3xl">{stats.lowest}</b>
+                        <p className="mt-1 text-sm text-ink-2">
+                          {budgetRemaining >= 0 ? `${fmt(budgetRemaining)} below the ceiling` : `${fmt(-budgetRemaining)} over the ceiling`}
+                        </p>
+                      </div>
+                      <ProgressRing pct={budgetPct} color="var(--gold)" />
                     </div>
                   </Link>
 
@@ -271,10 +301,10 @@ export default function Dashboard({
                   </p>
                 </div>
 
-                <Link href="/ideas" className={`flex items-center gap-3 rounded-2xl border border-line bg-paper p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
+                <Link href="/ideas" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--sage)_16%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
                   <div className="grid shrink-0 grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-xl" style={{ width: 64, height: 64 }}>
                     {ideaThumbs.length === 0 ? (
-                      <div className="col-span-2 row-span-2 flex items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--wine)_12%,var(--paper))] text-lg">📌</div>
+                      <div className="col-span-2 row-span-2 flex items-center justify-center rounded-xl bg-sage-deep text-lg">📌</div>
                     ) : (
                       ideaThumbs.map((thumb) => (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -292,8 +322,8 @@ export default function Dashboard({
                   <span className="shrink-0 text-sm font-semibold text-sage-deep">Open →</span>
                 </Link>
 
-                <Link href="/decide" className={`flex items-center gap-3 rounded-2xl border border-line bg-paper p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--wine)_15%,var(--paper))] text-wine">
+                <Link href="/decide" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--wine)_14%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-wine text-[#F7F3EA]">
                     <Heart className="h-5 w-5" strokeWidth={1.5} aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -304,7 +334,7 @@ export default function Dashboard({
                         : `${decisionsWaitingCount} private vote${decisionsWaitingCount === 1 ? "" : "s"} need${decisionsWaitingCount === 1 ? "s" : ""} your answer${decisionsWaitingVenue ? ` — ${decisionsWaitingVenue}` : ""}`}
                     </p>
                   </div>
-                  <span className="shrink-0 text-sm font-semibold text-sage-deep">Review →</span>
+                  <span className="shrink-0 text-sm font-semibold text-wine">Review →</span>
                 </Link>
               </div>
             </div>
