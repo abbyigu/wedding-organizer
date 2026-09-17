@@ -18,7 +18,7 @@ const NAV_GROUPS: { label: string; links: NavLink[] }[] = [
       { href: "/budget", label: "Budget", icon: Wallet },
     ],
   },
-  { label: "Create", links: [{ href: "/ideas", label: "Idea board", icon: Images }] },
+  { label: "Create", links: [{ href: "/ideas", label: "Inspiration Board", icon: Images }] },
   { label: "Together", links: [{ href: "/decide", label: "Decide", icon: Scale }] },
 ];
 

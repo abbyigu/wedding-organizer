@@ -1,4 +1,5 @@
 export type IdeaVisibility = "shared" | "private";
+export type DecisionStatus = "match" | "needs_vote" | "discuss" | "diy";
 
 export type IdeaPin = {
   id: string;
@@ -8,15 +9,54 @@ export type IdeaPin = {
   image_url: string;
   note: string;
   visibility: IdeaVisibility;
+  decision_status: DecisionStatus | null;
+  is_favourite: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
 };
 
-export const IDEA_CATEGORIES = ["Dress", "Decor", "Flowers", "Attire", "Hair & Makeup", "Other"];
+export const IDEA_CATEGORIES = ["Little Details", "Décor", "Attire", "Flowers", "Food & drinks", "DIY"];
 
-export function blankIdea(sortOrder: number): Partial<IdeaPin> {
-  return { category: "Other", title: "New idea", image_url: "", note: "", visibility: "shared", sort_order: sortOrder };
+export const DECISION_STATUS_ORDER: DecisionStatus[] = ["match", "needs_vote", "discuss", "diy"];
+
+// sage / gold / wine / green, matching this app's existing palette.
+export const DECISION_STATUS_COLOR: Record<DecisionStatus, string> = {
+  match: "sage-deep",
+  needs_vote: "gold",
+  discuss: "wine",
+  diy: "green",
+};
+
+export function decisionStatusLabel(status: DecisionStatus, partner: string): string {
+  switch (status) {
+    case "match":
+      return "It's a match";
+    case "needs_vote":
+      return `Needs ${partner}'s vote`;
+    case "discuss":
+      return "Discuss together";
+    case "diy":
+      return "Added to DIY";
+  }
+}
+
+// Only two accounts exist in this app — the other person is whoever you're not.
+export function partnerName(name: string): string {
+  return name.trim().toLowerCase() === "ariel" ? "Fred" : "Ariel";
+}
+
+export function blankIdea(sortOrder: number, category: string, title: string): Partial<IdeaPin> {
+  return {
+    category,
+    title,
+    image_url: "",
+    note: "",
+    visibility: "shared",
+    decision_status: null,
+    is_favourite: false,
+    sort_order: sortOrder,
+  };
 }
 
 // A pasted Pinterest link often comes without "https://" (e.g. "pinterest.com/pin/123"
@@ -28,12 +68,8 @@ export function normalizeUrl(url: string): string {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-export function groupIdeasByCategory(ideas: IdeaPin[]): [string, IdeaPin[]][] {
-  const map = new Map<string, IdeaPin[]>();
-  for (const idea of ideas) {
-    const key = idea.category || "Other";
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(idea);
-  }
-  return [...map.entries()];
+// Fixed collections first (even if empty), then any custom ones already in use.
+export function collectionTabs(ideas: Pick<IdeaPin, "category">[]): string[] {
+  const extra = [...new Set(ideas.map((i) => i.category).filter((c) => !IDEA_CATEGORIES.includes(c)))].sort();
+  return [...IDEA_CATEGORIES, ...extra];
 }

@@ -575,7 +575,7 @@ export default function Dashboard({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-serif text-base font-medium">Idea Board</h3>
+                    <h3 className="font-serif text-base font-medium">Inspiration Board</h3>
                     <p className="text-sm text-ink-2">
                       {ideaCount} idea{ideaCount === 1 ? "" : "s"}
                       {ideaCategories.length ? ` · ${ideaCategories.join(", ")}` : ""}

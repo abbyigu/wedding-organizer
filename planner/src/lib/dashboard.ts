@@ -190,5 +190,5 @@ export function decisionsWaiting(venues: Venue[], myRatings: Rating[]) {
 export function topIdeaCategories(ideas: Pick<IdeaPin, "category">[], n = 3): string[] {
   const counts = new Map<string, number>();
   for (const i of ideas) counts.set(i.category, (counts.get(i.category) ?? 0) + 1);
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([c]) => c.toLowerCase());
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([c]) => c);
 }
