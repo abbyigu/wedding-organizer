@@ -84,6 +84,22 @@ export function guestSummary(guests: Guest[], target: number) {
   };
 }
 
+const GROUP_DISPLAY_LABELS: Record<string, string> = {
+  "Family of Bride": "Bride's family",
+  "Family of Groom": "Groom's family",
+  "Friends of Bride": "Bride's friends",
+  "Friends of Groom": "Groom's friends",
+  "Wedding Party": "Wedding party",
+  "Work Colleagues": "Work colleagues",
+  "Plus-ones & Partners": "Plus-ones & partners",
+};
+
+// Softer, human-readable label for a group header — falls back to the raw
+// category for custom groups that aren't in the fixed list.
+export function groupDisplayLabel(category: string): string {
+  return GROUP_DISPLAY_LABELS[category] ?? category;
+}
+
 export function groupByCategory(guests: Guest[]): [string, Guest[]][] {
   const map = new Map<string, Guest[]>();
   for (const g of guests) {
