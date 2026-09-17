@@ -239,6 +239,7 @@ export const DEFAULT_ASSUMPTIONS: Assumptions = { adults: 80, kids: 15, svcPct: 
 
 export const BUDGET_TARGET = 40000;
 export const BUDGET_CEILING = 45000;
+export const GUEST_CAPACITY = 102;
 
 // Which venue count drives the estimate — real guest-list data, not a guess.
 export type GuestScenario = "all" | "confirmed" | "custom";
@@ -251,6 +252,7 @@ export type BudgetSettings = {
   custom_adults: number;
   custom_kids: number;
   shared_line_amounts: number[];
+  wedding_date: string;
 };
 
 export const DEFAULT_BUDGET_SETTINGS: BudgetSettings = {
@@ -261,6 +263,7 @@ export const DEFAULT_BUDGET_SETTINGS: BudgetSettings = {
   custom_adults: 80,
   custom_kids: 15,
   shared_line_amounts: SHARED_LINES.map((l) => l[1]),
+  wedding_date: "2029-09-08",
 };
 
 // Turns the chosen scenario + live guest-list totals into the adult/kid counts

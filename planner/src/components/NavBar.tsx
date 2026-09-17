@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/board", label: "Status Board" },
   { href: "/compare", label: "Detailed Comparison" },
   { href: "/budget", label: "Budget" },
+  { href: "/decide", label: "Decide" },
 ];
 
 export default function NavBar({ userName }: { userName: string }) {
@@ -71,15 +72,6 @@ export default function NavBar({ userName }: { userName: string }) {
                 <p className="border-b border-line px-4 py-2.5 text-sm text-ink-2">
                   Signed in as <b className="text-ink">{userName}</b>
                 </p>
-                <Link
-                  href="/decide"
-                  onClick={() => setAccountOpen(false)}
-                  className={`block border-b border-line px-4 py-2.5 text-sm font-semibold ${
-                    isActive("/decide") ? "text-sage-deep" : "text-ink hover:bg-bg"
-                  }`}
-                >
-                  Decide
-                </Link>
                 <Link
                   href="/ideas"
                   onClick={() => setAccountOpen(false)}

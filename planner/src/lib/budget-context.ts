@@ -18,5 +18,5 @@ export async function getBudgetContext(supabase: SupabaseClient) {
     ? settings.shared_line_amounts
     : DEFAULT_BUDGET_SETTINGS.shared_line_amounts;
 
-  return { settings, assumptions, sharedVals, guestSummary: gs };
+  return { settings, assumptions, sharedVals, guestSummary: gs, guests: guests ?? [] };
 }
