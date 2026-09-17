@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { Home, KanbanSquare, Scale, Table2, Users, Wallet } from "lucide-react";
+import { Home, Images, KanbanSquare, Scale, Table2, Users, Wallet } from "lucide-react";
 
 const LINKS: { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
   { href: "/", label: "Dashboard", icon: Home },
@@ -12,6 +12,7 @@ const LINKS: { href: string; label: string; icon: ComponentType<{ className?: st
   { href: "/compare", label: "Detailed Comparison", icon: Table2 },
   { href: "/budget", label: "Budget", icon: Wallet },
   { href: "/decide", label: "Decide", icon: Scale },
+  { href: "/ideas", label: "Idea board", icon: Images },
 ];
 
 function partnerName(name: string) {
@@ -30,15 +31,6 @@ export default function NavBar({ userName }: { userName: string }) {
 
   const accountItems = (
     <>
-      <Link
-        href="/ideas"
-        onClick={() => setAccountOpen(false)}
-        className={`block border-b border-line px-4 py-2.5 text-sm font-semibold ${
-          isActive("/ideas") ? "text-sage-deep" : "text-ink hover:bg-bg"
-        }`}
-      >
-        Idea board
-      </Link>
       <Link
         href="/private"
         onClick={() => setAccountOpen(false)}
