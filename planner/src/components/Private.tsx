@@ -3,7 +3,22 @@
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
-import { blankNote, blankSurprise, type PrivateNote, type Surprise } from "@/lib/private";
+import {
+  blankNote,
+  blankSurprise,
+  SURPRISE_STATUS_ORDER,
+  SURPRISE_STATUSES,
+  type PrivateNote,
+  type Surprise,
+  type SurpriseStatus,
+} from "@/lib/private";
+
+const STATUS_STYLE: Record<SurpriseStatus, string> = {
+  idea: "bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] text-ink-2",
+  planning: "bg-[color-mix(in_srgb,var(--new,#4A6C8A)_25%,var(--paper))] text-[var(--new,#4A6C8A)]",
+  ready: "bg-[color-mix(in_srgb,var(--gold)_30%,var(--paper))] text-[var(--wood)]",
+  done: "bg-[color-mix(in_srgb,var(--sage)_35%,var(--paper))] text-[var(--sage-deep)]",
+};
 
 export default function Private({
   initialNotes,
@@ -125,24 +140,34 @@ export default function Private({
           {mySurprises.length === 0 ? (
             <p className="text-sm text-ink-2">Nothing here yet.</p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {mySurprises.map((s) => (
-                <div key={s.id} className="rounded-xl border border-line bg-bg p-3">
-                  <div className="flex items-center gap-2">
+                <div key={s.id} className="flex flex-col rounded-2xl border border-line bg-bg p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-2">
                     <input
                       defaultValue={s.title}
                       onChange={(e) => scheduleSurpriseSave(s.id, { title: e.target.value })}
-                      className="flex-1 rounded border border-transparent bg-transparent px-1 py-1 font-semibold outline-none focus:border-line focus:bg-paper"
+                      className="flex-1 rounded border border-transparent bg-transparent px-1 py-1 font-serif text-lg font-medium outline-none focus:border-line focus:bg-paper"
                     />
-                    <button onClick={() => removeSurprise(s.id)} aria-label={`Delete ${s.title}`} className="text-wine">×</button>
+                    <button onClick={() => removeSurprise(s.id)} aria-label={`Delete ${s.title}`} className="shrink-0 text-wine">×</button>
                   </div>
+                  <select
+                    value={s.status}
+                    onChange={(e) => scheduleSurpriseSave(s.id, { status: e.target.value as SurpriseStatus })}
+                    className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[s.status]}`}
+                  >
+                    {SURPRISE_STATUS_ORDER.map((k) => (
+                      <option key={k} value={k}>{SURPRISE_STATUSES[k]}</option>
+                    ))}
+                  </select>
                   <textarea
                     defaultValue={s.details}
                     onChange={(e) => scheduleSurpriseSave(s.id, { details: e.target.value })}
-                    rows={2}
-                    className="mt-1 w-full rounded border border-transparent bg-transparent px-1 py-1 text-sm outline-none focus:border-line focus:bg-paper"
+                    rows={3}
+                    placeholder="Details…"
+                    className="mt-2 w-full flex-1 rounded border border-transparent bg-transparent px-1 py-1 text-sm outline-none focus:border-line focus:bg-paper"
                   />
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-line pt-2 text-sm">
                     <label className="flex items-center gap-1.5 text-ink-2">
                       Reveal on
                       <input
@@ -169,11 +194,17 @@ export default function Private({
           {partnerSurprises.length === 0 ? (
             <p className="text-sm text-ink-2">Nothing revealed yet — any surprise the other person hasn&apos;t shared stays hidden.</p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {partnerSurprises.map((s) => (
-                <div key={s.id} className="rounded-xl border border-gold bg-[color-mix(in_srgb,var(--gold)_15%,var(--paper))] p-3">
-                  <p className="font-semibold">🎉 {s.title} <span className="font-normal text-ink-2">— from {s.owner_name}</span></p>
-                  {s.details && <p className="mt-1 text-sm text-ink-2">{s.details}</p>}
+                <div key={s.id} className="flex flex-col rounded-2xl border border-gold bg-[color-mix(in_srgb,var(--gold)_15%,var(--paper))] p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-serif text-lg font-medium">🎉 {s.title}</p>
+                    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[s.status]}`}>
+                      {SURPRISE_STATUSES[s.status]}
+                    </span>
+                  </div>
+                  <p className="text-sm text-ink-2">from {s.owner_name}</p>
+                  {s.details && <p className="mt-2 text-sm text-ink-2">{s.details}</p>}
                 </div>
               ))}
             </div>
