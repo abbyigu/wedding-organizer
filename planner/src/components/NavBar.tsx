@@ -13,7 +13,7 @@ const NAV_GROUPS: { label: string; links: NavLink[] }[] = [
   {
     label: "Research",
     links: [
-      { href: "/board", label: "Status Board", icon: KanbanSquare },
+      { href: "/board", label: "Planning Board", icon: KanbanSquare },
       { href: "/compare", label: "Detailed Comparison", icon: Table2 },
       { href: "/budget", label: "Budget", icon: Wallet },
     ],

@@ -9,10 +9,10 @@ export default async function BoardPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: venues } = await supabase
-    .from("venues")
+  const { data: tasks } = await supabase
+    .from("planning_tasks")
     .select("*")
     .order("sort_order", { ascending: true });
 
-  return <Board initialVenues={venues ?? []} userName={displayName(user?.email)} />;
+  return <Board initialTasks={tasks ?? []} userName={displayName(user?.email)} />;
 }
