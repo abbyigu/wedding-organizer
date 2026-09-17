@@ -217,7 +217,7 @@ export default function Decide({
             <button
               onClick={setFinal}
               disabled={!finalVenueId}
-              className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-[#F7F3EA] disabled:opacity-50"
+              className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               Mark as final
             </button>
@@ -270,7 +270,7 @@ export default function Decide({
                       className="mt-2 w-full rounded-lg border border-line bg-bg p-2 text-sm"
                     />
                     {!mine && (
-                      <button onClick={() => submitRating(v)} className="mt-2 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-[#F7F3EA]">
+                      <button onClick={() => submitRating(v)} className="mt-2 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
                         Submit my rating
                       </button>
                     )}

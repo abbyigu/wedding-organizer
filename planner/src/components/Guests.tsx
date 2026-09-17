@@ -76,7 +76,7 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
 
         <div className="mt-6 flex items-center justify-between gap-3">
           <p className="text-sm text-ink-2">Target: {GUEST_TARGET} adults</p>
-          <button onClick={addGuest} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-[#F7F3EA]">
+          <button onClick={addGuest} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
             ＋ Add a guest
           </button>
         </div>

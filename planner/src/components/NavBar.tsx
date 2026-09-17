@@ -5,15 +5,24 @@ import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
 import { Home, Images, KanbanSquare, Scale, Table2, Users, Wallet } from "lucide-react";
 
-const LINKS: { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
-  { href: "/", label: "Dashboard", icon: Home },
-  { href: "/guests", label: "Guests", icon: Users },
-  { href: "/board", label: "Status Board", icon: KanbanSquare },
-  { href: "/compare", label: "Detailed Comparison", icon: Table2 },
-  { href: "/budget", label: "Budget", icon: Wallet },
-  { href: "/decide", label: "Decide", icon: Scale },
-  { href: "/ideas", label: "Idea board", icon: Images },
+type NavLink = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }> };
+
+const NAV_GROUPS: { label: string; links: NavLink[] }[] = [
+  { label: "Plan", links: [{ href: "/", label: "Dashboard", icon: Home }] },
+  { label: "People", links: [{ href: "/guests", label: "Guests", icon: Users }] },
+  {
+    label: "Research",
+    links: [
+      { href: "/board", label: "Status Board", icon: KanbanSquare },
+      { href: "/compare", label: "Detailed Comparison", icon: Table2 },
+      { href: "/budget", label: "Budget", icon: Wallet },
+    ],
+  },
+  { label: "Create", links: [{ href: "/ideas", label: "Idea board", icon: Images }] },
+  { label: "Together", links: [{ href: "/decide", label: "Decide", icon: Scale }] },
 ];
+
+const LINKS: NavLink[] = NAV_GROUPS.flatMap((g) => g.links);
 
 function partnerName(name: string) {
   return name.trim().toLowerCase() === "ariel" ? "Fred" : "Ariel";
@@ -57,7 +66,7 @@ export default function NavBar({ userName }: { userName: string }) {
       >
         {partner.charAt(0)}
       </span>
-      <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[var(--paper)] bg-sage-deep font-serif text-sm font-semibold text-[#F7F3EA]">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[var(--paper)] bg-sage-deep font-serif text-sm font-semibold text-white">
         {userName.charAt(0) || "?"}
       </span>
     </span>
@@ -70,24 +79,29 @@ export default function NavBar({ userName }: { userName: string }) {
         <Link href="/" className="border-b border-line px-5 py-5 font-serif text-lg font-medium">
           Our Wedding Room
         </Link>
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                isActive(l.href) ? "bg-green text-[#F7F3EA]" : "text-ink-2 hover:bg-bg hover:text-ink"
-              }`}
-            >
-              <l.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-              {l.label}
-            </Link>
+        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} className="flex flex-col gap-1">
+              <span className="px-3 text-[10px] font-semibold uppercase tracking-wide text-ink-2/70">{group.label}</span>
+              {group.links.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                    isActive(l.href) ? "bg-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
+                  }`}
+                >
+                  <l.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                  {l.label}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="relative border-t border-line p-3">
           <button
             onClick={() => setAccountOpen((o) => !o)}
-            aria-label={`Account: ${userName}`}
+            aria-label={`${userName}, account menu`}
             aria-expanded={accountOpen}
             className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-bg"
           >
@@ -123,7 +137,7 @@ export default function NavBar({ userName }: { userName: string }) {
           </Link>
           <div className="flex-1" />
           <div className="relative shrink-0">
-            <button onClick={() => setAccountOpen((o) => !o)} aria-label={`Account: ${userName}`} aria-expanded={accountOpen}>
+            <button onClick={() => setAccountOpen((o) => !o)} aria-label={`${userName}, account menu`} aria-expanded={accountOpen}>
               {avatarPair}
             </button>
             {accountOpen && (
@@ -147,7 +161,7 @@ export default function NavBar({ userName }: { userName: string }) {
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
                 className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                  isActive(l.href) ? "bg-green text-[#F7F3EA]" : "text-ink-2 hover:bg-bg hover:text-ink"
+                  isActive(l.href) ? "bg-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
                 }`}
               >
                 <l.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />

@@ -112,7 +112,7 @@ export default function Budget({
               key={v.id}
               onClick={() => setCurId(v.id)}
               className={`rounded-full border px-3.5 py-2 text-sm font-semibold ${
-                v.id === curId ? "border-green bg-green text-[#F7F3EA]" : "border-line bg-paper text-ink hover:border-sage-deep"
+                v.id === curId ? "border-green bg-green text-white" : "border-line bg-paper text-ink hover:border-sage-deep"
               }`}
             >
               {v.name}
@@ -130,7 +130,7 @@ export default function Budget({
                   onClick={() => updateSettings({ guest_scenario: s.key })}
                   className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
                     settings.guest_scenario === s.key
-                      ? "border-sage-deep bg-sage-deep text-[#F7F3EA]"
+                      ? "border-sage-deep bg-sage-deep text-white"
                       : "border-line bg-bg text-ink hover:border-sage-deep"
                   }`}
                 >

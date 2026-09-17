@@ -82,7 +82,7 @@ export default function IdeaBoard({
             <h1 className="font-serif text-3xl font-medium sm:text-4xl">Idea board</h1>
             <p className="mt-2 max-w-2xl text-ink-2">Dresses, decor, flowers — shared between the two of you.</p>
           </div>
-          <button onClick={newCategory} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-[#F7F3EA]">＋ New category</button>
+          <button onClick={newCategory} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">＋ New category</button>
         </div>
         {error && <p className="mt-2 text-sm text-wine">{error}</p>}
 

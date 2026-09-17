@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Landmark, ListChecks, MapPin, Users, Wallet } from "lucide-react";
+import { CalendarClock, Heart, Landmark, ListChecks, MapPin, Users, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/lib/venues";
 import { normalizeUrl } from "@/lib/ideas";
 import { blankCustomTask, nextVenueAction, type ActionItem, type CustomTask } from "@/lib/dashboard";
+import { blankEvent, EVENT_TYPES, EVENT_TYPE_ORDER, formatEventDate, type UpcomingEvent } from "@/lib/events";
 
 const CARD_COLORS = ["var(--sage-deep)", "var(--wood)", "var(--wine)", "var(--green)", "var(--gold)", "var(--sage)"];
 const MAX_COMPARE = 3;
@@ -76,6 +77,7 @@ export default function Dashboard({
   roadmap,
   actionItems,
   initialCustomTasks,
+  initialEvents,
 }: {
   initialVenues: Venue[];
   userName: string;
@@ -95,6 +97,7 @@ export default function Dashboard({
   roadmap: { phaseLabel: string; step: number; totalSteps: number; nextMilestone: string };
   actionItems: ActionItem[];
   initialCustomTasks: CustomTask[];
+  initialEvents: UpcomingEvent[];
 }) {
   const router = useRouter();
   const [venues, setVenues] = useState(initialVenues);
@@ -104,7 +107,9 @@ export default function Dashboard({
   const [customTasks, setCustomTasks] = useState(initialCustomTasks);
   const [completingIds, setCompletingIds] = useState<string[]>([]);
   const [recentlyCompleted, setRecentlyCompleted] = useState<CustomTask[]>([]);
+  const [events, setEvents] = useState(initialEvents);
   const taskTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const eventTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const as = assumptions;
 
   const stats = useMemo(() => {
@@ -207,6 +212,35 @@ export default function Dashboard({
     setCustomTasks((ts) => ts.filter((t) => t.id !== id));
     const supabase = createClient();
     await supabase.from("custom_tasks").delete().eq("id", id);
+  }
+
+  async function addEvent() {
+    setError("");
+    const supabase = createClient();
+    const { data, error } = await supabase.from("upcoming_events").insert(blankEvent()).select().single();
+    if (error) setError(error.message);
+    else if (data) setEvents((es) => [...es, data as UpcomingEvent].sort((a, b) => a.event_date.localeCompare(b.event_date)));
+  }
+
+  function scheduleEventSave(id: string, patch: Partial<UpcomingEvent>) {
+    setEvents((es) => {
+      const next = es.map((e) => (e.id === id ? { ...e, ...patch } : e));
+      return patch.event_date ? [...next].sort((a, b) => a.event_date.localeCompare(b.event_date)) : next;
+    });
+    const key = id + Object.keys(patch)[0];
+    clearTimeout(eventTimers.current[key]);
+    eventTimers.current[key] = setTimeout(async () => {
+      const supabase = createClient();
+      const { error } = await supabase.from("upcoming_events").update(patch).eq("id", id);
+      if (error) setError(error.message);
+    }, 700);
+  }
+
+  async function removeEvent(id: string) {
+    if (!confirm("Delete this event?")) return;
+    setEvents((es) => es.filter((e) => e.id !== id));
+    const supabase = createClient();
+    await supabase.from("upcoming_events").delete().eq("id", id);
   }
 
   const guestOver = guestTotal - GUEST_CAPACITY;
@@ -328,7 +362,7 @@ export default function Dashboard({
             <button
               onClick={seed}
               disabled={seeding}
-              className={`mt-4 rounded-full bg-sage-deep px-4 py-2 font-semibold text-[#F7F3EA] disabled:opacity-60 ${FOCUS_RING}`}
+              className={`mt-4 rounded-full bg-sage-deep px-4 py-2 font-semibold text-white disabled:opacity-60 ${FOCUS_RING}`}
             >
               {seeding ? "Adding…" : "Add the 6 shortlisted venues"}
             </button>
@@ -411,14 +445,14 @@ export default function Dashboard({
                           key={item.title}
                           className={`flex flex-wrap items-start gap-3 rounded-xl border border-line bg-bg p-3 sm:flex-nowrap ${CARD_TRANSITION} hover:border-sage-deep`}
                         >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sage-deep text-xs font-semibold text-[#F7F3EA]">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sage-deep text-xs font-semibold text-white">
                             {i + 1}
                           </span>
                           <Link href={item.href} className={`min-w-0 flex-1 rounded ${FOCUS_RING}`}>
                             <p className="font-semibold">{item.title}</p>
                             <p className="text-sm text-ink-2">{item.description}</p>
                           </Link>
-                          <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2.5 py-1 text-xs font-semibold text-[var(--wood)]">
+                          <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2.5 py-1 text-xs font-semibold text-ink">
                             {item.person} · {item.effort}
                           </span>
                         </li>
@@ -436,7 +470,7 @@ export default function Dashboard({
                             onClick={() => completeCustomTask(task.id)}
                             aria-label={`Mark "${task.title}" done`}
                             className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-sage-deep text-xs transition-colors ${
-                              completing ? "bg-sage-deep text-[#F7F3EA]" : "text-transparent hover:bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] hover:text-sage-deep"
+                              completing ? "bg-sage-deep text-white" : "text-transparent hover:bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] hover:text-sage-deep"
                             }`}
                           >
                             ✓
@@ -453,19 +487,19 @@ export default function Dashboard({
                               placeholder="Details…"
                               className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-ink-2 outline-none focus:border-line focus:bg-paper"
                             />
-                            <div className="mt-1 flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2 py-0.5 text-xs font-semibold text-[var(--wood)]">
+                            <div className="mt-1 flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2 py-0.5 text-xs font-semibold text-ink">
                               <input
                                 defaultValue={task.person}
                                 onChange={(e) => scheduleCustomTaskSave(task.id, { person: e.target.value })}
                                 placeholder="Who"
-                                className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-[var(--wood)]/60"
+                                className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-ink-2"
                               />
                               <span>·</span>
                               <input
                                 defaultValue={task.effort}
                                 onChange={(e) => scheduleCustomTaskSave(task.id, { effort: e.target.value })}
                                 placeholder="Effort"
-                                className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-[var(--wood)]/60"
+                                className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-ink-2"
                               />
                             </div>
                           </div>
@@ -484,7 +518,7 @@ export default function Dashboard({
                       <ul className="mt-2 flex flex-col gap-1.5">
                         {recentlyCompleted.map((t) => (
                           <li key={t.id} className="flex items-center gap-2 text-sm text-ink-2">
-                            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sage-deep text-[10px] text-[#F7F3EA]">✓</span>
+                            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sage-deep text-[10px] text-white">✓</span>
                             <span className="truncate line-through decoration-ink-2/50">{t.title}</span>
                           </li>
                         ))}
@@ -497,7 +531,7 @@ export default function Dashboard({
                   <div className="mt-6">
                     <div className="flex items-end justify-between gap-3">
                       <h3 className="font-serif text-lg font-medium">Your shortlist</h3>
-                      <Link href="#venues" className={`text-sm font-semibold text-sage-deep rounded ${FOCUS_RING}`}>See all →</Link>
+                      <Link href="#venues" className={`text-sm font-semibold text-green rounded ${FOCUS_RING}`}>See all →</Link>
                     </div>
                     <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
                       {topVenues.map((v, i) => venueCard(v, i))}
@@ -510,7 +544,7 @@ export default function Dashboard({
                 <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <h3 className="font-serif text-lg font-medium">Planning phase</h3>
-                    <Link href="/board" className={`text-sm font-semibold text-sage-deep rounded ${FOCUS_RING}`}>Roadmap →</Link>
+                    <Link href="/board" className={`text-sm font-semibold text-green rounded ${FOCUS_RING}`}>Roadmap →</Link>
                   </div>
                   <div className="mt-3 flex items-center gap-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--sage)_25%,var(--paper))] text-sage-deep">
@@ -547,11 +581,11 @@ export default function Dashboard({
                       {ideaCategories.length ? ` · ${ideaCategories.join(", ")}` : ""}
                     </p>
                   </div>
-                  <span className="shrink-0 text-sm font-semibold text-sage-deep">Open →</span>
+                  <span className="shrink-0 text-sm font-semibold text-green">Open →</span>
                 </Link>
 
                 <Link href="/decide" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--wine)_14%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-wine text-[#F7F3EA]">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-wine text-white">
                     <Heart className="h-5 w-5" strokeWidth={1.5} aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -564,6 +598,59 @@ export default function Dashboard({
                   </div>
                   <span className="shrink-0 text-sm font-semibold text-wine">Review →</span>
                 </Link>
+
+                <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <h3 className="flex items-center gap-2 font-serif text-lg font-medium">
+                      <CalendarClock className="h-4 w-4 text-ink-2" strokeWidth={1.5} aria-hidden />
+                      Upcoming
+                    </h3>
+                    <button
+                      onClick={addEvent}
+                      className={`rounded-full border border-line px-2.5 py-1 text-xs font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}
+                    >
+                      ＋ Add
+                    </button>
+                  </div>
+                  {events.length === 0 ? (
+                    <p className="mt-3 text-sm text-ink-2">Nothing on the calendar yet.</p>
+                  ) : (
+                    <ul className="mt-3 flex flex-col gap-2">
+                      {events.map((ev) => (
+                        <li key={ev.id} className="flex items-start gap-2 rounded-xl border border-line bg-bg p-2.5">
+                          <span className="mt-0.5 shrink-0 rounded-lg bg-[color-mix(in_srgb,var(--sage)_22%,var(--paper))] px-2 py-1 text-center text-xs font-semibold text-green">
+                            {formatEventDate(ev.event_date)}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <input
+                              defaultValue={ev.title}
+                              onChange={(e) => scheduleEventSave(ev.id, { title: e.target.value })}
+                              className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold outline-none focus:border-line focus:bg-paper"
+                            />
+                            <div className="flex items-center gap-2 px-1">
+                              <input
+                                type="date"
+                                defaultValue={ev.event_date}
+                                onChange={(e) => scheduleEventSave(ev.id, { event_date: e.target.value })}
+                                className="rounded border border-transparent bg-transparent text-xs text-ink-2 outline-none focus:border-line focus:bg-paper"
+                              />
+                              <select
+                                defaultValue={ev.type}
+                                onChange={(e) => scheduleEventSave(ev.id, { type: e.target.value as UpcomingEvent["type"] })}
+                                className="rounded border border-transparent bg-transparent text-xs text-ink-2 outline-none focus:border-line focus:bg-paper"
+                              >
+                                {EVENT_TYPE_ORDER.map((t) => (
+                                  <option key={t} value={t}>{EVENT_TYPES[t]}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <button onClick={() => removeEvent(ev.id)} aria-label={`Delete ${ev.title}`} className="shrink-0 text-sm text-wine">×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -572,7 +659,7 @@ export default function Dashboard({
                 <h2 className="font-serif text-2xl font-medium">Venue shortlist</h2>
                 <p className="mt-1 text-sm text-ink-2">Choose 2–3 venues to compare side by side</p>
               </div>
-              <button onClick={addPlace} className={`rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-[#F7F3EA] ${FOCUS_RING}`}>
+              <button onClick={addPlace} className={`rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
                 ＋ Add a place
               </button>
             </div>
@@ -587,7 +674,7 @@ export default function Dashboard({
       {compareIds.length >= 2 && (
         <button
           onClick={() => router.push(`/compare?ids=${compareIds.join(",")}`)}
-          className={`fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full bg-green px-5 py-3 text-sm font-semibold text-[#F7F3EA] shadow-md ${FOCUS_RING}`}
+          className={`fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full bg-green px-5 py-3 text-sm font-semibold text-white shadow-md ${FOCUS_RING}`}
         >
           Compare {compareIds.length} venue{compareIds.length === 1 ? "" : "s"}
         </button>

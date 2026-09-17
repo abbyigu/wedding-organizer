@@ -104,7 +104,7 @@ export default function Private({
         <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-semibold">Your private notes <small className="font-normal text-ink-2">— nobody else ever sees these</small></h3>
-            <button onClick={addNote} className="rounded-full bg-sage-deep px-3.5 py-1.5 text-sm font-semibold text-[#F7F3EA]">＋ Add note</button>
+            <button onClick={addNote} className="rounded-full bg-sage-deep px-3.5 py-1.5 text-sm font-semibold text-white">＋ Add note</button>
           </div>
           {notes.length === 0 ? (
             <p className="text-sm text-ink-2">Nothing here yet.</p>
@@ -135,7 +135,7 @@ export default function Private({
         <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-semibold">Your surprises</h3>
-            <button onClick={addSurprise} className="rounded-full bg-sage-deep px-3.5 py-1.5 text-sm font-semibold text-[#F7F3EA]">＋ Add surprise</button>
+            <button onClick={addSurprise} className="rounded-full bg-sage-deep px-3.5 py-1.5 text-sm font-semibold text-white">＋ Add surprise</button>
           </div>
           {mySurprises.length === 0 ? (
             <p className="text-sm text-ink-2">Nothing here yet.</p>
