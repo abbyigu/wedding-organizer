@@ -43,6 +43,7 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   const [moreOpenId, setMoreOpenId] = useState<string | null>(null);
+  const [moreOpenPos, setMoreOpenPos] = useState<{ top: number; left: number } | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
 
@@ -380,17 +381,28 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
                             </td>
                             <td className="relative px-3 py-1.5">
                               <button
-                                onClick={() => setMoreOpenId((id) => (id === g.id ? null : g.id))}
+                                onClick={(e) => {
+                                  if (moreOpenId === g.id) {
+                                    setMoreOpenId(null);
+                                    return;
+                                  }
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setMoreOpenPos({ top: rect.bottom + 4, left: rect.right - 160 });
+                                  setMoreOpenId(g.id);
+                                }}
                                 aria-label="More actions"
                                 aria-expanded={moreOpenId === g.id}
                                 className="flex h-7 w-7 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-ink"
                               >
                                 <Ellipsis className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                               </button>
-                              {moreOpenId === g.id && (
+                              {moreOpenId === g.id && moreOpenPos && (
                                 <>
                                   <button aria-label="Close menu" onClick={() => setMoreOpenId(null)} className="fixed inset-0 z-40 cursor-default" />
-                                  <div className="absolute right-3 top-9 z-50 overflow-hidden rounded-xl border border-line bg-paper shadow-md">
+                                  <div
+                                    style={{ top: moreOpenPos.top, left: moreOpenPos.left }}
+                                    className="fixed z-50 w-40 overflow-hidden rounded-xl border border-line bg-paper shadow-md"
+                                  >
                                     <button
                                       onClick={() => {
                                         setMoreOpenId(null);
