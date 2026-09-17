@@ -355,14 +355,14 @@ export default function Dashboard({
                       <Wallet className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-hidden />
                       <span className="text-xs font-semibold uppercase tracking-wide text-ink-2">Lowest estimate</span>
                     </div>
-                    <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                       <div className="min-w-0">
                         <b className="block font-serif text-3xl">{stats.lowest}</b>
                         <p className="mt-1 text-sm text-ink-2">
                           {budgetRemaining >= 0 ? `${fmt(budgetRemaining)} below the ceiling` : `${fmt(-budgetRemaining)} over the ceiling`}
                         </p>
                       </div>
-                      <div className="text-center">
+                      <div className="shrink-0 text-center">
                         <ProgressRing pct={budgetPct} color="var(--gold)" />
                         <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-ink-2">of ceiling</p>
                       </div>
