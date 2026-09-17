@@ -43,9 +43,10 @@ export default async function DashboardPage() {
   const { assumptions, sharedVals, settings, guests } = await getBudgetContext(supabase);
   const capacitySummary = guestSummary(guests, GUEST_CAPACITY);
 
-  const [{ data: myRatings }, { data: sharedIdeas }] = await Promise.all([
+  const [{ data: myRatings }, { data: sharedIdeas }, { data: customTasks }] = await Promise.all([
     user ? supabase.from("venue_ratings").select("*").eq("rater_id", user.id) : Promise.resolve({ data: [] as Rating[] }),
     supabase.from("idea_pins").select("id, title, image_url, category").eq("visibility", "shared"),
+    supabase.from("custom_tasks").select("*").eq("done", false).order("created_at", { ascending: true }),
   ]);
 
   const ideas = sharedIdeas ?? [];
@@ -83,6 +84,7 @@ export default async function DashboardPage() {
       decisionsWaitingVenue={dw.venueName}
       roadmap={roadmap}
       actionItems={actionItems}
+      initialCustomTasks={customTasks ?? []}
     />
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart, Landmark, ListChecks, MapPin, Users, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -20,7 +20,7 @@ import {
   type Venue,
 } from "@/lib/venues";
 import { normalizeUrl } from "@/lib/ideas";
-import { nextVenueAction, type ActionItem } from "@/lib/dashboard";
+import { blankCustomTask, nextVenueAction, type ActionItem, type CustomTask } from "@/lib/dashboard";
 
 const CARD_COLORS = ["var(--sage-deep)", "var(--wood)", "var(--wine)", "var(--green)", "var(--gold)", "var(--sage)"];
 const MAX_COMPARE = 3;
@@ -75,6 +75,7 @@ export default function Dashboard({
   decisionsWaitingVenue,
   roadmap,
   actionItems,
+  initialCustomTasks,
 }: {
   initialVenues: Venue[];
   userName: string;
@@ -93,12 +94,15 @@ export default function Dashboard({
   decisionsWaitingVenue: string | null;
   roadmap: { phaseLabel: string; step: number; totalSteps: number; nextMilestone: string };
   actionItems: ActionItem[];
+  initialCustomTasks: CustomTask[];
 }) {
   const router = useRouter();
   const [venues, setVenues] = useState(initialVenues);
   const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState("");
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [customTasks, setCustomTasks] = useState(initialCustomTasks);
+  const taskTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const as = assumptions;
 
   const stats = useMemo(() => {
@@ -161,6 +165,38 @@ export default function Dashboard({
     setVenues((vs) => vs.map((x) => (x.id === v.id ? { ...x, is_favourite: next } : x)));
     const supabase = createClient();
     await supabase.from("venues").update({ is_favourite: next }).eq("id", v.id);
+  }
+
+  async function addCustomTask() {
+    setError("");
+    const supabase = createClient();
+    const { data, error } = await supabase.from("custom_tasks").insert(blankCustomTask(userName)).select().single();
+    if (error) setError(error.message);
+    else if (data) setCustomTasks((ts) => [...ts, data as CustomTask]);
+  }
+
+  function scheduleCustomTaskSave(id: string, patch: Partial<CustomTask>) {
+    setCustomTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    const key = id + Object.keys(patch)[0];
+    clearTimeout(taskTimers.current[key]);
+    taskTimers.current[key] = setTimeout(async () => {
+      const supabase = createClient();
+      const { error } = await supabase.from("custom_tasks").update(patch).eq("id", id);
+      if (error) setError(error.message);
+    }, 700);
+  }
+
+  async function completeCustomTask(id: string) {
+    setCustomTasks((ts) => ts.filter((t) => t.id !== id));
+    const supabase = createClient();
+    await supabase.from("custom_tasks").update({ done: true }).eq("id", id);
+  }
+
+  async function removeCustomTask(id: string) {
+    if (!confirm("Delete this task?")) return;
+    setCustomTasks((ts) => ts.filter((t) => t.id !== id));
+    const supabase = createClient();
+    await supabase.from("custom_tasks").delete().eq("id", id);
   }
 
   const guestOver = guestTotal - GUEST_CAPACITY;
@@ -248,14 +284,22 @@ export default function Dashboard({
                       <ListChecks className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-hidden />
                       <span className="text-xs font-semibold uppercase tracking-wide text-ink-2">Tasks</span>
                     </div>
-                    <b className="mt-3 block font-serif text-3xl">{actionItems.length}</b>
+                    <b className="mt-3 block font-serif text-3xl">{actionItems.length + customTasks.length}</b>
                     <p className="mt-1 text-sm text-ink-2">need your attention</p>
                   </Link>
                 </div>
 
                 <div id="next-actions" className="mt-6 scroll-mt-20 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-                  <h2 className="font-serif text-xl font-medium">What to do next</h2>
-                  {actionItems.length === 0 ? (
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-serif text-xl font-medium">What to do next</h2>
+                    <button
+                      onClick={addCustomTask}
+                      className={`rounded-full border border-line px-2.5 py-1 text-xs font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}
+                    >
+                      ＋ Add
+                    </button>
+                  </div>
+                  {actionItems.length === 0 && customTasks.length === 0 ? (
                     <p className="mt-4 text-sm text-ink-2">Nothing urgent — you&apos;re all caught up.</p>
                   ) : (
                     <ol className="mt-4 flex flex-col gap-3">
@@ -271,6 +315,46 @@ export default function Dashboard({
                           <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2.5 py-1 text-xs font-semibold text-[var(--wood)]">
                             {item.person} · {item.effort}
                           </span>
+                        </li>
+                      ))}
+                      {customTasks.map((task) => (
+                        <li key={task.id} className="flex flex-wrap items-start gap-2 rounded-xl border border-line bg-bg p-3 sm:flex-nowrap">
+                          <button
+                            onClick={() => completeCustomTask(task.id)}
+                            aria-label={`Mark "${task.title}" done`}
+                            className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-sage-deep text-transparent hover:text-sage-deep"
+                          >
+                            ✓
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <input
+                              defaultValue={task.title}
+                              onChange={(e) => scheduleCustomTaskSave(task.id, { title: e.target.value })}
+                              className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 font-semibold outline-none focus:border-line focus:bg-paper"
+                            />
+                            <input
+                              defaultValue={task.description}
+                              onChange={(e) => scheduleCustomTaskSave(task.id, { description: e.target.value })}
+                              placeholder="Details…"
+                              className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-ink-2 outline-none focus:border-line focus:bg-paper"
+                            />
+                            <div className="mt-1 flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2 py-0.5 text-xs font-semibold text-[var(--wood)]">
+                              <input
+                                defaultValue={task.person}
+                                onChange={(e) => scheduleCustomTaskSave(task.id, { person: e.target.value })}
+                                placeholder="Who"
+                                className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-[var(--wood)]/60"
+                              />
+                              <span>·</span>
+                              <input
+                                defaultValue={task.effort}
+                                onChange={(e) => scheduleCustomTaskSave(task.id, { effort: e.target.value })}
+                                placeholder="Effort"
+                                className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-[var(--wood)]/60"
+                              />
+                            </div>
+                          </div>
+                          <button onClick={() => removeCustomTask(task.id)} aria-label={`Delete ${task.title}`} className="shrink-0 self-center text-sm text-wine">×</button>
                         </li>
                       ))}
                     </ol>

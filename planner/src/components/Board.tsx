@@ -4,15 +4,28 @@ import Link from "next/link";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
-import { STATUS_ORDER, STATUSES, checklistPercent, type Status, type Venue } from "@/lib/venues";
+import { STATUS_ORDER, STATUSES, blankVenue, checklistPercent, type Status, type Venue } from "@/lib/venues";
 
 export default function Board({ initialVenues, userName }: { initialVenues: Venue[]; userName: string }) {
   const [venues, setVenues] = useState(initialVenues);
+  const [error, setError] = useState("");
 
   async function moveStatus(v: Venue, status: Status) {
     setVenues((vs) => vs.map((x) => (x.id === v.id ? { ...x, status } : x)));
     const supabase = createClient();
     await supabase.from("venues").update({ status }).eq("id", v.id);
+  }
+
+  async function addToColumn(status: Status) {
+    setError("");
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("venues")
+      .insert(blankVenue({ name: "New place", status, sort_order: venues.length + 1 }))
+      .select()
+      .single();
+    if (error) setError(error.message);
+    else if (data) setVenues((vs) => [...vs, data as Venue]);
   }
 
   return (
@@ -24,6 +37,8 @@ export default function Board({ initialVenues, userName }: { initialVenues: Venu
           Every venue&rsquo;s stage in the pipeline — change a venue&rsquo;s stage from its card here or from its profile.
         </p>
 
+        {error && <p className="mt-4 text-sm text-wine">{error}</p>}
+
         {venues.length === 0 ? (
           <p className="mt-8 text-ink-2">No venues yet — add some from the dashboard first.</p>
         ) : (
@@ -34,7 +49,16 @@ export default function Board({ initialVenues, userName }: { initialVenues: Venu
                 <div key={status} className="flex flex-col gap-3 rounded-2xl border border-line bg-bg p-3">
                   <div className="flex items-center justify-between px-1">
                     <h2 className="font-serif text-base font-medium">{STATUSES[status]}</h2>
-                    <span className="text-xs font-semibold text-ink-2">{col.length}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-ink-2">{col.length}</span>
+                      <button
+                        onClick={() => addToColumn(status)}
+                        aria-label={`Add a place to ${STATUSES[status]}`}
+                        className="flex h-5 w-5 items-center justify-center rounded-full text-sm font-semibold text-ink-2 hover:bg-paper hover:text-ink"
+                      >
+                        ＋
+                      </button>
+                    </div>
                   </div>
                   <div className="flex flex-col gap-2">
                     {col.map((v) => (

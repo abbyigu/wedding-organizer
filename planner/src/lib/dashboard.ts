@@ -92,6 +92,19 @@ export function computeRoadmap(ctx: RoadmapContext) {
 
 export type ActionItem = { title: string; description: string; person: string; effort: string; href: string };
 
+export type CustomTask = {
+  id: string;
+  title: string;
+  description: string;
+  person: string;
+  effort: string;
+  done: boolean;
+};
+
+export function blankCustomTask(userName: string): Partial<CustomTask> {
+  return { title: "New task", description: "", person: userName, effort: "", done: false };
+}
+
 export function computeActionItems(ctx: {
   venues: Venue[];
   totalGuests: number;
