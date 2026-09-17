@@ -50,7 +50,7 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="font-serif text-3xl font-medium sm:text-4xl">Guest List</h1>

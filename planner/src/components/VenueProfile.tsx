@@ -148,7 +148,7 @@ export default function VenueProfile({
   const balance = (v.contracted_total ?? v.quoted_total ?? 0) - v.deposit_amount;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-4xl px-4 py-8">
         <Link href="/" className="text-sm text-ink-2 underline underline-offset-2">← Dashboard</Link>

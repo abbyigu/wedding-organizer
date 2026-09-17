@@ -16,7 +16,7 @@ export default function Board({ initialVenues, userName }: { initialVenues: Venu
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <h1 className="font-serif text-3xl font-medium sm:text-4xl">Venue Status Board</h1>

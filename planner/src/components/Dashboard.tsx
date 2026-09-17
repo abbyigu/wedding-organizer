@@ -169,7 +169,7 @@ export default function Dashboard({
   const roadmapPct = Math.round((roadmap.step / roadmap.totalSteps) * 100);
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-20 lg:pl-56">
       <NavBar userName={userName} />
 
       <div className="mx-auto max-w-5xl px-4 py-8">

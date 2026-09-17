@@ -74,7 +74,7 @@ export default function Budget({
 
   if (!cur) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen lg:pl-56">
         <NavBar userName={userName} />
         <div className="mx-auto max-w-3xl px-4 py-12">
           <p className="text-ink-2">No venues yet — add some from the dashboard first.</p>
@@ -97,7 +97,7 @@ export default function Budget({
       : "Danger zone.";
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-5xl px-4 py-8">
         <h1 className="font-serif text-3xl font-medium">Full wedding budget builder</h1>

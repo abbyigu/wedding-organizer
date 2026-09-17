@@ -92,7 +92,7 @@ export default function Private({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-4xl px-4 py-8">
         <h1 className="font-serif text-3xl font-medium sm:text-4xl">Private</h1>

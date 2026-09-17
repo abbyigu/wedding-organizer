@@ -132,7 +132,7 @@ export default function Decide({
     .sort((a, b) => (b.combined ?? 0) - (a.combined ?? 0));
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-4xl px-4 py-8">
         <h1 className="font-serif text-3xl font-medium sm:text-4xl">Decide, together but blind</h1>
