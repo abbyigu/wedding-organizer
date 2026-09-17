@@ -10,6 +10,18 @@ export type Guest = {
   kids_count: number;
   rsvp_status: RsvpStatus;
   notes: string;
+  email: string;
+  phone: string;
+  address: string;
+  dietary: string;
+  accessibility: string;
+  accommodation_needed: boolean;
+  transportation_needed: boolean;
+  invitation_sent: boolean;
+  meal_selection: string;
+  table_assignment: string;
+  gift_received: boolean;
+  thank_you_sent: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -17,13 +29,13 @@ export type Guest = {
 
 export const RSVP_LABELS: Record<RsvpStatus, string> = {
   pending: "Pending",
-  yes: "Yes",
-  no: "No",
+  yes: "Attending",
+  no: "Declined",
 };
 
 export function blankGuest(over: Partial<Guest> = {}): Partial<Guest> {
   return {
-    name: "New guest",
+    name: "New household",
     plus_one: "",
     category: "",
     group_label: "",
@@ -31,6 +43,18 @@ export function blankGuest(over: Partial<Guest> = {}): Partial<Guest> {
     kids_count: 0,
     rsvp_status: "pending",
     notes: "",
+    email: "",
+    phone: "",
+    address: "",
+    dietary: "",
+    accessibility: "",
+    accommodation_needed: false,
+    transportation_needed: false,
+    invitation_sent: false,
+    meal_selection: "",
+    table_assignment: "",
+    gift_received: false,
+    thank_you_sent: false,
     sort_order: 0,
     ...over,
   };
@@ -49,7 +73,9 @@ export function guestSummary(guests: Guest[], target: number) {
     adults,
     kids,
     totalWithKids: adults + kids,
-    remaining: target - adults,
+    // Positive means over target, negative means under — the opposite of
+    // the old "remaining" field, which read as -7 for 7 *over* target.
+    overBy: adults - target,
     confirmed: confirmedAdults + confirmedKids,
     confirmedAdults,
     confirmedKids,
@@ -66,4 +92,47 @@ export function groupByCategory(guests: Guest[]): [string, Guest[]][] {
     map.get(key)!.push(g);
   }
   return [...map.entries()];
+}
+
+export function guestNeeds(g: Guest): string[] {
+  const needs: string[] = [];
+  if (g.dietary.trim()) needs.push("dietary");
+  if (g.accessibility.trim()) needs.push("accessibility");
+  if (g.accommodation_needed) needs.push("accommodation");
+  if (g.transportation_needed) needs.push("transportation");
+  return needs;
+}
+
+const CSV_COLUMNS: (keyof Guest)[] = [
+  "name",
+  "plus_one",
+  "category",
+  "group_label",
+  "party_size",
+  "kids_count",
+  "rsvp_status",
+  "email",
+  "phone",
+  "address",
+  "dietary",
+  "accessibility",
+  "accommodation_needed",
+  "transportation_needed",
+  "invitation_sent",
+  "meal_selection",
+  "table_assignment",
+  "gift_received",
+  "thank_you_sent",
+  "notes",
+];
+
+function csvCell(value: string | number | boolean): string {
+  const s = String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export function guestsToCsv(guests: Guest[]): string {
+  const header = CSV_COLUMNS.join(",");
+  const rows = guests.map((g) => CSV_COLUMNS.map((c) => csvCell(g[c] as string | number | boolean)).join(","));
+  return [header, ...rows].join("\n");
 }
