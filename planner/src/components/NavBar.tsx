@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { Home, Images, KanbanSquare, Scale, Table2, Users, Wallet } from "lucide-react";
+import { Home, Images, KanbanSquare, Landmark, Scale, Table2, Users, Wallet } from "lucide-react";
 
 type NavLink = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }> };
 
@@ -18,7 +18,13 @@ const NAV_GROUPS: { label: string; links: NavLink[] }[] = [
       { href: "/budget", label: "Budget", icon: Wallet },
     ],
   },
-  { label: "Create", links: [{ href: "/ideas", label: "Inspiration Board", icon: Images }] },
+  {
+    label: "Create",
+    links: [
+      { href: "/venues", label: "Venue Shortlist", icon: Landmark },
+      { href: "/ideas", label: "Inspiration Board", icon: Images },
+    ],
+  },
   { label: "Together", links: [{ href: "/decide", label: "Decide", icon: Scale }] },
 ];
 
