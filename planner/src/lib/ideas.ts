@@ -1,5 +1,4 @@
 export type IdeaVisibility = "shared" | "private";
-export type DecisionStatus = "match" | "needs_vote" | "discuss" | "diy";
 
 export type IdeaPin = {
   id: string;
@@ -9,37 +8,54 @@ export type IdeaPin = {
   image_url: string;
   note: string;
   visibility: IdeaVisibility;
-  decision_status: DecisionStatus | null;
   is_favourite: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
 };
 
-export const IDEA_CATEGORIES = ["Little Details", "Décor", "Attire", "Flowers", "Food & drinks", "DIY"];
+export type ReactionValue = "love_it" | "maybe" | "not_for_us" | "needs_discussion";
 
-export const DECISION_STATUS_ORDER: DecisionStatus[] = ["match", "needs_vote", "discuss", "diy"];
-
-// sage / gold / wine / green, matching this app's existing palette.
-export const DECISION_STATUS_COLOR: Record<DecisionStatus, string> = {
-  match: "sage-deep",
-  needs_vote: "gold",
-  discuss: "wine",
-  diy: "green",
+export type IdeaReaction = {
+  id: string;
+  idea_id: string;
+  rater_id: string;
+  reaction: ReactionValue;
+  created_at: string;
+  updated_at: string;
 };
 
-export function decisionStatusLabel(status: DecisionStatus, partner: string): string {
-  switch (status) {
-    case "match":
-      return "It's a match";
-    case "needs_vote":
-      return `Needs ${partner}'s vote`;
-    case "discuss":
-      return "Discuss together";
-    case "diy":
-      return "Added to DIY";
-  }
+export const REACTION_ORDER: ReactionValue[] = ["love_it", "maybe", "not_for_us", "needs_discussion"];
+
+export const REACTION_LABELS: Record<ReactionValue, string> = {
+  love_it: "Love it",
+  maybe: "Maybe",
+  not_for_us: "Not for us",
+  needs_discussion: "Needs discussion",
+};
+
+export type Verdict = "match" | "discuss" | "passed";
+
+export const VERDICT_LABELS: Record<Verdict, string> = {
+  match: "It's a match",
+  discuss: "Discuss together",
+  passed: "Passed",
+};
+
+// sage / wine / ink-2, matching this app's existing palette.
+export const VERDICT_COLOR: Record<Verdict, string> = {
+  match: "sage-deep",
+  discuss: "wine",
+  passed: "ink-2",
+};
+
+export function combinedVerdict(a: ReactionValue, b: ReactionValue): Verdict {
+  if (a === "love_it" && b === "love_it") return "match";
+  if (a === "not_for_us" && b === "not_for_us") return "passed";
+  return "discuss";
 }
+
+export const IDEA_CATEGORIES = ["Little Details", "Décor", "Attire", "Flowers", "Food & drinks", "DIY"];
 
 // Only two accounts exist in this app — the other person is whoever you're not.
 export function partnerName(name: string): string {
@@ -53,7 +69,6 @@ export function blankIdea(sortOrder: number, category: string, title: string): P
     image_url: "",
     note: "",
     visibility: "shared",
-    decision_status: null,
     is_favourite: false,
     sort_order: sortOrder,
   };

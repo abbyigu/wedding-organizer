@@ -1,49 +1,58 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { Ellipsis, FolderInput, Heart, Lock, Pencil, Users, X } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { Ellipsis, FolderInput, Hammer, Heart, ListChecks, Lock, Pencil, SquareCheck, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import {
   blankIdea,
   collectionTabs,
-  DECISION_STATUS_COLOR,
-  DECISION_STATUS_ORDER,
-  decisionStatusLabel,
+  combinedVerdict,
   IDEA_CATEGORIES,
   normalizeUrl,
   partnerName,
-  type DecisionStatus,
+  REACTION_LABELS,
+  REACTION_ORDER,
+  VERDICT_COLOR,
+  VERDICT_LABELS,
   type IdeaPin,
+  type IdeaReaction,
+  type ReactionValue,
 } from "@/lib/ideas";
 
 const CARD_TRANSITION = "transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:transform-none";
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
-function StatusBadge({ status, partner }: { status: DecisionStatus; partner: string }) {
-  const color = DECISION_STATUS_COLOR[status];
+// Text stays --ink for every pill regardless of accent color, so contrast
+// never depends on which of these tints it's sitting on.
+function Pill({ colorVar, children }: { colorVar: string; children: ReactNode }) {
   return (
     <span
-      className="inline-block truncate rounded-full px-2 py-0.5 text-[11px] font-semibold"
-      style={{ background: `color-mix(in srgb, var(--${color}) 20%, var(--paper))`, color: `var(--${color})` }}
+      className="inline-block truncate rounded-full px-2 py-0.5 text-[11px] font-semibold text-ink"
+      style={{ background: `color-mix(in srgb, var(--${colorVar}) 22%, var(--paper))` }}
     >
-      {decisionStatusLabel(status, partner)}
+      {children}
     </span>
   );
 }
 
 export default function IdeaBoard({
   initialIdeas,
+  initialReactions,
   userName,
   userId,
 }: {
   initialIdeas: IdeaPin[];
+  initialReactions: IdeaReaction[];
   userName: string;
   userId: string;
 }) {
   const [ideas, setIdeas] = useState(initialIdeas);
+  const [reactions, setReactions] = useState(initialReactions);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [view, setView] = useState<"ideas" | "mood">("ideas");
   const [activeTab, setActiveTab] = useState("All ideas");
   const [mineOnly, setMineOnly] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -57,6 +66,26 @@ export default function IdeaBoard({
   const visible = ideas.filter((i) => (mineOnly ? i.owner_id === userId : true));
   const shown = activeTab === "All ideas" ? visible : visible.filter((i) => i.category === activeTab);
   const open = ideas.find((i) => i.id === openId) ?? null;
+
+  function myReaction(ideaId: string): ReactionValue | null {
+    return reactions.find((r) => r.idea_id === ideaId && r.rater_id === userId)?.reaction ?? null;
+  }
+  function partnerReaction(ideaId: string): ReactionValue | null {
+    return reactions.find((r) => r.idea_id === ideaId && r.rater_id !== userId)?.reaction ?? null;
+  }
+  function verdictFor(ideaId: string) {
+    const mine = myReaction(ideaId);
+    const theirs = partnerReaction(ideaId);
+    return mine && theirs ? combinedVerdict(mine, theirs) : null;
+  }
+
+  const collectionCount = new Set(ideas.map((i) => i.category)).size;
+  const undecidedCount = ideas.filter((i) => !verdictFor(i.id)).length;
+
+  function flash(msg: string) {
+    setNotice(msg);
+    setTimeout(() => setNotice(""), 3000);
+  }
 
   function canEdit(idea: IdeaPin) {
     return idea.owner_id === userId || idea.visibility === "shared";
@@ -80,6 +109,31 @@ export default function IdeaBoard({
 
   async function toggleFavourite(idea: IdeaPin) {
     await saveNow(idea.id, { is_favourite: !idea.is_favourite });
+  }
+
+  async function castReaction(ideaId: string, reaction: ReactionValue) {
+    setError("");
+    const { error } = await supabase.from("idea_reactions").upsert({ idea_id: ideaId, rater_id: userId, reaction }, { onConflict: "idea_id,rater_id" });
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    // Re-fetch this idea's reactions: once you've voted, RLS may now reveal
+    // your partner's reaction too (the blind-voting reveal condition).
+    const { data } = await supabase.from("idea_reactions").select("*").eq("idea_id", ideaId);
+    if (data) setReactions((rs) => [...rs.filter((r) => r.idea_id !== ideaId), ...(data as IdeaReaction[])]);
+  }
+
+  async function addToTasks(idea: IdeaPin) {
+    const { error } = await supabase.from("custom_tasks").insert({
+      title: `Follow up: ${idea.title}`,
+      description: `From the Inspiration Board — ${idea.category}`,
+      person: "",
+      effort: "",
+      done: false,
+    });
+    if (error) setError(error.message);
+    else flash("Added to your to-do list on the dashboard.");
   }
 
   function startDraft(category: string) {
@@ -122,10 +176,49 @@ export default function IdeaBoard({
       <div className="mx-auto max-w-6xl px-4 py-8">
         <Link href="/" className="text-sm text-ink-2 underline underline-offset-2">← Dashboard</Link>
 
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-3xl font-medium sm:text-4xl">Inspiration Board</h1>
-            <p className="mt-2 max-w-2xl text-ink-2">A shared scrapbook — dresses, décor, flowers, and the little details.</p>
+        <div className="mt-4">
+          <h1 className="font-serif text-3xl font-medium sm:text-4xl">Our Inspiration Board</h1>
+          <p className="mt-2 max-w-2xl text-ink-2">Everything we want our wedding to feel like.</p>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-2xl border border-line bg-paper p-4 text-center shadow-sm">
+            <b className="block font-serif text-2xl">{ideas.length}</b>
+            <span className="text-xs text-ink-2">saved idea{ideas.length === 1 ? "" : "s"}</span>
+          </div>
+          <div className="rounded-2xl border border-line bg-paper p-4 text-center shadow-sm">
+            <b className="block font-serif text-2xl">{collectionCount}</b>
+            <span className="text-xs text-ink-2">collection{collectionCount === 1 ? "" : "s"}</span>
+          </div>
+          <div className="rounded-2xl border border-line bg-paper p-4 text-center shadow-sm">
+            <b className="block font-serif text-2xl">{undecidedCount}</b>
+            <span className="text-xs text-ink-2">undecided item{undecidedCount === 1 ? "" : "s"}</span>
+          </div>
+          <button
+            onClick={addIdeaToCurrentTab}
+            className={`flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-sage-deep p-4 text-center font-semibold text-white shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}
+          >
+            <span className="text-lg">＋</span>
+            <span className="text-xs">Add an idea</span>
+          </button>
+        </div>
+        {error && <p className="mt-2 text-sm text-wine">{error}</p>}
+        {notice && <p className="mt-2 text-sm text-sage-deep">{notice}</p>}
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-1 rounded-full border border-line bg-bg p-1">
+            <button
+              onClick={() => setView("ideas")}
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${view === "ideas" ? "bg-sage-deep text-white" : "text-ink-2 hover:text-ink"}`}
+            >
+              Ideas
+            </button>
+            <button
+              onClick={() => setView("mood")}
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${view === "mood" ? "bg-sage-deep text-white" : "text-ink-2 hover:text-ink"}`}
+            >
+              Mood Board
+            </button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -139,14 +232,10 @@ export default function IdeaBoard({
             <button onClick={newCollection} className={`rounded-full border border-line px-3.5 py-2 text-sm font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}>
               ＋ New collection
             </button>
-            <button onClick={addIdeaToCurrentTab} className={`rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
-              ＋ Add an idea
-            </button>
           </div>
         </div>
-        {error && <p className="mt-2 text-sm text-wine">{error}</p>}
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           {tabs.map((t) => (
             <button
               key={t}
@@ -164,21 +253,37 @@ export default function IdeaBoard({
           <p className="mt-8 text-sm text-ink-2">
             Nothing here yet — add an idea above, then paste in an image address (right-click a photo → Copy image address).
           </p>
+        ) : view === "mood" ? (
+          <div className="mt-6 columns-2 gap-2 sm:columns-4 xl:columns-5">
+            {shown.filter((i) => i.image_url).map((idea) => (
+              <button
+                key={idea.id}
+                onClick={() => setOpenId(idea.id)}
+                className={`mb-2 block w-full overflow-hidden rounded-lg break-inside-avoid ${FOCUS_RING}`}
+                aria-label={`Open ${idea.title}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={normalizeUrl(idea.image_url)} alt={idea.title} className="w-full object-cover" />
+              </button>
+            ))}
+          </div>
         ) : (
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-6 columns-2 gap-4 sm:columns-3 xl:columns-4">
             {shown.map((idea) => {
               const editable = canEdit(idea);
               const isOwner = idea.owner_id === userId;
               const savedBy = isOwner ? userName : partner;
+              const mine = myReaction(idea.id);
+              const verdict = verdictFor(idea.id);
               return (
-                <div key={idea.id} className={`group flex flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-sm ${CARD_TRANSITION}`}>
-                  <div className="relative aspect-[4/5] w-full overflow-hidden bg-bg">
-                    <button onClick={() => setOpenId(idea.id)} className={`block h-full w-full text-left ${FOCUS_RING}`} aria-label={`Open ${idea.title}`}>
+                <div key={idea.id} className={`group mb-4 flex flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-sm break-inside-avoid ${CARD_TRANSITION}`}>
+                  <div className="relative w-full overflow-hidden bg-bg">
+                    <button onClick={() => setOpenId(idea.id)} className={`block w-full text-left ${FOCUS_RING}`} aria-label={`Open ${idea.title}`}>
                       {idea.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={normalizeUrl(idea.image_url)} alt={idea.title} className="h-full w-full object-cover" />
+                        <img src={normalizeUrl(idea.image_url)} alt={idea.title} className="w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_srgb,var(--wine)_12%,var(--paper))] text-3xl">📌</div>
+                        <div className="flex aspect-square w-full items-center justify-center bg-[color-mix(in_srgb,var(--wine)_12%,var(--paper))] text-3xl">📌</div>
                       )}
                     </button>
 
@@ -200,6 +305,20 @@ export default function IdeaBoard({
 
                     {editable && (
                       <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                        <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_90%,transparent)] text-ink hover:bg-paper">
+                          <SquareCheck className="pointer-events-none h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                          <select
+                            value=""
+                            onChange={(e) => e.target.value && castReaction(idea.id, e.target.value as ReactionValue)}
+                            aria-label={`React to ${idea.title}`}
+                            className="absolute inset-0 cursor-pointer opacity-0"
+                          >
+                            <option value="" disabled>Vote…</option>
+                            {REACTION_ORDER.map((r) => (
+                              <option key={r} value={r}>{REACTION_LABELS[r]}</option>
+                            ))}
+                          </select>
+                        </span>
                         <button
                           onClick={() => setOpenId(idea.id)}
                           aria-label={`Edit ${idea.title}`}
@@ -257,9 +376,14 @@ export default function IdeaBoard({
                     <span className="flex items-center gap-1 truncate text-xs text-ink-2">
                       {idea.category} · Saved by {savedBy}
                     </span>
-                    {idea.decision_status && (
-                      <span className="mt-1">
-                        <StatusBadge status={idea.decision_status} partner={isOwner ? partner : userName} />
+                    {(mine || verdict) && (
+                      <span className="mt-1 flex flex-wrap items-center gap-1">
+                        {mine && <Pill colorVar="sage-deep">{REACTION_LABELS[mine]}</Pill>}
+                        {verdict ? (
+                          <Pill colorVar={VERDICT_COLOR[verdict]}>{VERDICT_LABELS[verdict]}</Pill>
+                        ) : mine ? (
+                          <Pill colorVar="gold">Needs {partner}&apos;s vote</Pill>
+                        ) : null}
                       </span>
                     )}
                   </button>
@@ -293,7 +417,9 @@ export default function IdeaBoard({
               {(() => {
                 const editable = canEdit(open);
                 const isOwner = open.owner_id === userId;
-                const partnerOfOwner = isOwner ? partner : userName;
+                const mine = myReaction(open.id);
+                const theirs = partnerReaction(open.id);
+                const verdict = mine && theirs ? combinedVerdict(mine, theirs) : null;
                 return (
                   <>
                     <input
@@ -318,18 +444,24 @@ export default function IdeaBoard({
                       ))}
                     </select>
 
-                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Decision</label>
+                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Your reaction</label>
                     <select
-                      value={open.decision_status ?? ""}
-                      onChange={(e) => scheduleIdeaSave(open.id, { decision_status: (e.target.value || null) as DecisionStatus | null })}
-                      disabled={!editable}
-                      className="mx-1 mt-1 rounded border border-line bg-bg px-2 py-1 text-sm disabled:opacity-70"
+                      value={mine ?? ""}
+                      onChange={(e) => e.target.value && castReaction(open.id, e.target.value as ReactionValue)}
+                      className="mx-1 mt-1 rounded border border-line bg-bg px-2 py-1 text-sm"
                     >
-                      <option value="">No decision yet</option>
-                      {DECISION_STATUS_ORDER.map((s) => (
-                        <option key={s} value={s}>{decisionStatusLabel(s, partnerOfOwner)}</option>
+                      <option value="" disabled>Choose one…</option>
+                      {REACTION_ORDER.map((r) => (
+                        <option key={r} value={r}>{REACTION_LABELS[r]}</option>
                       ))}
                     </select>
+                    <div className="mx-1 mt-2">
+                      {verdict ? (
+                        <Pill colorVar={VERDICT_COLOR[verdict]}>{VERDICT_LABELS[verdict]}</Pill>
+                      ) : mine ? (
+                        <p className="text-xs text-ink-2">Waiting on {partner}&apos;s reaction — hidden until you&apos;ve both voted.</p>
+                      ) : null}
+                    </div>
 
                     <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Image / source URL</label>
                     <input
@@ -354,6 +486,26 @@ export default function IdeaBoard({
                       placeholder="Notes…"
                       className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm disabled:opacity-70"
                     />
+
+                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Turn into action</label>
+                    <div className="mx-1 mt-1 flex flex-wrap gap-2">
+                      {open.category !== "DIY" && (
+                        <button
+                          onClick={() => saveNow(open.id, { category: "DIY" })}
+                          className={`flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}
+                        >
+                          <Hammer className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                          Add to DIY Projects
+                        </button>
+                      )}
+                      <button
+                        onClick={() => addToTasks(open)}
+                        className={`flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}
+                      >
+                        <ListChecks className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                        Add to Tasks
+                      </button>
+                    </div>
 
                     {isOwner ? (
                       <button

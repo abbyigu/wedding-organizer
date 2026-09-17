@@ -10,7 +10,17 @@ export default async function IdeaBoardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: ideas } = await supabase.from("idea_pins").select("*").order("sort_order", { ascending: true });
+  const [{ data: ideas }, { data: reactions }] = await Promise.all([
+    supabase.from("idea_pins").select("*").order("sort_order", { ascending: true }),
+    supabase.from("idea_reactions").select("*"),
+  ]);
 
-  return <IdeaBoard initialIdeas={ideas ?? []} userName={displayName(user?.email)} userId={user?.id ?? ""} />;
+  return (
+    <IdeaBoard
+      initialIdeas={ideas ?? []}
+      initialReactions={reactions ?? []}
+      userName={displayName(user?.email)}
+      userId={user?.id ?? ""}
+    />
+  );
 }

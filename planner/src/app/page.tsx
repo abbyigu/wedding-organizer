@@ -3,14 +3,7 @@ import Dashboard from "@/components/Dashboard";
 import { displayName } from "@/lib/auth-names";
 import { getBudgetContext } from "@/lib/budget-context";
 import { DEFAULT_BUDGET_SETTINGS, GUEST_CAPACITY } from "@/lib/venues";
-import {
-  computeActionItems,
-  computeRoadmap,
-  daysUntil,
-  decisionsWaiting,
-  greeting,
-  topIdeaCategories,
-} from "@/lib/dashboard";
+import { computeActionItems, computeRoadmap, daysUntil, decisionsWaiting, greeting } from "@/lib/dashboard";
 import { guestSummary } from "@/lib/guests";
 import type { Rating } from "@/lib/decisions";
 
@@ -53,6 +46,17 @@ export default async function DashboardPage() {
 
   const ideas = sharedIdeas ?? [];
   const ideaThumbs = ideas.filter((i) => i.image_url).slice(0, 4);
+  const ideaCollectionCount = new Set(ideas.map((i) => i.category)).size;
+
+  const { data: ideaReactions } = ideas.length
+    ? await supabase.from("idea_reactions").select("idea_id, rater_id").in("idea_id", ideas.map((i) => i.id))
+    : { data: [] as { idea_id: string; rater_id: string }[] };
+  const votersByIdea = new Map<string, Set<string>>();
+  for (const r of ideaReactions ?? []) {
+    if (!votersByIdea.has(r.idea_id)) votersByIdea.set(r.idea_id, new Set());
+    votersByIdea.get(r.idea_id)!.add(r.rater_id);
+  }
+  const ideaUndecidedCount = ideas.filter((i) => (votersByIdea.get(i.id)?.size ?? 0) < 2).length;
 
   const dw = decisionsWaiting(venues ?? [], myRatings ?? []);
   const roadmap = computeRoadmap({ venues: venues ?? [], guests, assumptions, sharedVals });
@@ -81,7 +85,8 @@ export default async function DashboardPage() {
       guestKids={capacitySummary.kids}
       ideaThumbs={ideaThumbs}
       ideaCount={ideas.length}
-      ideaCategories={topIdeaCategories(ideas)}
+      ideaCollectionCount={ideaCollectionCount}
+      ideaUndecidedCount={ideaUndecidedCount}
       decisionsWaitingCount={dw.count}
       decisionsWaitingVenue={dw.venueName}
       roadmap={roadmap}

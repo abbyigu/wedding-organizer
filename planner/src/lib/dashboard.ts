@@ -1,7 +1,6 @@
 import { BUDGET_CEILING, calcVenue, GUEST_CAPACITY, type Assumptions, type Venue } from "@/lib/venues";
 import type { Guest } from "@/lib/guests";
 import type { Rating } from "@/lib/decisions";
-import type { IdeaPin } from "@/lib/ideas";
 
 export function daysUntil(dateStr: string): number {
   const target = new Date(dateStr + "T00:00:00");
@@ -185,10 +184,4 @@ export function decisionsWaiting(venues: Venue[], myRatings: Rating[]) {
   const ratedIds = new Set(myRatings.map((r) => r.venue_id));
   const unrated = venues.filter((v) => v.status !== "out" && !ratedIds.has(v.id));
   return { count: unrated.length, venueName: unrated[0]?.name ?? null };
-}
-
-export function topIdeaCategories(ideas: Pick<IdeaPin, "category">[], n = 3): string[] {
-  const counts = new Map<string, number>();
-  for (const i of ideas) counts.set(i.category, (counts.get(i.category) ?? 0) + 1);
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([c]) => c);
 }

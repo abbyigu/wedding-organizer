@@ -71,7 +71,8 @@ export default function Dashboard({
   guestKids,
   ideaThumbs,
   ideaCount,
-  ideaCategories,
+  ideaCollectionCount,
+  ideaUndecidedCount,
   decisionsWaitingCount,
   decisionsWaitingVenue,
   roadmap,
@@ -91,7 +92,8 @@ export default function Dashboard({
   guestKids: number;
   ideaThumbs: IdeaThumb[];
   ideaCount: number;
-  ideaCategories: string[];
+  ideaCollectionCount: number;
+  ideaUndecidedCount: number;
   decisionsWaitingCount: number;
   decisionsWaitingVenue: string | null;
   roadmap: { phaseLabel: string; step: number; totalSteps: number; nextMilestone: string };
@@ -577,11 +579,15 @@ export default function Dashboard({
                   <div className="min-w-0 flex-1">
                     <h3 className="font-serif text-base font-medium">Inspiration Board</h3>
                     <p className="text-sm text-ink-2">
-                      {ideaCount} idea{ideaCount === 1 ? "" : "s"}
-                      {ideaCategories.length ? ` · ${ideaCategories.join(", ")}` : ""}
+                      {ideaCount} saved idea{ideaCount === 1 ? "" : "s"} across {ideaCollectionCount} collection{ideaCollectionCount === 1 ? "" : "s"}
                     </p>
+                    {ideaUndecidedCount > 0 && (
+                      <p className="text-sm text-ink-2">
+                        {ideaUndecidedCount} idea{ideaUndecidedCount === 1 ? "" : "s"} need{ideaUndecidedCount === 1 ? "s" : ""} a decision
+                      </p>
+                    )}
                   </div>
-                  <span className="shrink-0 text-sm font-semibold text-green">Open →</span>
+                  <span className="shrink-0 text-sm font-semibold text-green">Open board →</span>
                 </Link>
 
                 <Link href="/decide" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--wine)_14%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
