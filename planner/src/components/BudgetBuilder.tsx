@@ -77,6 +77,7 @@ export default function BudgetBuilder({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | BudgetGroup>("all");
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const lineTimer = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
 
@@ -114,9 +115,11 @@ export default function BudgetBuilder({
   }
 
   async function addExpense(category: BudgetGroup) {
+    setError("");
     const count = expenses.filter((e) => e.category === category).length;
     const { data, error } = await supabase.from("budget_expenses").insert(blankExpense(category, count)).select().single();
-    if (!error && data) {
+    if (error) setError(error.message);
+    else if (data) {
       setExpenses((es) => [...es, data as BudgetExpense]);
       setEditingExpenseId((data as BudgetExpense).id);
       setOpenGroups((s) => new Set(s).add(category));
@@ -124,12 +127,14 @@ export default function BudgetBuilder({
   }
 
   async function duplicateExpense(e: BudgetExpense) {
+    setError("");
     const { id, created_at, updated_at, ...rest } = e;
     void id;
     void created_at;
     void updated_at;
     const { data, error } = await supabase.from("budget_expenses").insert({ ...rest, label: `${e.label} (copy)` }).select().single();
-    if (!error && data) setExpenses((es) => [...es, data as BudgetExpense]);
+    if (error) setError(error.message);
+    else if (data) setExpenses((es) => [...es, data as BudgetExpense]);
   }
 
   function patchExpenseLocal(id: string, patch: Partial<BudgetExpense>) {
@@ -348,6 +353,7 @@ export default function BudgetBuilder({
               </button>
             </div>
           </div>
+          {error && <p className="mt-2 text-sm text-wine">{error}</p>}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <div className="relative min-w-[180px] flex-1">
