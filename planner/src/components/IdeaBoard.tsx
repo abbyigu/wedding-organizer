@@ -48,6 +48,7 @@ export default function IdeaBoard({
   const [mineOnly, setMineOnly] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [moreOpenId, setMoreOpenId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<{ category: string; title: string; image_url: string; note: string } | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
   const partner = partnerName(userName);
@@ -81,26 +82,31 @@ export default function IdeaBoard({
     await saveNow(idea.id, { is_favourite: !idea.is_favourite });
   }
 
-  async function addIdea(category: string, title?: string) {
-    const finalTitle = (title ?? window.prompt("Idea title (e.g. Polaroid guestbook table)")?.trim()) || "";
-    if (!finalTitle) return;
+  function startDraft(category: string) {
     setError("");
-    const idea = blankIdea(ideas.length, category, finalTitle);
-    const { data, error } = await supabase.from("idea_pins").insert(idea).select().single();
-    if (error) setError(error.message);
-    else if (data) {
-      setIdeas((is) => [data as IdeaPin, ...is]);
-      setActiveTab(category);
-    }
+    setDraft({ category, title: "", image_url: "", note: "" });
   }
 
   function addIdeaToCurrentTab() {
-    addIdea(activeTab === "All ideas" ? IDEA_CATEGORIES[0] : activeTab);
+    startDraft(activeTab === "All ideas" ? IDEA_CATEGORIES[0] : activeTab);
   }
 
   function newCollection() {
     const name = window.prompt("New collection name (e.g. Dress, DIY)")?.trim();
-    if (name) addIdea(name);
+    if (name) startDraft(name);
+  }
+
+  async function saveDraft() {
+    if (!draft || !draft.title.trim()) return;
+    setError("");
+    const idea = { ...blankIdea(ideas.length, draft.category, draft.title.trim()), image_url: draft.image_url.trim(), note: draft.note.trim() };
+    const { data, error } = await supabase.from("idea_pins").insert(idea).select().single();
+    if (error) setError(error.message);
+    else if (data) {
+      setIdeas((is) => [data as IdeaPin, ...is]);
+      setActiveTab(draft.category);
+      setDraft(null);
+    }
   }
 
   async function removeIdea(id: string) {
@@ -373,6 +379,82 @@ export default function IdeaBoard({
                   </>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {draft && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <button aria-label="Close" onClick={() => setDraft(null)} className="absolute inset-0" />
+          <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-paper shadow-lg sm:flex-row">
+            <button
+              onClick={() => setDraft(null)}
+              aria-label="Close"
+              className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_85%,transparent)] text-ink shadow-sm"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+            </button>
+            <div className="aspect-[4/5] w-full shrink-0 bg-bg sm:w-2/5">
+              {draft.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={normalizeUrl(draft.image_url)} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-4xl">📌</div>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              <h2 className="font-serif text-xl font-medium">New idea</h2>
+
+              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Title</label>
+              <input
+                autoFocus
+                value={draft.title}
+                onChange={(e) => setDraft((d) => d && { ...d, title: e.target.value })}
+                placeholder="e.g. Polaroid guestbook table"
+                className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm"
+              />
+
+              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Collection</label>
+              <select
+                value={draft.category}
+                onChange={(e) => setDraft((d) => d && { ...d, category: e.target.value })}
+                className="mx-1 mt-1 rounded border border-line bg-bg px-2 py-1 text-sm"
+              >
+                {[...new Set([draft.category, ...collectionTabs(ideas)])].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+
+              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Image / source URL</label>
+              <input
+                value={draft.image_url}
+                onChange={(e) => setDraft((d) => d && { ...d, image_url: e.target.value })}
+                placeholder="Paste an image address"
+                className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm"
+              />
+
+              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
+              <textarea
+                value={draft.note}
+                onChange={(e) => setDraft((d) => d && { ...d, note: e.target.value })}
+                rows={4}
+                placeholder="Notes…"
+                className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm"
+              />
+
+              <div className="mt-5 flex items-center gap-2 px-1">
+                <button
+                  onClick={saveDraft}
+                  disabled={!draft.title.trim()}
+                  className={`rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${FOCUS_RING}`}
+                >
+                  Add to board
+                </button>
+                <button onClick={() => setDraft(null)} className={`rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink-2 hover:text-ink ${FOCUS_RING}`}>
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
