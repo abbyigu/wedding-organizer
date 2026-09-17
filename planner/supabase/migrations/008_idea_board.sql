@@ -18,10 +18,12 @@ create table if not exists idea_pins (
 
 alter table idea_pins enable row level security;
 
+drop policy if exists "owner all access" on idea_pins;
 create policy "owner all access" on idea_pins
   for all using (auth.role() = 'authenticated' and owner_id = auth.uid())
   with check (auth.role() = 'authenticated' and owner_id = auth.uid());
 
+drop trigger if exists idea_pins_set_updated_at on idea_pins;
 create trigger idea_pins_set_updated_at
   before update on idea_pins
   for each row execute function set_updated_at();
