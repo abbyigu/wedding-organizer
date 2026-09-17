@@ -96,6 +96,7 @@ export default function Private({
   }
 
   const grouped = groupIdeasByCategory(ideas);
+  const categoryOptions = [...new Set([...IDEA_CATEGORIES, ...ideas.map((i) => i.category).filter(Boolean)])];
 
   function scheduleIdeaSave(id: string, patch: Partial<IdeaPin>) {
     setIdeas((is) => is.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -173,7 +174,7 @@ export default function Private({
           ) : (
             <div className="flex flex-col gap-3">
               <datalist id="idea-categories">
-                {IDEA_CATEGORIES.map((c) => <option key={c} value={c} />)}
+                {categoryOptions.map((c) => <option key={c} value={c} />)}
               </datalist>
               {grouped.map(([category, list]) => (
                 <details key={category} open className="overflow-hidden rounded-xl border border-line">
@@ -202,7 +203,7 @@ export default function Private({
                           <input
                             list="idea-categories"
                             defaultValue={i.category}
-                            onChange={(e) => scheduleIdeaSave(i.id, { category: e.target.value || "Other" })}
+                            onBlur={(e) => scheduleIdeaSave(i.id, { category: e.target.value || "Other" })}
                             placeholder="Category"
                             className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-ink-2 outline-none focus:border-line focus:bg-paper"
                           />
