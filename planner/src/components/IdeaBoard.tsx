@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
-import { blankIdea, groupIdeasByCategory, IDEA_CATEGORIES, type IdeaPin } from "@/lib/ideas";
+import { blankIdea, groupIdeasByCategory, IDEA_CATEGORIES, normalizeUrl, type IdeaPin } from "@/lib/ideas";
 
 export default function IdeaBoard({
   initialIdeas,
@@ -79,7 +79,7 @@ export default function IdeaBoard({
                     <div key={i.id} className="flex flex-col overflow-hidden rounded-xl border border-line bg-bg">
                       {i.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={i.image_url} alt={i.title} className="aspect-[3/4] w-full object-cover" />
+                        <img src={normalizeUrl(i.image_url)} alt={i.title} className="aspect-[3/4] w-full object-cover" />
                       ) : (
                         <div className="flex aspect-[3/4] w-full items-center justify-center bg-[color-mix(in_srgb,var(--wine)_12%,var(--paper))] text-3xl">📌</div>
                       )}
@@ -119,7 +119,7 @@ export default function IdeaBoard({
                           className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs outline-none focus:border-line focus:bg-paper"
                         />
                         {i.pin_url && (
-                          <a href={i.pin_url} target="_blank" rel="noreferrer" className="mt-auto text-xs font-semibold text-sage-deep underline underline-offset-2">
+                          <a href={normalizeUrl(i.pin_url)} target="_blank" rel="noreferrer" className="mt-auto text-xs font-semibold text-sage-deep underline underline-offset-2">
                             Open on Pinterest →
                           </a>
                         )}

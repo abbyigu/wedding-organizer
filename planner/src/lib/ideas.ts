@@ -17,6 +17,15 @@ export function blankIdea(sortOrder: number): Partial<IdeaPin> {
   return { category: "Other", title: "New idea", pin_url: "", image_url: "", note: "", sort_order: sortOrder };
 }
 
+// A pasted Pinterest link often comes without "https://" (e.g. "pinterest.com/pin/123"
+// or "pin.it/abc"), which makes <a href> / <img src> resolve it as a path on this site
+// instead of an external URL.
+export function normalizeUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 export function groupIdeasByCategory(ideas: IdeaPin[]): [string, IdeaPin[]][] {
   const map = new Map<string, IdeaPin[]>();
   for (const idea of ideas) {
