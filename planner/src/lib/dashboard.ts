@@ -120,7 +120,7 @@ export function computeActionItems(ctx: {
 
   if (contactedCount < 3 && active.length > 0) {
     items.push({
-      title: "Choose three venues to contact first",
+      title: "Choose three venues to contact",
       description: "Narrow the list before requesting complete quotes.",
       person: "Together",
       effort: "15 min",
