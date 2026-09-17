@@ -12,6 +12,7 @@ import {
   type Surprise,
   type SurpriseStatus,
 } from "@/lib/private";
+import { blankIdea, groupIdeasByCategory, IDEA_CATEGORIES, type IdeaPin } from "@/lib/ideas";
 
 const STATUS_STYLE: Record<SurpriseStatus, string> = {
   idea: "bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] text-ink-2",
@@ -23,16 +24,19 @@ const STATUS_STYLE: Record<SurpriseStatus, string> = {
 export default function Private({
   initialNotes,
   initialSurprises,
+  initialIdeas,
   userName,
   userId,
 }: {
   initialNotes: PrivateNote[];
   initialSurprises: Surprise[];
+  initialIdeas: IdeaPin[];
   userName: string;
   userId: string;
 }) {
   const [notes, setNotes] = useState(initialNotes);
   const [surprises, setSurprises] = useState(initialSurprises);
+  const [ideas, setIdeas] = useState(initialIdeas);
   const [error, setError] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
@@ -91,6 +95,31 @@ export default function Private({
     await supabase.from("surprises").delete().eq("id", id);
   }
 
+  const grouped = groupIdeasByCategory(ideas);
+
+  function scheduleIdeaSave(id: string, patch: Partial<IdeaPin>) {
+    setIdeas((is) => is.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+    const key = id + Object.keys(patch)[0];
+    clearTimeout(timers.current[key]);
+    timers.current[key] = setTimeout(async () => {
+      const { error } = await supabase.from("idea_pins").update(patch).eq("id", id);
+      if (error) setError(error.message);
+    }, 700);
+  }
+
+  async function addIdea() {
+    setError("");
+    const { data, error } = await supabase.from("idea_pins").insert(blankIdea(ideas.length)).select().single();
+    if (error) setError(error.message);
+    else if (data) setIdeas((is) => [data as IdeaPin, ...is]);
+  }
+
+  async function removeIdea(id: string) {
+    if (!confirm("Delete this idea?")) return;
+    setIdeas((is) => is.filter((i) => i.id !== id));
+    await supabase.from("idea_pins").delete().eq("id", id);
+  }
+
   return (
     <div className="min-h-screen">
       <NavBar userName={userName} />
@@ -127,6 +156,85 @@ export default function Private({
                     className="mt-1 w-full rounded border border-transparent bg-transparent px-1 py-1 text-sm outline-none focus:border-line focus:bg-paper"
                   />
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-semibold">Idea board <small className="font-normal text-ink-2">— dresses, decor, flowers, only visible to you</small></h3>
+            <button onClick={addIdea} className="rounded-full bg-sage-deep px-3.5 py-1.5 text-sm font-semibold text-[#F7F3EA]">＋ Add idea</button>
+          </div>
+          {ideas.length === 0 ? (
+            <p className="text-sm text-ink-2">
+              Nothing pinned yet. On Pinterest, right-click a pin → Copy image address for the preview, and copy the pin&apos;s page link too.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <datalist id="idea-categories">
+                {IDEA_CATEGORIES.map((c) => <option key={c} value={c} />)}
+              </datalist>
+              {grouped.map(([category, list]) => (
+                <details key={category} open className="overflow-hidden rounded-xl border border-line">
+                  <summary className="cursor-pointer select-none list-none bg-bg px-3 py-2 text-sm font-semibold marker:content-none">
+                    <span className="mr-2 inline-block transition-transform [details[open]_&]:rotate-90">▸</span>
+                    {category} <span className="font-normal text-ink-2">({list.length})</span>
+                  </summary>
+                  <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3">
+                    {list.map((i) => (
+                      <div key={i.id} className="flex flex-col overflow-hidden rounded-xl border border-line bg-bg">
+                        {i.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={i.image_url} alt={i.title} className="aspect-[3/4] w-full object-cover" />
+                        ) : (
+                          <div className="flex aspect-[3/4] w-full items-center justify-center bg-[color-mix(in_srgb,var(--wine)_12%,var(--paper))] text-3xl">📌</div>
+                        )}
+                        <div className="flex flex-1 flex-col gap-1 p-2">
+                          <div className="flex items-start gap-1">
+                            <input
+                              defaultValue={i.title}
+                              onChange={(e) => scheduleIdeaSave(i.id, { title: e.target.value })}
+                              className="flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold outline-none focus:border-line focus:bg-paper"
+                            />
+                            <button onClick={() => removeIdea(i.id)} aria-label={`Delete ${i.title}`} className="shrink-0 text-xs text-wine">×</button>
+                          </div>
+                          <input
+                            list="idea-categories"
+                            defaultValue={i.category}
+                            onChange={(e) => scheduleIdeaSave(i.id, { category: e.target.value || "Other" })}
+                            placeholder="Category"
+                            className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-ink-2 outline-none focus:border-line focus:bg-paper"
+                          />
+                          <input
+                            defaultValue={i.pin_url}
+                            onChange={(e) => scheduleIdeaSave(i.id, { pin_url: e.target.value })}
+                            placeholder="Pinterest link"
+                            className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs outline-none focus:border-line focus:bg-paper"
+                          />
+                          <input
+                            defaultValue={i.image_url}
+                            onChange={(e) => scheduleIdeaSave(i.id, { image_url: e.target.value })}
+                            placeholder="Image URL (for preview)"
+                            className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-ink-2 outline-none focus:border-line focus:bg-paper"
+                          />
+                          <textarea
+                            defaultValue={i.note}
+                            onChange={(e) => scheduleIdeaSave(i.id, { note: e.target.value })}
+                            placeholder="Note…"
+                            rows={2}
+                            className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs outline-none focus:border-line focus:bg-paper"
+                          />
+                          {i.pin_url && (
+                            <a href={i.pin_url} target="_blank" rel="noreferrer" className="mt-auto text-xs font-semibold text-sage-deep underline underline-offset-2">
+                              Open on Pinterest →
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               ))}
             </div>
           )}

@@ -10,15 +10,17 @@ export default async function PrivatePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: notes }, { data: surprises }] = await Promise.all([
+  const [{ data: notes }, { data: surprises }, { data: ideas }] = await Promise.all([
     supabase.from("private_notes").select("*").order("updated_at", { ascending: false }),
     supabase.from("surprises").select("*").order("created_at", { ascending: false }),
+    supabase.from("idea_pins").select("*").order("sort_order", { ascending: true }),
   ]);
 
   return (
     <Private
       initialNotes={notes ?? []}
       initialSurprises={surprises ?? []}
+      initialIdeas={ideas ?? []}
       userName={displayName(user?.email)}
       userId={user?.id ?? ""}
     />
