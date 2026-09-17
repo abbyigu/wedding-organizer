@@ -44,7 +44,6 @@ export default function Dashboard({
   assumptions,
   sharedVals,
   ideaThumbs,
-  ideaCount,
 }: {
   initialVenues: Venue[];
   userName: string;
@@ -52,7 +51,6 @@ export default function Dashboard({
   assumptions: Assumptions;
   sharedVals: number[];
   ideaThumbs: IdeaThumb[];
-  ideaCount: number;
 }) {
   const router = useRouter();
   const [venues, setVenues] = useState(initialVenues);
@@ -187,34 +185,21 @@ export default function Dashboard({
               </div>
             </div>
 
-            <Link
-              href="/ideas"
-              className="mt-6 flex items-center gap-4 rounded-2xl border border-line bg-paper p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="grid shrink-0 grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-xl" style={{ width: 64, height: 64 }}>
-                {Array.from({ length: 4 }).map((_, i) => {
-                  const thumb = ideaThumbs[i];
-                  return thumb?.image_url ? (
+            {ideaThumbs.length > 0 && (
+              <Link href="/ideas" aria-label="Idea board" className="mt-6 block overflow-hidden rounded-2xl shadow-sm transition hover:shadow-md">
+                <div className="columns-3 gap-1 sm:columns-6" style={{ maxHeight: 160 }}>
+                  {ideaThumbs.map((thumb) => (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img key={thumb.id} src={normalizeUrl(thumb.image_url)} alt={thumb.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <div
-                      key={thumb?.id ?? i}
-                      className="flex h-full w-full items-center justify-center bg-[color-mix(in_srgb,var(--wine)_12%,var(--paper))] text-xs"
-                    >
-                      {thumb ? "📌" : ""}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold">Idea board</h3>
-                <p className="text-sm text-ink-2">
-                  {ideaCount === 0 ? "Nothing pinned yet" : `${ideaCount} idea${ideaCount === 1 ? "" : "s"} saved`} — dresses, decor, flowers.
-                </p>
-              </div>
-              <span className="shrink-0 text-sm font-semibold text-sage-deep">Open →</span>
-            </Link>
+                    <img
+                      key={thumb.id}
+                      src={normalizeUrl(thumb.image_url)}
+                      alt=""
+                      className="mb-1 w-full rounded-lg object-cover"
+                    />
+                  ))}
+                </div>
+              </Link>
+            )}
 
             <div className="mt-8 flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm text-ink-2">
