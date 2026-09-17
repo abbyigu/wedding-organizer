@@ -1,28 +1,26 @@
 import { createClient } from "@/lib/supabase/server";
-import Budget from "@/components/Budget";
-import { displayName } from "@/lib/auth-names";
+import BudgetOverview from "@/components/BudgetOverview";
 import { getBudgetContext } from "@/lib/budget-context";
+import type { BudgetExpense, Payment } from "@/lib/budget-extras";
 
 export const dynamic = "force-dynamic";
 
-export default async function BudgetPage() {
+export default async function BudgetOverviewPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: venues } = await supabase
-    .from("venues")
-    .select("*")
-    .order("sort_order", { ascending: true });
-
+  const { data: venues } = await supabase.from("venues").select("*").order("sort_order", { ascending: true });
   const { settings, guestSummary } = await getBudgetContext(supabase);
+  const [{ data: expenses }, { data: payments }] = await Promise.all([
+    supabase.from("budget_expenses").select("*").order("sort_order", { ascending: true }),
+    supabase.from("payments").select("*"),
+  ]);
 
   return (
-    <Budget
-      initialVenues={venues ?? []}
-      userName={displayName(user?.email)}
-      initialSettings={settings}
+    <BudgetOverview
+      venues={venues ?? []}
+      settings={settings}
       guestSummary={guestSummary}
+      expenses={(expenses ?? []) as BudgetExpense[]}
+      payments={(payments ?? []) as Payment[]}
     />
   );
 }
