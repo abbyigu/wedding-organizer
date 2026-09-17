@@ -47,6 +47,8 @@ const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
   Other: MoreHorizontal,
 };
 
+const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
+
 const SCENARIOS: { key: GuestScenario; label: string }[] = [
   { key: "all", label: "All invited" },
   { key: "confirmed", label: "Confirmed (Yes)" },
@@ -69,7 +71,11 @@ export default function BudgetBuilder({
   initialExpenses: BudgetExpense[];
 }) {
   const [venues, setVenues] = useState(initialVenues);
-  const [curId, setCurId] = useState(initialVenues[0]?.id ?? "");
+  // Same precedence as the Overview page's "current venue", so the two pages
+  // agree on which venue the estimate is based on by default.
+  const [curId, setCurId] = useState(
+    () => (initialVenues.find((v) => v.is_final) ?? initialVenues.filter((v) => v.status !== "out")[0] ?? initialVenues[0])?.id ?? "",
+  );
   const [settings, setSettings] = useState(initialSettings);
   const [expenses, setExpenses] = useState(initialExpenses);
   const [guestEditOpen, setGuestEditOpen] = useState(false);
@@ -245,7 +251,7 @@ export default function BudgetBuilder({
           <div>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Guest count</h3>
-              <button onClick={() => setGuestEditOpen((v) => !v)} className="text-sm font-semibold text-sage-deep underline underline-offset-2">
+              <button onClick={() => setGuestEditOpen((v) => !v)} className={`rounded text-sm font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>
                 {guestEditOpen ? "Done" : "Edit"}
               </button>
             </div>
@@ -258,7 +264,7 @@ export default function BudgetBuilder({
                     <button
                       key={s.key}
                       onClick={() => updateSettings({ guest_scenario: s.key })}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${FOCUS_RING} ${
                         settings.guest_scenario === s.key ? "border-sage-deep bg-sage-deep text-white" : "border-line bg-bg text-ink hover:border-sage-deep"
                       }`}
                     >
@@ -280,7 +286,7 @@ export default function BudgetBuilder({
                 ) : (
                   <p className="text-xs text-ink-2">
                     From {settings.guest_scenario === "confirmed" ? "confirmed Yes RSVPs" : "the full guest list"}.{" "}
-                    <Link href="/guests" className="font-semibold text-sage-deep underline underline-offset-2">Edit guest list →</Link>
+                    <Link href="/guests" className={`rounded font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>Edit guest list →</Link>
                   </p>
                 )}
               </div>
@@ -293,9 +299,9 @@ export default function BudgetBuilder({
               <p className="text-xs text-ink-2">Added to venue-related lines</p>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <button onClick={() => updateSettings({ svc_pct: Math.max(0, settings.svc_pct - 1) })} className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep">−</button>
+              <button onClick={() => updateSettings({ svc_pct: Math.max(0, settings.svc_pct - 1) })} className={`flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>−</button>
               <span className="w-12 text-center font-serif text-lg">{settings.svc_pct}%</span>
-              <button onClick={() => updateSettings({ svc_pct: Math.min(30, settings.svc_pct + 1) })} className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep">+</button>
+              <button onClick={() => updateSettings({ svc_pct: Math.min(30, settings.svc_pct + 1) })} className={`flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>+</button>
             </div>
           </div>
 
@@ -305,9 +311,9 @@ export default function BudgetBuilder({
               <p className="text-xs text-ink-2">For unexpected costs</p>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <button onClick={() => updateSettings({ cont_pct: Math.max(0, settings.cont_pct - 1) })} className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep">−</button>
+              <button onClick={() => updateSettings({ cont_pct: Math.max(0, settings.cont_pct - 1) })} className={`flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>−</button>
               <span className="w-12 text-center font-serif text-lg">{settings.cont_pct}%</span>
-              <button onClick={() => updateSettings({ cont_pct: Math.min(25, settings.cont_pct + 1) })} className="flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep">+</button>
+              <button onClick={() => updateSettings({ cont_pct: Math.min(25, settings.cont_pct + 1) })} className={`flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>+</button>
             </div>
           </div>
 
@@ -329,7 +335,7 @@ export default function BudgetBuilder({
               <b className="font-serif text-lg">{fmt(breakdown.grand)}</b>
             </div>
             <div className="mt-1 flex justify-between text-sm text-ink-2"><span>Cost per guest</span><b>{fmt(breakdown.perGuest)}</b></div>
-            <Link href={`/venues/${cur.id}`} className="mt-2 inline-block text-sm font-semibold text-sage-deep underline underline-offset-2">
+            <Link href={`/venues/${cur.id}`} className={`mt-2 inline-block rounded text-sm font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>
               Edit quote, contract &amp; deposits →
             </Link>
           </div>
@@ -347,7 +353,7 @@ export default function BudgetBuilder({
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-serif text-xl font-medium">Budget breakdown</h2>
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={exportCsv} className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-sm font-semibold text-ink-2 hover:border-sage-deep hover:text-ink">
+              <button onClick={exportCsv} className={`flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-sm font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}>
                 <Download className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                 Export
               </button>
@@ -381,7 +387,7 @@ export default function BudgetBuilder({
               if (q && items.length === 0) return null;
               return (
                 <div key={g.name} className="overflow-hidden rounded-2xl border border-line bg-paper shadow-sm">
-                  <button onClick={() => toggleGroup(g.name)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-bg">
+                  <button onClick={() => toggleGroup(g.name)} className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-bg ${FOCUS_RING}`}>
                     {open ? <ChevronDown className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden /> : <ChevronRight className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />}
                     <Icon className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
                     <span className="font-serif text-base font-medium">{g.name}</span>
@@ -475,21 +481,21 @@ export default function BudgetBuilder({
                                       <button
                                         onClick={() => setEditingExpenseId(editingThis ? null : expense.id)}
                                         aria-label={editingThis ? "Done editing" : `Edit ${expense.label}`}
-                                        className="flex h-6 w-6 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-ink"
+                                        className={`flex h-6 w-6 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-ink ${FOCUS_RING}`}
                                       >
                                         <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                                       </button>
                                       <button
                                         onClick={() => duplicateExpense(expense)}
                                         aria-label={`Duplicate ${expense.label}`}
-                                        className="flex h-6 w-6 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-ink"
+                                        className={`flex h-6 w-6 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-ink ${FOCUS_RING}`}
                                       >
                                         <Copy className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                                       </button>
                                       <button
                                         onClick={() => removeExpense(expense.id)}
                                         aria-label={`Remove ${expense.label}`}
-                                        className="flex h-6 w-6 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-wine"
+                                        className={`flex h-6 w-6 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}
                                       >
                                         <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                                       </button>
@@ -503,7 +509,7 @@ export default function BudgetBuilder({
                       </table>
                       <button
                         onClick={() => addExpense(g.name)}
-                        className="flex w-full items-center gap-1.5 border-t border-line px-4 py-2.5 text-left text-sm font-semibold text-sage-deep hover:bg-bg"
+                        className={`flex w-full items-center gap-1.5 border-t border-line px-4 py-2.5 text-left text-sm font-semibold text-sage-deep hover:bg-bg ${FOCUS_RING}`}
                       >
                         <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
                         Add expense to {g.name}

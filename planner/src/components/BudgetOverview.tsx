@@ -20,6 +20,8 @@ const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
   Other: MoreHorizontal,
 };
 
+const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
+
 export default function BudgetOverview({
   venues,
   settings,
@@ -58,8 +60,9 @@ export default function BudgetOverview({
   if (cur.is_final && !cur.quote_received) risks.push(`${cur.name} hasn't sent a complete quote yet — the total below is still an estimate.`);
   if (breakdown.grand > BUDGET_CEILING) risks.push(`Estimated total is ${fmt(breakdown.grand - BUDGET_CEILING)} over your preferred ceiling.`);
   if (overdueCount > 0) risks.push(`${overdueCount} payment${overdueCount === 1 ? "" : "s"} overdue.`);
-  const emptyGroup = breakdown.groups.find((g) => g.total === 0 && g.name !== "Other");
-  if (emptyGroup) risks.push(`No costs recorded yet for ${emptyGroup.name}.`);
+  breakdown.groups
+    .filter((g) => g.total === 0 && g.name !== "Other")
+    .forEach((g) => risks.push(`No costs recorded yet for ${g.name}.`));
 
   return (
     <div className="flex flex-col gap-6">
@@ -117,7 +120,7 @@ export default function BudgetOverview({
               );
             })}
           </div>
-          <Link href="/budget/builder" className="mt-4 inline-block text-sm font-semibold text-sage-deep underline underline-offset-2">
+          <Link href="/budget/builder" className={`mt-4 inline-block rounded text-sm font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>
             Open the budget builder →
           </Link>
         </div>
@@ -126,7 +129,7 @@ export default function BudgetOverview({
           <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="font-serif text-lg font-medium">Upcoming payments</h2>
-              <Link href="/budget/payments" className="text-sm font-semibold text-green">View all →</Link>
+              <Link href="/budget/payments" className={`rounded text-sm font-semibold text-green ${FOCUS_RING}`}>View all →</Link>
             </div>
             {upcoming.length === 0 ? (
               <p className="mt-3 text-sm text-ink-2">Nothing due — you&apos;re all caught up.</p>

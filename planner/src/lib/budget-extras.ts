@@ -102,12 +102,6 @@ export function paymentStatus(p: Pick<Payment, "status" | "due_date">): PaymentS
   return "upcoming";
 }
 
-export function isDueSoon(dueDate: string | null): boolean {
-  if (!dueDate) return false;
-  const days = (new Date(dueDate + "T00:00:00").getTime() - Date.now()) / 86400000;
-  return days >= 0 && days <= 14;
-}
-
 export function formatDueDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
