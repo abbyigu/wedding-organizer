@@ -7,12 +7,6 @@
 -- The fix is a SECURITY DEFINER helper function: it runs with the
 -- privileges of its owner, so its internal query bypasses RLS instead of
 -- re-triggering the policy that's calling it.
---
--- venue_ratings' "read partner rating after voting" policy has the exact
--- same self-referencing shape. It happens not to have been exercised yet
--- (the dashboard only ever queries a user's own ratings), but it would hit
--- this identical error the first time both of you rate the same venue —
--- fixing it here too, same pattern, before that surprises anyone.
 
 create or replace function has_cast_idea_reaction(p_idea_id uuid, p_user_id uuid)
 returns boolean
@@ -33,21 +27,31 @@ create policy "read partner reaction after voting" on idea_reactions
     auth.role() = 'authenticated' and has_cast_idea_reaction(idea_id, auth.uid())
   );
 
-create or replace function has_cast_venue_rating(p_venue_id uuid, p_user_id uuid)
-returns boolean
-language sql
-security definer
-set search_path = public
-stable
-as $$
-  select exists (
-    select 1 from venue_ratings
-    where venue_id = p_venue_id and rater_id = p_user_id
-  );
-$$;
+-- venue_ratings' "read partner rating after voting" policy has the exact
+-- same self-referencing shape, which would hit this identical error the
+-- first time both of you rate the same venue. Only fix it if that table
+-- actually exists in this database (migration 005 creates it) — it
+-- doesn't yet in this project, so this block is a no-op for now.
+do $$
+begin
+  if to_regclass('public.venue_ratings') is not null then
+    create or replace function has_cast_venue_rating(p_venue_id uuid, p_user_id uuid)
+    returns boolean
+    language sql
+    security definer
+    set search_path = public
+    stable
+    as $fn$
+      select exists (
+        select 1 from venue_ratings
+        where venue_id = p_venue_id and rater_id = p_user_id
+      );
+    $fn$;
 
-drop policy if exists "read partner rating after voting" on venue_ratings;
-create policy "read partner rating after voting" on venue_ratings
-  for select using (
-    auth.role() = 'authenticated' and has_cast_venue_rating(venue_id, auth.uid())
-  );
+    drop policy if exists "read partner rating after voting" on venue_ratings;
+    create policy "read partner rating after voting" on venue_ratings
+      for select using (
+        auth.role() = 'authenticated' and has_cast_venue_rating(venue_id, auth.uid())
+      );
+  end if;
+end $$;
