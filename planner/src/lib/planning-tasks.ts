@@ -14,6 +14,7 @@ export type PlanningTask = {
   effort: string;
   estimated_cost: number | null;
   sort_order: number;
+  diy_project_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -41,6 +42,7 @@ export const CATEGORIES = [
   "Ceremony",
   "Photography",
   "Lodging",
+  "DIY",
   "Other",
 ] as const;
 
@@ -56,6 +58,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Ceremony: "var(--gold)",
   Photography: "var(--sage-deep)",
   Lodging: "var(--wood)",
+  DIY: "var(--green)",
   Other: "var(--sage)",
 };
 
