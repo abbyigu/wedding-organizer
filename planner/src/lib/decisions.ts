@@ -68,3 +68,87 @@ export function weightedScore(scores: Record<string, number>, criteria: Criterio
 export function fmtScore(n: number | null): string {
   return n == null ? "—" : n.toFixed(1);
 }
+
+// Generic decision framework — any wedding decision, not just venues.
+// The Venue decision keeps using venues/venue_ratings and only shows up
+// here as a shortcut row (link_href set) pointing at its own page.
+
+export type DecisionOption = {
+  id: string;
+  decision_id: string;
+  label: string;
+  image_url: string;
+  notes: string;
+  status: "active" | "out";
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DecisionVote = {
+  id: string;
+  decision_id: string;
+  option_id: string;
+  voter_id: string;
+  voter_name: string;
+  scores: Record<string, number>;
+  note: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GenericDecision = {
+  id: string;
+  category: string;
+  title: string;
+  description: string;
+  criteria: Criterion[];
+  link_href: string | null;
+  is_final: boolean;
+  final_option_id: string | null;
+  final_reason: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export const DECISION_CATEGORIES = [
+  "Venue",
+  "Guests",
+  "Budget",
+  "Vendors",
+  "Style & Details",
+  "Ceremony",
+  "Reception",
+  "Travel & Logistics",
+  "Other",
+];
+
+export function blankOption(decisionId: string, sortOrder: number): Partial<DecisionOption> {
+  return { decision_id: decisionId, label: "New option", image_url: "", notes: "", status: "active", sort_order: sortOrder };
+}
+
+export function slugCriterionKey(label: string, existing: string[]): string {
+  const base = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "criterion";
+  let key = base;
+  let i = 1;
+  while (existing.includes(key)) key = `${base}_${i++}`;
+  return key;
+}
+
+export type DecisionStatusKind = "not_started" | "in_progress" | "your_turn" | "waiting_partner" | "ready_to_reveal" | "decided";
+
+export type DecisionStatus = { kind: DecisionStatusKind; label: string; progress: number };
+
+// Same status math for a venue decision (options = active venues) and a
+// generic one (options = decision_options) — whoever has rated how many.
+export function statusOf(optionCount: number, myCount: number, partnerCount: number, isFinal: boolean, partnerLabel: string): DecisionStatus {
+  if (isFinal) return { kind: "decided", label: "Decided", progress: 1 };
+  if (optionCount === 0) return { kind: "not_started", label: "Add options to begin", progress: 0 };
+  const progress = (myCount + partnerCount) / (optionCount * 2);
+  if (myCount === 0 && partnerCount === 0) return { kind: "not_started", label: "Not started", progress: 0 };
+  if (myCount === optionCount && partnerCount === optionCount) return { kind: "ready_to_reveal", label: "Ready to reveal", progress };
+  if (myCount === optionCount) return { kind: "waiting_partner", label: `Waiting on ${partnerLabel}`, progress };
+  if (partnerCount === optionCount) return { kind: "your_turn", label: "Your turn", progress };
+  return { kind: "in_progress", label: `In progress (${Math.round(progress * 100)}%)`, progress };
+}

@@ -145,7 +145,7 @@ export function computeActionItems(ctx: {
       description: "Your rating stays hidden until you submit it.",
       person: ctx.userName,
       effort: "5 min",
-      href: "/decide",
+      href: "/decide/venue",
     });
   }
 

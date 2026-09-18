@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import Decide from "@/components/Decide";
+import DecideDashboard, { type DecisionSummary } from "@/components/DecideDashboard";
 import { displayName } from "@/lib/auth-names";
-import { DEFAULT_CRITERIA, type Criterion } from "@/lib/decisions";
+import { partnerName } from "@/lib/ideas";
+import { statusOf, type DecisionOption, type GenericDecision } from "@/lib/decisions";
 
 export const dynamic = "force-dynamic";
 
@@ -10,24 +11,50 @@ export default async function DecidePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const userName = displayName(user?.email);
+  const userId = user?.id ?? "";
+  const partner = partnerName(userName || "Ariel");
 
-  const [{ data: venues }, { data: ratings }, { data: settingsRow }, { data: events }] = await Promise.all([
-    supabase.from("venues").select("*").order("sort_order", { ascending: true }),
-    supabase.from("venue_ratings").select("*"),
-    supabase.from("decision_settings").select("*").eq("id", true).maybeSingle(),
-    supabase.from("decision_events").select("*").order("created_at", { ascending: false }).limit(50),
+  const [{ data: decisions }, { data: options }, { data: votes }, { data: venues }, { data: venueRatings }] = await Promise.all([
+    supabase.from("decisions").select("*").order("sort_order", { ascending: true }),
+    supabase.from("decision_options").select("*"),
+    supabase.from("decision_votes").select("decision_id, option_id, voter_id"),
+    supabase.from("venues").select("id, name, status, is_final"),
+    supabase.from("venue_ratings").select("venue_id, rater_id"),
   ]);
 
-  const criteria: Criterion[] = settingsRow?.criteria ?? DEFAULT_CRITERIA;
+  const activeVenues = (venues ?? []).filter((v) => v.status !== "out");
+  const finalVenue = (venues ?? []).find((v) => v.is_final);
+  const myVenueVotes = (venueRatings ?? []).filter((r) => r.rater_id === userId && activeVenues.some((v) => v.id === r.venue_id)).length;
+  const partnerVenueVotes = (venueRatings ?? []).filter((r) => r.rater_id !== userId && activeVenues.some((v) => v.id === r.venue_id)).length;
 
-  return (
-    <Decide
-      initialVenues={venues ?? []}
-      initialRatings={ratings ?? []}
-      initialCriteria={criteria}
-      initialEvents={events ?? []}
-      userName={displayName(user?.email)}
-      userId={user?.id ?? ""}
-    />
-  );
+  const summaries: DecisionSummary[] = (decisions ?? []).map((d: GenericDecision) => {
+    if (d.link_href === "/decide/venue") {
+      return {
+        id: d.id,
+        category: d.category,
+        title: d.title,
+        description: d.description,
+        href: d.link_href,
+        status: statusOf(activeVenues.length, myVenueVotes, partnerVenueVotes, !!finalVenue, partner),
+        finalLabel: finalVenue?.name,
+      };
+    }
+    const decisionOptions = (options ?? []).filter((o: DecisionOption) => o.decision_id === d.id && o.status !== "out");
+    const decisionVotes = (votes ?? []).filter((v) => v.decision_id === d.id);
+    const myCount = decisionVotes.filter((v) => v.voter_id === userId).length;
+    const partnerCount = decisionVotes.filter((v) => v.voter_id !== userId).length;
+    const finalOption = decisionOptions.find((o) => o.id === d.final_option_id);
+    return {
+      id: d.id,
+      category: d.category,
+      title: d.title,
+      description: d.description,
+      href: d.link_href ?? `/decide/${d.id}`,
+      status: statusOf(decisionOptions.length, myCount, partnerCount, d.is_final, partner),
+      finalLabel: finalOption?.label,
+    };
+  });
+
+  return <DecideDashboard summaries={summaries} userName={userName} partner={partner} />;
 }

@@ -28,7 +28,7 @@ const CRITERION_ICON: Record<string, ComponentType<{ className?: string; strokeW
   gut: Star,
 };
 
-export default function Decide({
+export default function DecideVenue({
   initialVenues,
   initialRatings,
   initialCriteria,
