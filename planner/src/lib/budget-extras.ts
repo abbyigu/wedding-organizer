@@ -40,14 +40,36 @@ export type BudgetExpense = {
   rate: number;
   unit: ExpenseUnit;
   qty: number;
+  venue_id: string | null;
   notes: string;
   sort_order: number;
   created_at: string;
   updated_at: string;
 };
 
-export function blankExpense(category: BudgetGroup, sortOrder: number): Partial<BudgetExpense> {
-  return { category, label: "New expense", rate: 0, unit: "flat", qty: 1, notes: "", sort_order: sortOrder };
+// venueId only matters for "Venue & catering" -- that's the only group tied
+// to whichever venue is currently selected. Every other category applies
+// regardless of venue, so it stays null (shows up no matter which venue
+// you're comparing against).
+export function blankExpense(category: BudgetGroup, sortOrder: number, venueId: string | null = null): Partial<BudgetExpense> {
+  return {
+    category,
+    label: "New expense",
+    rate: 0,
+    unit: "flat",
+    qty: 1,
+    venue_id: category === "Venue & catering" ? venueId : null,
+    notes: "",
+    sort_order: sortOrder,
+  };
+}
+
+// A "Venue & catering" expense tagged to a specific venue only counts
+// toward that venue's breakdown -- otherwise adding one while comparing
+// Venue A would silently show up under every other venue too. Untagged
+// rows (venue_id null) and every non-catering category stay global.
+export function expenseAppliesTo(e: Pick<BudgetExpense, "category" | "venue_id">, venueId: string): boolean {
+  return e.category !== "Venue & catering" || e.venue_id === null || e.venue_id === venueId;
 }
 
 // Only "Venue & catering" custom expenses pick up the venue's service
@@ -154,7 +176,7 @@ export function computeBreakdown(venue: Venue, as: Assumptions, sharedVals: numb
   });
 
   let expensesTotal = 0;
-  expenses.forEach((e) => {
+  expenses.filter((e) => expenseAppliesTo(e, venue.id)).forEach((e) => {
     const total = expenseTotal(e, as.adults, as.kids, as.svcPct, as.tax);
     expensesTotal += total;
     const group = (BUDGET_GROUPS as readonly string[]).includes(e.category) ? (e.category as BudgetGroup) : "Other";

@@ -125,7 +125,11 @@ export default function BudgetBuilder({
   async function addExpense(category: BudgetGroup) {
     setError("");
     const count = expenses.filter((e) => e.category === category).length;
-    const { data, error } = await supabase.from("budget_expenses").insert(blankExpense(category, count)).select().single();
+    const { data, error } = await supabase
+      .from("budget_expenses")
+      .insert(blankExpense(category, count, cur?.id ?? null))
+      .select()
+      .single();
     if (error) setError(error.message);
     else if (data) {
       setExpenses((es) => [...es, data as BudgetExpense]);
