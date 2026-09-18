@@ -224,7 +224,7 @@ export default function VenueProfile({
                   <div className="flex items-center gap-2 rounded-lg border border-dashed border-line bg-bg px-3 py-2 font-serif text-lg">
                     {fmt(calc.grand)}
                     <span className="text-sm font-normal text-ink-2">· {fmt(calc.perGuest)}/guest</span>
-                    <Link href="/budget" className="ml-auto text-sm font-semibold text-sage-deep underline underline-offset-2">Edit breakdown →</Link>
+                    <Link href={`/budget/builder?venue=${v.id}`} className="ml-auto text-sm font-semibold text-sage-deep underline underline-offset-2">Edit breakdown →</Link>
                   </div>
                 </div>
                 <label className="flex items-center gap-2 text-sm font-semibold">

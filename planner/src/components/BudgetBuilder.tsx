@@ -64,18 +64,22 @@ export default function BudgetBuilder({
   initialSettings,
   guestSummary,
   initialExpenses,
+  initialVenueId,
 }: {
   initialVenues: Venue[];
   initialSettings: BudgetSettings;
   guestSummary: { adults: number; kids: number; confirmedAdults: number; confirmedKids: number };
   initialExpenses: BudgetExpense[];
+  initialVenueId?: string | null;
 }) {
   const [venues, setVenues] = useState(initialVenues);
-  // Same precedence as the Overview page's "current venue", so the two pages
-  // agree on which venue the estimate is based on by default.
-  const [curId, setCurId] = useState(
-    () => (initialVenues.find((v) => v.is_final) ?? initialVenues.filter((v) => v.status !== "out")[0] ?? initialVenues[0])?.id ?? "",
-  );
+  // A ?venue= link (e.g. "Edit breakdown" from a venue's own page) wins;
+  // otherwise same precedence as the Overview page's "current venue", so
+  // the two pages agree on which venue the estimate is based on by default.
+  const [curId, setCurId] = useState(() => {
+    if (initialVenueId && initialVenues.some((v) => v.id === initialVenueId)) return initialVenueId;
+    return (initialVenues.find((v) => v.is_final) ?? initialVenues.filter((v) => v.status !== "out")[0] ?? initialVenues[0])?.id ?? "";
+  });
   const [settings, setSettings] = useState(initialSettings);
   const [expenses, setExpenses] = useState(initialExpenses);
   const [guestEditOpen, setGuestEditOpen] = useState(false);
