@@ -201,9 +201,7 @@ export default function IdeaBoard({
     <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <Link href="/" className="text-sm text-ink-2 underline underline-offset-2">← Dashboard</Link>
-
-        <div className="mt-4">
+        <div>
           <h1 className="font-serif text-3xl font-medium sm:text-4xl">Our Inspiration Board</h1>
           <p className="mt-2 max-w-2xl text-ink-2">Everything we want our wedding to feel like.</p>
         </div>

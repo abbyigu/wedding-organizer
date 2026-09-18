@@ -151,9 +151,7 @@ export default function VenueProfile({
     <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <Link href="/" className="text-sm text-ink-2 underline underline-offset-2">← Dashboard</Link>
-
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex-1 min-w-64">
             <input {...field("name")} className="w-full border-b border-transparent bg-transparent font-serif text-3xl font-medium outline-none focus:border-gold" aria-label="Venue name" />
             <input {...field("location")} placeholder="Where is it?" className="mt-1 w-full border-b border-transparent bg-transparent text-ink-2 outline-none focus:border-gold" aria-label="Location" />

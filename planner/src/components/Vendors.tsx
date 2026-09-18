@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState } from "react";
 import { Plus, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import NavBar from "@/components/NavBar";
 import {
   blankVendor,
   VENDOR_CATEGORIES,
@@ -23,7 +22,7 @@ function statusPillClass(status: VendorStatus) {
   return "border-line bg-bg text-ink-2";
 }
 
-export default function Vendors({ initialVendors, userName }: { initialVendors: Vendor[]; userName: string }) {
+export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }) {
   const [vendors, setVendors] = useState(initialVendors);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -82,23 +81,16 @@ export default function Vendors({ initialVendors, userName }: { initialVendors: 
   }
 
   return (
-    <div className="min-h-screen pb-20 lg:pl-56">
-      <NavBar userName={userName} />
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden">
-          <div>
-            <h1 className="font-serif text-3xl font-medium sm:text-4xl">Vendors</h1>
-            <p className="mt-2 text-ink-2">Everyone you&apos;re hiring, in one place.</p>
-          </div>
-          <button onClick={addVendor} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
-            <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
-            Add vendor
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
-        </div>
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ink-2">Everyone you&apos;re hiring, in one place.</p>
+        <button onClick={addVendor} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
+          <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
+          Add vendor
+        </button>
+      </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[200px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-2" strokeWidth={1.5} aria-hidden />
             <input
@@ -138,7 +130,6 @@ export default function Vendors({ initialVendors, userName }: { initialVendors: 
             </div>
           ))}
         </div>
-      </div>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -260,6 +251,6 @@ export default function Vendors({ initialVendors, userName }: { initialVendors: 
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

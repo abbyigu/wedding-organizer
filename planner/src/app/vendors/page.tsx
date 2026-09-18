@@ -1,18 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
-import Vendors from "@/components/Vendors";
-import { displayName } from "@/lib/auth-names";
+import PotentialVendors from "@/components/PotentialVendors";
+import type { PotentialVendor } from "@/lib/potential-vendors";
 
 export const dynamic = "force-dynamic";
 
-export default async function VendorsPage() {
+export default async function PotentialVendorsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const { data: vendors } = await supabase
-    .from("vendors")
+    .from("potential_vendors")
     .select("*")
     .order("sort_order", { ascending: true });
 
-  return <Vendors initialVendors={vendors ?? []} userName={displayName(user?.email)} />;
+  return <PotentialVendors initialVendors={(vendors ?? []) as PotentialVendor[]} />;
 }
