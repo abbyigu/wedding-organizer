@@ -1,18 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
-import Guests from "@/components/Guests";
-import { displayName } from "@/lib/auth-names";
+import GuestsOverview from "@/components/GuestsOverview";
+import type { HotelBlock } from "@/lib/travel";
 
 export const dynamic = "force-dynamic";
 
-export default async function GuestsPage() {
+export default async function GuestsOverviewPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: guests } = await supabase
-    .from("guests")
-    .select("*")
-    .order("sort_order", { ascending: true });
+  const [{ data: guests }, { data: hotelBlocks }] = await Promise.all([
+    supabase.from("guests").select("*").order("sort_order", { ascending: true }),
+    supabase.from("hotel_blocks").select("*"),
+  ]);
 
-  return <Guests initialGuests={guests ?? []} userName={displayName(user?.email)} />;
+  return <GuestsOverview guests={guests ?? []} hotelBlocks={(hotelBlocks ?? []) as HotelBlock[]} />;
 }

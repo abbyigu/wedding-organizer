@@ -286,7 +286,7 @@ export default function BudgetBuilder({
                 ) : (
                   <p className="text-xs text-ink-2">
                     From {settings.guest_scenario === "confirmed" ? "confirmed Yes RSVPs" : "the full guest list"}.{" "}
-                    <Link href="/guests" className={`rounded font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>Edit guest list →</Link>
+                    <Link href="/guests/list" className={`rounded font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>Edit guest list →</Link>
                   </p>
                 )}
               </div>

@@ -135,7 +135,7 @@ export function computeActionItems(ctx: {
       description: "Move optional invitations into a second-tier list.",
       person: ctx.userName,
       effort: "10 min",
-      href: "/guests",
+      href: "/guests/list",
     });
   }
 

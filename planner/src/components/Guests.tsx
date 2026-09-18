@@ -1,14 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { CircleCheck, Download, Ellipsis, Plus, Search, UserRoundX, Users, X } from "lucide-react";
+import { CircleCheck, Download, Ellipsis, HeartPulse, Plus, Search, UserRoundX, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import NavBar from "@/components/NavBar";
 import {
   blankGuest,
   groupByCategory,
   groupDisplayLabel,
   guestGroupOptions,
+  guestNeeds,
   guestSummary,
   guestsToCsv,
   RSVP_LABELS,
@@ -42,7 +42,7 @@ function guestTags(g: Guest): string[] {
   return tags;
 }
 
-export default function Guests({ initialGuests, userName }: { initialGuests: Guest[]; userName: string }) {
+export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
   const [guests, setGuests] = useState(initialGuests);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -50,6 +50,7 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
   const [groupFilter, setGroupFilter] = useState("all");
   const [rsvpFilter, setRsvpFilter] = useState<"all" | RsvpStatus>("all");
   const [childrenFilter, setChildrenFilter] = useState<"any" | "with" | "none">("any");
+  const [needsOnly, setNeedsOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   const [moreOpenId, setMoreOpenId] = useState<string | null>(null);
@@ -73,9 +74,10 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
       if (rsvpFilter !== "all" && g.rsvp_status !== rsvpFilter) return false;
       if (childrenFilter === "with" && g.kids_count === 0) return false;
       if (childrenFilter === "none" && g.kids_count > 0) return false;
+      if (needsOnly && guestNeeds(g).length === 0) return false;
       return true;
     });
-  }, [guests, search, groupFilter, rsvpFilter, childrenFilter]);
+  }, [guests, search, groupFilter, rsvpFilter, childrenFilter, needsOnly]);
 
   const grouped = groupByCategory(filtered);
 
@@ -179,30 +181,16 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
   }
 
   return (
-    <div className="min-h-screen lg:pl-56">
-      <NavBar userName={userName} />
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <div className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden">
-          <div>
-            <h1 className="font-serif text-3xl font-medium sm:text-4xl">Guest List</h1>
-            <p className="mt-2 max-w-2xl text-ink-2">{summary.households} households · shared and live.</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <button onClick={addGuest} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
-              <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
-              Add household
-            </button>
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/botanical-accent.png"
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute -right-6 -top-10 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block"
-          />
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-ink-2">{summary.households} households · shared and live.</p>
+          <button onClick={addGuest} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
+            <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
+            Add household
+          </button>
         </div>
 
-        <div className="relative mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
+        <div className="relative mt-4 rounded-2xl border border-line bg-paper p-5 shadow-sm">
           <div className="flex flex-wrap gap-x-8 gap-y-4">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--sage)_28%,var(--paper))] text-sage-deep">
@@ -332,6 +320,16 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
           </div>
 
           <div className="hidden h-6 w-px bg-line sm:block" />
+
+          <button
+            onClick={() => setNeedsOnly((v) => !v)}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold ${
+              needsOnly ? "border-sage-deep bg-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep hover:text-ink"
+            }`}
+          >
+            <HeartPulse className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+            Needs &amp; care
+          </button>
 
           <button
             onClick={exportCsv}
@@ -498,7 +496,6 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
             );
           })}
         </div>
-      </div>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -675,6 +672,6 @@ export default function Guests({ initialGuests, userName }: { initialGuests: Gue
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
