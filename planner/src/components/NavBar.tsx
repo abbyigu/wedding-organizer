@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { CalendarHeart, GitCompare, Hammer, Handshake, Home, Images, KanbanSquare, Landmark, Scale, Users, Wallet } from "lucide-react";
+import { CalendarHeart, Hammer, Handshake, Home, Images, KanbanSquare, Landmark, Scale, Users, Wallet } from "lucide-react";
 
 type NavLink = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }>; indent?: boolean };
 
@@ -28,7 +28,6 @@ const NAV_GROUPS: { label: string | null; links: NavLink[] }[] = [
     label: "Create",
     links: [
       { href: "/venues", label: "Venue", icon: Landmark },
-      { href: "/venues?tab=compare", label: "Compare venues", icon: GitCompare, indent: true },
       { href: "/ideas", label: "Inspiration Board", icon: Images },
       { href: "/diy", label: "DIY Projects", icon: Hammer },
     ],
@@ -44,23 +43,12 @@ function partnerName(name: string) {
 
 export default function NavBar({ userName }: { userName: string }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [accountOpen, setAccountOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const partner = partnerName(userName);
 
   function isActive(href: string) {
-    const [path, query] = href.split("?");
-    const pathMatches = path === "/" ? pathname === "/" : pathname.startsWith(path);
-    if (!pathMatches) return false;
-    // /venues and /venues?tab=compare share a pathname — disambiguate by the tab param
-    // so only one of "Venue Shortlist" / "Compare venues" is highlighted at a time.
-    if (path === "/venues") {
-      const wantTab = query ? new URLSearchParams(query).get("tab") : null;
-      const actualTab = searchParams.get("tab");
-      return wantTab ? actualTab === wantTab : !actualTab;
-    }
-    return true;
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
   }
 
   const accountItems = (
