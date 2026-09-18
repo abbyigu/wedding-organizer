@@ -56,7 +56,7 @@ const SCENARIOS: { key: GuestScenario; label: string }[] = [
 ];
 
 function unitLabel(u: ExpenseUnit) {
-  return u === "adult" ? "per adult" : u === "kid" ? "per child" : u === "adult+kid" ? "per guest" : "flat";
+  return u === "adult" ? "per adult" : u === "kid" ? "per child" : u === "adult+kid" ? "per guest" : u === "hour" ? "per hour" : "flat";
 }
 
 export default function BudgetBuilder({
@@ -466,10 +466,24 @@ export default function BudgetBuilder({
                                         <option value="adult">per adult</option>
                                         <option value="kid">per child</option>
                                         <option value="adult+kid">per guest</option>
+                                        <option value="hour">by hour</option>
                                       </select>
+                                      {expense.unit === "hour" && (
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          step={0.5}
+                                          defaultValue={expense.qty}
+                                          onChange={(e) => scheduleExpenseSave(expense.id, { qty: +e.target.value || 0 })}
+                                          aria-label="Hours"
+                                          className="w-14 rounded border border-line bg-bg px-1.5 py-1 text-xs"
+                                        />
+                                      )}
                                     </div>
                                   ) : isExpense && expense ? (
-                                    <span className="text-xs text-ink-2">{unitLabel(expense.unit)}</span>
+                                    <span className="text-xs text-ink-2">
+                                      {expense.unit === "hour" ? `${fmt(expense.rate)}/hr × ${expense.qty}h` : unitLabel(expense.unit)}
+                                    </span>
                                   ) : (
                                     <span className="text-xs text-ink-2">included</span>
                                   )}

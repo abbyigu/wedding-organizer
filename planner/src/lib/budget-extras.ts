@@ -30,7 +30,7 @@ export const SHARED_LINE_GROUPS: Record<string, BudgetGroup> = {
   "Gifts, favours, thank-yous": "Other",
 };
 
-export type ExpenseUnit = "flat" | "adult" | "kid" | "adult+kid";
+export type ExpenseUnit = "flat" | "adult" | "kid" | "adult+kid" | "hour";
 
 export type BudgetExpense = {
   id: string;
@@ -38,6 +38,7 @@ export type BudgetExpense = {
   label: string;
   rate: number;
   unit: ExpenseUnit;
+  qty: number;
   notes: string;
   sort_order: number;
   created_at: string;
@@ -45,14 +46,16 @@ export type BudgetExpense = {
 };
 
 export function blankExpense(category: BudgetGroup, sortOrder: number): Partial<BudgetExpense> {
-  return { category, label: "New expense", rate: 0, unit: "flat", notes: "", sort_order: sortOrder };
+  return { category, label: "New expense", rate: 0, unit: "flat", qty: 1, notes: "", sort_order: sortOrder };
 }
 
 // Only "Venue & catering" custom expenses pick up the venue's service
 // charge — matches how the venue's own lines and the fixed shared-cost
 // list already work (shared lines never get a service charge either).
-export function expenseTotal(e: Pick<BudgetExpense, "rate" | "unit" | "category">, adults: number, kids: number, svcPct: number, tax: boolean) {
-  const qty = e.unit === "adult" ? adults : e.unit === "kid" ? kids : e.unit === "adult+kid" ? adults + kids : 1;
+// "hour" uses the expense's own qty (e.g. a 5-hour open bar) instead of a
+// guest count, since hours aren't derived from the guest list.
+export function expenseTotal(e: Pick<BudgetExpense, "rate" | "unit" | "category" | "qty">, adults: number, kids: number, svcPct: number, tax: boolean) {
+  const qty = e.unit === "adult" ? adults : e.unit === "kid" ? kids : e.unit === "adult+kid" ? adults + kids : e.unit === "hour" ? e.qty || 1 : 1;
   const svc = e.category === "Venue & catering" ? 1 + svcPct / 100 : 1;
   const taxMul = tax ? TAX_RATE : 1;
   return e.rate * qty * svc * taxMul;
