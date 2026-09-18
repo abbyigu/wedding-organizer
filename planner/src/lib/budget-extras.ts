@@ -28,6 +28,7 @@ export const SHARED_LINE_GROUPS: Record<string, BudgetGroup> = {
   "Couple's cake + Mlle Cupcake": "Other",
   "Music via app + sound/AV": "Other",
   "Gifts, favours, thank-yous": "Other",
+  "SOCAN + Re:Sound tariff": "Other",
 };
 
 export type ExpenseUnit = "flat" | "adult" | "kid" | "adult+kid" | "hour";

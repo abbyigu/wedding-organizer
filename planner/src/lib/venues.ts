@@ -231,6 +231,7 @@ export const SHARED_LINES: [label: string, amount: number, note: string][] = [
   ["Couple's cake + Mlle Cupcake", 600, ""],
   ["Music via app + sound/AV", 400, "live cocktail musician: +$800 nice-to-have"],
   ["Gifts, favours, thank-yous", 500, ""],
+  ["SOCAN + Re:Sound tariff", 75, "music licensing fee for the reception — confirm the current tariff"],
 ];
 
 export type Assumptions = { adults: number; kids: number; svcPct: number; contPct: number; tax: boolean };
