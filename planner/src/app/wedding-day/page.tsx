@@ -9,10 +9,10 @@ export default async function WeddingDayPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: events } = await supabase
-    .from("wedding_day_events")
-    .select("*")
-    .order("sort_order", { ascending: true });
+  const [{ data: events }, { data: finalVenues }] = await Promise.all([
+    supabase.from("wedding_day_events").select("*").order("sort_order", { ascending: true }),
+    supabase.from("venues").select("id").eq("is_final", true).limit(1),
+  ]);
 
-  return <WeddingDay initialEvents={events ?? []} userName={displayName(user?.email)} />;
+  return <WeddingDay initialEvents={events ?? []} userName={displayName(user?.email)} venueConfirmed={!!finalVenues?.length} />;
 }

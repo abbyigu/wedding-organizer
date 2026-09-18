@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -8,11 +9,61 @@ import { blankWeddingDayEvent, type WeddingDayEvent } from "@/lib/wedding-day";
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
-export default function WeddingDay({ initialEvents, userName }: { initialEvents: WeddingDayEvent[]; userName: string }) {
+// What this page grows into once there's a confirmed venue and date to plan
+// the day itself around — the master timeline (built below) is the first
+// piece; the rest is future scope, not half-built placeholders.
+const PLANNED_SECTIONS = [
+  "Who's responsible for each moment",
+  "Vendor arrival times",
+  "Setup instructions",
+  "Ceremony order",
+  "Family-photo list",
+  "Reception events",
+  "Transportation timing",
+  "Emergency contacts",
+  "Printable run-of-show",
+];
+
+function ComingLater({ userName }: { userName: string }) {
+  return (
+    <div className="min-h-screen pb-20 lg:pl-56">
+      <NavBar userName={userName} />
+      <div className="mx-auto max-w-3xl px-4 py-8">
+        <div className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden">
+          <div>
+            <h1 className="font-serif text-3xl font-medium sm:text-4xl">Wedding Day</h1>
+            <p className="mt-2 text-ink-2">Coming later — once your venue and date are locked in.</p>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/botanical-accent.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-line bg-paper p-6 shadow-sm">
+          <p className="text-sm text-ink-2">
+            The Planning Board manages everything leading up to the wedding. Wedding Day is different — it&apos;ll organize the sequence of the day itself, once there&apos;s a confirmed venue to plan it around:
+          </p>
+          <ul className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 text-sm text-ink-2 sm:grid-cols-2">
+            <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sage-deep" />Master timeline</li>
+            {PLANNED_SECTIONS.map((s) => (
+              <li key={s} className="flex items-center gap-2"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sage-deep" />{s}</li>
+            ))}
+          </ul>
+          <Link href="/venues" className={`mt-5 inline-block rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+            Go confirm a venue →
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function WeddingDay({ initialEvents, userName, venueConfirmed }: { initialEvents: WeddingDayEvent[]; userName: string; venueConfirmed: boolean }) {
   const [events, setEvents] = useState(initialEvents);
   const [error, setError] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
+
+  if (!venueConfirmed) return <ComingLater userName={userName} />;
 
   function scheduleSave(id: string, patch: Partial<WeddingDayEvent>) {
     setEvents((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
