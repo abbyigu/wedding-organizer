@@ -253,19 +253,26 @@ export default function IdeaBoard({
             Nothing here yet — add an idea above, then paste in an image address (right-click a photo → Copy image address).
           </p>
         ) : view === "mood" ? (
-          <div className="mt-6 columns-2 gap-2 sm:columns-4 xl:columns-5">
-            {shown.filter((i) => i.image_url).map((idea) => (
-              <button
-                key={idea.id}
-                onClick={() => setOpenId(idea.id)}
-                className={`mb-2 block w-full overflow-hidden rounded-lg break-inside-avoid ${FOCUS_RING}`}
-                aria-label={`Open ${idea.title}`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={normalizeUrl(idea.image_url)} alt={idea.title} className="w-full object-cover" />
-              </button>
-            ))}
-          </div>
+          (() => {
+            const moodItems = shown.filter((i) => i.image_url && i.visibility !== "private");
+            return moodItems.length === 0 ? (
+              <p className="mt-8 text-sm text-ink-2">Nothing to show — private ideas are left out of the mood board.</p>
+            ) : (
+              <div className="mt-6 columns-2 gap-2 sm:columns-4 xl:columns-5">
+                {moodItems.map((idea) => (
+                  <button
+                    key={idea.id}
+                    onClick={() => setOpenId(idea.id)}
+                    className={`mb-2 block w-full overflow-hidden rounded-lg break-inside-avoid ${FOCUS_RING}`}
+                    aria-label={`Open ${idea.title}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={normalizeUrl(idea.image_url)} alt={idea.title} className="w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            );
+          })()
         ) : (
           <div className="mt-6 columns-2 gap-4 sm:columns-3 xl:columns-4">
             {shown.map((idea) => {
