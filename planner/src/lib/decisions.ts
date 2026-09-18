@@ -39,6 +39,15 @@ export const CRITERION_HELP: Record<string, string> = {
   gut: "How strongly you can picture getting married there.",
 };
 
+export const CRITERION_CONSIDERATIONS: Record<string, string[]> = {
+  location: ["Driving time", "Out-of-town guest travel", "Parking", "Shuttle requirements", "Ferry access", "Nearby accommodations"],
+  budget: ["Venue fee", "Food and beverage", "Service charges", "Required rentals", "Transportation", "Potential surprise expenses"],
+  food: ["Food quality", "Menu flexibility", "Dietary needs", "Children's meals", "Bar options", "Late-night food"],
+  character: ["Historic or modern character", "Natural setting", "Views", "Warmth and intimacy", "Indoor and outdoor spaces", "Existing décor"],
+  logistics: ["Guest capacity", "Rain plan", "Accessibility", "Setup time", "Vendor restrictions", "Ceremony-to-reception transition"],
+  gut: ["Can you picture yourselves getting married there?", "Did it feel welcoming?", "Are you excited to bring your families there?", "Does anything make you hesitate?"],
+};
+
 export function blankScores(criteria: Criterion[], value = 3): Record<string, number> {
   return Object.fromEntries(criteria.map((c) => [c.key, value]));
 }
