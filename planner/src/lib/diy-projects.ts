@@ -22,6 +22,7 @@ export type DiyProject = {
   instructions_url: string;
   progress_photos: string[];
   related_area: string;
+  idea_pin_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -63,5 +64,6 @@ export function blankDiyProject(status: DiyStatus, sortOrder: number): Partial<D
     instructions_url: "",
     progress_photos: [],
     related_area: "Other",
+    idea_pin_id: null,
   };
 }

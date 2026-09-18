@@ -6,6 +6,7 @@ import { Ellipsis, FolderInput, Hammer, Heart, ListChecks, Lock, Pencil, SquareC
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import { fmt } from "@/lib/venues";
+import { blankDiyProject } from "@/lib/diy-projects";
 import {
   blankIdea,
   collectionTabs,
@@ -43,14 +44,17 @@ export default function IdeaBoard({
   initialReactions,
   userName,
   userId,
+  linkedDiyIdeaIds,
 }: {
   initialIdeas: IdeaPin[];
   initialReactions: IdeaReaction[];
   userName: string;
   userId: string;
+  linkedDiyIdeaIds: string[];
 }) {
   const [ideas, setIdeas] = useState(initialIdeas);
   const [reactions, setReactions] = useState(initialReactions);
+  const [diyLinked, setDiyLinked] = useState(new Set(linkedDiyIdeaIds));
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [view, setView] = useState<"ideas" | "mood">("ideas");
@@ -123,6 +127,23 @@ export default function IdeaBoard({
     // your partner's reaction too (the blind-voting reveal condition).
     const { data } = await supabase.from("idea_reactions").select("*").eq("idea_id", ideaId);
     if (data) setReactions((rs) => [...rs.filter((r) => r.idea_id !== ideaId), ...(data as IdeaReaction[])]);
+  }
+
+  async function addToDiyProjects(idea: IdeaPin) {
+    setError("");
+    const { error } = await supabase.from("diy_projects").insert({
+      ...blankDiyProject("idea", 0),
+      title: idea.title,
+      reference_image: idea.image_url,
+      notes: idea.note,
+      cost_estimate: idea.price,
+      idea_pin_id: idea.id,
+    });
+    if (error) setError(error.message);
+    else {
+      setDiyLinked((s) => new Set(s).add(idea.id));
+      flash("Added to DIY Projects — find it in the Idea column.");
+    }
   }
 
   async function addToTasks(idea: IdeaPin) {
@@ -515,14 +536,22 @@ export default function IdeaBoard({
 
                     <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Turn into action</label>
                     <div className="mx-1 mt-1 flex flex-wrap gap-2">
-                      {open.category !== "DIY" && (
+                      {!diyLinked.has(open.id) ? (
                         <button
-                          onClick={() => saveNow(open.id, { category: "DIY" })}
+                          onClick={() => addToDiyProjects(open)}
                           className={`flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}
                         >
                           <Hammer className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                           Add to DIY Projects
                         </button>
+                      ) : (
+                        <Link
+                          href="/diy"
+                          className={`flex items-center gap-1.5 rounded-full border border-sage-deep bg-sage-deep/10 px-3 py-1.5 text-xs font-semibold text-sage-deep ${FOCUS_RING}`}
+                        >
+                          <Hammer className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                          View in DIY Projects
+                        </Link>
                       )}
                       <button
                         onClick={() => addToTasks(open)}

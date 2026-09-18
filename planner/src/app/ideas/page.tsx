@@ -10,9 +10,10 @@ export default async function IdeaBoardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: ideas }, { data: reactions }] = await Promise.all([
+  const [{ data: ideas }, { data: reactions }, { data: diyLinks }] = await Promise.all([
     supabase.from("idea_pins").select("*").order("sort_order", { ascending: true }),
     supabase.from("idea_reactions").select("*"),
+    supabase.from("diy_projects").select("idea_pin_id").not("idea_pin_id", "is", null),
   ]);
 
   return (
@@ -21,6 +22,7 @@ export default async function IdeaBoardPage() {
       initialReactions={reactions ?? []}
       userName={displayName(user?.email)}
       userId={user?.id ?? ""}
+      linkedDiyIdeaIds={(diyLinks ?? []).map((d) => d.idea_pin_id as string)}
     />
   );
 }
