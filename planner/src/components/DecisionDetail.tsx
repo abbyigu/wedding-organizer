@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import { Plus, Trash2 } from "lucide-react";
@@ -184,7 +185,8 @@ export default function DecisionDetail({
     <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">{decision.category}</p>
+        <Link href="/decide" className="text-sm text-ink-2 underline underline-offset-2">← All decisions</Link>
+        <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-ink-2">{decision.category}</p>
         <h1 className="mt-1 font-serif text-3xl font-medium sm:text-4xl">{decision.title}</h1>
         {decision.description && <p className="mt-2 max-w-2xl text-ink-2">{decision.description}</p>}
         {error && <p className="mt-2 text-sm text-wine">{error}</p>}

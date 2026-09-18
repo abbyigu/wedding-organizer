@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type ComponentType } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import { STATUSES, type Venue } from "@/lib/venues";
@@ -189,7 +190,8 @@ export default function DecideVenue({
     <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="font-serif text-3xl font-medium sm:text-4xl">Decide together</h1>
+        <Link href="/decide" className="text-sm text-ink-2 underline underline-offset-2">← All decisions</Link>
+        <h1 className="mt-2 font-serif text-3xl font-medium sm:text-4xl">Decide together</h1>
         <p className="mt-2 max-w-2xl text-ink-2">
           Make important choices independently, then reveal where you agree.
         </p>
