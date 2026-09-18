@@ -45,6 +45,12 @@ export function blankWeddingEvent(sortOrder: number): Partial<WeddingEvent> {
   };
 }
 
+// When set for an event's key, its invite list is limited to guests in
+// these categories (see GUEST_GROUPS in lib/guests.ts) instead of everyone.
+export const EVENT_INVITE_CATEGORIES: Record<string, string[]> = {
+  "rehearsal-dinner": ["Family of Bride", "Family of Groom", "Wedding Party"],
+};
+
 export const EVENT_GUEST_STATUS_ORDER: EventGuestStatus[] = ["invited", "attending", "not_attending"];
 
 export const EVENT_GUEST_STATUS_LABELS: Record<EventGuestStatus, string> = {

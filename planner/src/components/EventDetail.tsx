@@ -9,6 +9,7 @@ import type { Vendor } from "@/lib/vendors";
 import {
   EVENT_GUEST_STATUS_LABELS,
   EVENT_GUEST_STATUS_ORDER,
+  EVENT_INVITE_CATEGORIES,
   type EventGuest,
   type EventGuestStatus,
   type WeddingEvent,
@@ -69,6 +70,8 @@ export default function EventDetail({
 
   const attending = eventGuests.filter((eg) => eg.status === "attending").length;
   const vendor = vendors.find((v) => v.id === event.vendor_id);
+  const inviteCategories = EVENT_INVITE_CATEGORIES[event.key ?? ""];
+  const invitedGuests = inviteCategories ? guests.filter((g) => inviteCategories.includes(g.category)) : guests;
 
   return (
     <div className="min-h-screen pb-20 lg:pl-56">
@@ -80,7 +83,7 @@ export default function EventDetail({
           className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 font-serif text-3xl font-medium outline-none focus:border-line focus:bg-bg sm:text-4xl"
         />
         <p className="mt-2 text-ink-2">
-          {attending} attending · {eventGuests.length} responded of {guests.length} guests
+          {attending} attending · {eventGuests.length} responded of {invitedGuests.length} guests
         </p>
         {error && <p className="mt-2 text-sm text-wine">{error}</p>}
 
@@ -173,9 +176,12 @@ export default function EventDetail({
         </div>
 
         <div className="mt-4 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <h3 className="mb-3 font-semibold">Who&apos;s invited</h3>
-          <div className="flex flex-col divide-y divide-line">
-            {guests.map((g) => (
+          <h3 className="font-semibold">Who&apos;s invited</h3>
+          {inviteCategories && (
+            <p className="mb-2 mt-1 text-xs text-ink-2">Limited to {inviteCategories.map((c) => c.toLowerCase()).join(", ")}.</p>
+          )}
+          <div className="mt-3 flex flex-col divide-y divide-line">
+            {invitedGuests.map((g) => (
               <div key={g.id} className="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
                 <span className="min-w-0 truncate text-sm font-semibold text-ink">{g.name}</span>
                 <select
@@ -189,7 +195,7 @@ export default function EventDetail({
                 </select>
               </div>
             ))}
-            {guests.length === 0 && <p className="py-2 text-sm text-ink-2">Add guests on the Guests page first.</p>}
+            {invitedGuests.length === 0 && <p className="py-2 text-sm text-ink-2">Add guests on the Guests page first.</p>}
           </div>
         </div>
       </div>
