@@ -3,7 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { CalendarHeart, Hammer, Handshake, Home, Images, KanbanSquare, Landmark, Scale, Users, Wallet } from "lucide-react";
+import {
+  CalendarHeart,
+  Coffee,
+  Crown,
+  Gift,
+  Hammer,
+  Handshake,
+  Home,
+  Images,
+  KanbanSquare,
+  Landmark,
+  PartyPopper,
+  Scale,
+  Users,
+  Wallet,
+  Wine,
+} from "lucide-react";
 
 type NavLink = { href: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }>; indent?: boolean };
 
@@ -15,6 +31,7 @@ const NAV_GROUPS: { label: string | null; links: NavLink[] }[] = [
       { href: "/board", label: "Planning Board", icon: KanbanSquare },
       { href: "/budget", label: "Budget", icon: Wallet },
       { href: "/wedding-day", label: "Wedding Day", icon: CalendarHeart },
+      { href: "/registry", label: "Registry", icon: Gift },
     ],
   },
   {
@@ -22,6 +39,15 @@ const NAV_GROUPS: { label: string | null; links: NavLink[] }[] = [
     links: [
       { href: "/guests", label: "Guests", icon: Users },
       { href: "/vendors", label: "Vendors", icon: Handshake },
+      { href: "/wedding-party", label: "Wedding Party", icon: Crown },
+    ],
+  },
+  {
+    label: "Celebrate",
+    links: [
+      { href: "/events/rehearsal-dinner", label: "Rehearsal Dinner", icon: Wine },
+      { href: "/events/welcome-party", label: "Welcome Party", icon: PartyPopper },
+      { href: "/events/brunch", label: "Brunch", icon: Coffee },
     ],
   },
   {

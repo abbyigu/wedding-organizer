@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, ChevronRight, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Guest } from "@/lib/guests";
 import {
@@ -119,6 +120,14 @@ export default function WeddingEvents({
                       onChange={(e) => scheduleSave(ev.id, { title: e.target.value })}
                       className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 font-serif text-lg font-medium outline-none focus:border-line focus:bg-bg"
                     />
+                    {ev.key && (
+                      <Link
+                        href={`/events/${ev.key}`}
+                        className={`flex shrink-0 items-center gap-1 text-xs font-semibold text-sage-deep ${FOCUS_RING}`}
+                      >
+                        Full page <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden />
+                      </Link>
+                    )}
                     <button onClick={() => removeEvent(ev.id)} aria-label={`Remove ${ev.title}`} className={`shrink-0 rounded-full p-1 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
                       <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                     </button>

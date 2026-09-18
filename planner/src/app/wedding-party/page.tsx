@@ -1,0 +1,16 @@
+import { createClient } from "@/lib/supabase/server";
+import WeddingParty from "@/components/WeddingParty";
+import { displayName } from "@/lib/auth-names";
+import type { WeddingPartyMember } from "@/lib/wedding-party";
+
+export const dynamic = "force-dynamic";
+
+export default async function WeddingPartyPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: members } = await supabase.from("wedding_party").select("*").order("sort_order", { ascending: true });
+
+  return <WeddingParty initialMembers={(members ?? []) as WeddingPartyMember[]} userName={displayName(user?.email)} />;
+}
