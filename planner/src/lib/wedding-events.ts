@@ -17,7 +17,7 @@ export type WeddingEvent = {
   updated_at: string;
 };
 
-export type EventGuestStatus = "invited" | "attending" | "not_attending";
+export type EventGuestStatus = "invited" | "attending" | "not_attending" | "not_invited";
 
 export type EventGuest = {
   id: string;
@@ -51,10 +51,11 @@ export const EVENT_INVITE_CATEGORIES: Record<string, string[]> = {
   "rehearsal-dinner": ["Family of Bride", "Family of Groom", "Wedding Party"],
 };
 
-export const EVENT_GUEST_STATUS_ORDER: EventGuestStatus[] = ["invited", "attending", "not_attending"];
+export const EVENT_GUEST_STATUS_ORDER: EventGuestStatus[] = ["invited", "attending", "not_attending", "not_invited"];
 
 export const EVENT_GUEST_STATUS_LABELS: Record<EventGuestStatus, string> = {
   invited: "Invited",
   attending: "Attending",
   not_attending: "Not attending",
+  not_invited: "Not invited",
 };
