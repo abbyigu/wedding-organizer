@@ -5,6 +5,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Ellipsis, FolderInput, Hammer, Heart, ListChecks, Lock, Pencil, SquareCheck, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
+import { fmt } from "@/lib/venues";
 import {
   blankIdea,
   collectionTabs,
@@ -57,7 +58,7 @@ export default function IdeaBoard({
   const [mineOnly, setMineOnly] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [moreOpenId, setMoreOpenId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<{ category: string; title: string; image_url: string; note: string } | null>(null);
+  const [draft, setDraft] = useState<{ category: string; title: string; image_url: string; note: string; price: string } | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
   const partner = partnerName(userName);
@@ -138,7 +139,7 @@ export default function IdeaBoard({
 
   function startDraft(category: string) {
     setError("");
-    setDraft({ category, title: "", image_url: "", note: "" });
+    setDraft({ category, title: "", image_url: "", note: "", price: "" });
   }
 
   function addIdeaToCurrentTab() {
@@ -153,7 +154,12 @@ export default function IdeaBoard({
   async function saveDraft() {
     if (!draft || !draft.title.trim()) return;
     setError("");
-    const idea = { ...blankIdea(ideas.length, draft.category, draft.title.trim()), image_url: draft.image_url.trim(), note: draft.note.trim() };
+    const idea = {
+      ...blankIdea(ideas.length, draft.category, draft.title.trim()),
+      image_url: draft.image_url.trim(),
+      note: draft.note.trim(),
+      price: draft.price.trim() ? +draft.price : null,
+    };
     const { data, error } = await supabase.from("idea_pins").insert(idea).select().single();
     if (error) setError(error.message);
     else if (data) {
@@ -378,7 +384,10 @@ export default function IdeaBoard({
                   </div>
 
                   <button onClick={() => setOpenId(idea.id)} className={`flex flex-col gap-1 p-3 text-left ${FOCUS_RING}`}>
-                    <span className="truncate font-semibold text-ink">{idea.title}</span>
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate font-semibold text-ink">{idea.title}</span>
+                      {idea.price != null && <span className="shrink-0 text-sm font-semibold text-sage-deep">{fmt(idea.price)}</span>}
+                    </span>
                     <span className="flex items-center gap-1 truncate text-xs text-ink-2">
                       {idea.category} · Saved by {savedBy}
                     </span>
@@ -468,6 +477,17 @@ export default function IdeaBoard({
                         <p className="text-xs text-ink-2">Waiting on {partner}&apos;s reaction — hidden until you&apos;ve both voted.</p>
                       ) : null}
                     </div>
+
+                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Price</label>
+                    <input
+                      type="number"
+                      min={0}
+                      defaultValue={open.price ?? ""}
+                      onChange={(e) => scheduleIdeaSave(open.id, { price: e.target.value ? +e.target.value : null })}
+                      disabled={!editable}
+                      placeholder="$"
+                      className="mx-1 mt-1 w-32 rounded border border-line bg-bg px-2 py-1 text-sm disabled:opacity-70"
+                    />
 
                     <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Image / source URL</label>
                     <input
@@ -583,6 +603,16 @@ export default function IdeaBoard({
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+
+              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Price</label>
+              <input
+                type="number"
+                min={0}
+                value={draft.price}
+                onChange={(e) => setDraft((d) => d && { ...d, price: e.target.value })}
+                placeholder="$"
+                className="mx-1 mt-1 w-32 rounded border border-line bg-bg px-2 py-1 text-sm"
+              />
 
               <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Image / source URL</label>
               <input

@@ -7,6 +7,7 @@ export type IdeaPin = {
   title: string;
   image_url: string;
   note: string;
+  price: number | null;
   visibility: IdeaVisibility;
   is_favourite: boolean;
   sort_order: number;
@@ -68,6 +69,7 @@ export function blankIdea(sortOrder: number, category: string, title: string): P
     title,
     image_url: "",
     note: "",
+    price: null,
     visibility: "shared",
     is_favourite: false,
     sort_order: sortOrder,
