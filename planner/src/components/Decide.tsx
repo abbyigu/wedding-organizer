@@ -4,7 +4,10 @@ import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import { STATUSES, type Venue } from "@/lib/venues";
-import { blankScores, fmtScore, weightedScore, type Criterion, type DecisionEvent, type Rating } from "@/lib/decisions";
+import { CRITERION_HELP, blankScores, fmtScore, weightedScore, type Criterion, type DecisionEvent, type Rating } from "@/lib/decisions";
+import { partnerName } from "@/lib/ideas";
+
+const STEPS = ["Priorities", "Rate venues", "Reveal", "Final choice"];
 
 export default function Decide({
   initialVenues,
@@ -135,15 +138,64 @@ export default function Decide({
     .filter((r) => r.combined != null)
     .sort((a, b) => (b.combined ?? 0) - (a.combined ?? 0));
 
+  const partner = partnerName(userName);
+  const myRatedCount = active.filter((v) => myRatingFor(v.id)).length;
+  const partnerRatedCount = active.filter((v) => partnerRatingFor(v.id)).length;
+  const allRevealed = active.length > 0 && ranked.length === active.length;
+  const currentStep = finalVenue ? 4 : allRevealed ? 3 : myRatedCount > 0 ? 2 : 1;
+
+  function statusFor(count: number) {
+    if (active.length === 0) return "No venues yet";
+    if (count === active.length) return "Submitted and locked";
+    if (count > 0) return `In progress (${count}/${active.length})`;
+    return "Not started";
+  }
+
   return (
     <div className="min-h-screen lg:pl-56">
       <NavBar userName={userName} />
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="font-serif text-3xl font-medium sm:text-4xl">Decide, together but blind</h1>
+        <h1 className="font-serif text-3xl font-medium sm:text-4xl">Decide together</h1>
         <p className="mt-2 max-w-2xl text-ink-2">
-          Rate each venue on your own — you won&apos;t see the other person&apos;s answer until you&apos;ve cast yours.
+          Make important choices independently, then reveal where you agree. Your answers stay private until you&apos;ve both submitted.
         </p>
         {error && <p className="mt-2 text-sm text-wine">{error}</p>}
+
+        <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-ink-2 sm:text-sm">
+          {STEPS.map((label, i) => {
+            const n = i + 1;
+            const done = n < currentStep;
+            const isCurrent = n === currentStep;
+            return (
+              <div key={label} className="flex flex-1 items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                      isCurrent ? "bg-sage-deep text-white" : done ? "bg-sage-deep/20 text-sage-deep" : "border border-line text-ink-2"
+                    }`}
+                  >
+                    {n}
+                  </span>
+                  <span className={isCurrent ? "text-ink" : ""}>{label}</span>
+                </div>
+                {i < STEPS.length - 1 && <span className="h-px flex-1 bg-line" />}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3 rounded-2xl border border-line bg-paper p-4 shadow-sm">
+          {[
+            { name: userName, count: myRatedCount },
+            { name: partner, count: partnerRatedCount },
+          ].map(({ name, count }) => (
+            <div key={name} className="flex items-center gap-2 text-sm">
+              <span className="font-semibold">{name}</span>
+              <span className="text-ink-2">·</span>
+              <span className="text-ink-2">{statusFor(count)}</span>
+            </div>
+          ))}
+        </div>
 
         {finalVenue && (
           <div className="mt-6 rounded-2xl border border-gold bg-[color-mix(in_srgb,var(--gold)_18%,var(--paper))] p-5 shadow-sm">
@@ -153,29 +205,38 @@ export default function Decide({
         )}
 
         <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <h3 className="mb-3 font-semibold">What matters, and how much</h3>
+          <h3 className="font-semibold">What matters most to you?</h3>
+          <p className="mb-1 mt-1 text-sm text-ink-2">These priorities determine how much each category contributes to your venue scores.</p>
+          <div className="mb-3 flex justify-between text-xs text-ink-2">
+            <span>1 · Not important</span>
+            <span>5 · Essential</span>
+          </div>
           <div className="flex flex-col gap-3">
             {criteria.map((c) => (
               <div key={c.key}>
                 <div className="flex justify-between"><label className="text-sm font-semibold">{c.label}</label><span className="font-serif">{c.weight}/5</span></div>
+                {CRITERION_HELP[c.key] && <p className="mt-0.5 text-xs text-ink-2">{CRITERION_HELP[c.key]}</p>}
                 <input
                   type="range"
                   min={1}
                   max={5}
                   value={c.weight}
                   onChange={(e) => updateWeight(c.key, +e.target.value)}
-                  className="w-full accent-sage-deep"
+                  className="mt-1 w-full accent-sage-deep"
                 />
               </div>
             ))}
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <h3 className="mb-3 font-semibold">Shared results</h3>
-          {ranked.length === 0 ? (
-            <p className="text-sm text-ink-2">Nothing to show yet — results for a venue appear here once you&apos;ve both rated it.</p>
-          ) : (
+        {ranked.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-line bg-bg p-5 text-sm text-ink-2 shadow-sm">
+            🔒 <b className="text-ink">Results unlock after both of you have submitted a rating for a venue.</b>
+            <p className="mt-1">You&apos;ll see your strongest matches, biggest differences and combined venue scores here.</p>
+          </div>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
+            <h3 className="mb-3 font-semibold">Shared results</h3>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-ink-2">
@@ -196,38 +257,36 @@ export default function Decide({
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
 
-        <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <h3 className="mb-3 font-semibold">Set the final decision</h3>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-            <select
-              value={finalVenueId}
-              onChange={(e) => setFinalVenueId(e.target.value)}
-              className="rounded-lg border border-line bg-bg px-3 py-2"
-            >
-              <option value="">Choose a venue…</option>
-              {venues.map((v) => (
-                <option key={v.id} value={v.id}>{v.name}</option>
-              ))}
-            </select>
-            <textarea
-              value={finalReason}
-              onChange={(e) => setFinalReason(e.target.value)}
-              placeholder="Why this one?"
-              rows={2}
-              className="flex-1 rounded-lg border border-line bg-bg p-2"
-            />
-            <button
-              onClick={setFinal}
-              disabled={!finalVenueId}
-              className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              Mark as final
-            </button>
+            <h3 className="mb-3 mt-6 font-semibold">Set the final decision</h3>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+              <select
+                value={finalVenueId}
+                onChange={(e) => setFinalVenueId(e.target.value)}
+                className="rounded-lg border border-line bg-bg px-3 py-2"
+              >
+                <option value="">Choose a venue…</option>
+                {venues.map((v) => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </select>
+              <textarea
+                value={finalReason}
+                onChange={(e) => setFinalReason(e.target.value)}
+                placeholder="Why this one?"
+                rows={2}
+                className="flex-1 rounded-lg border border-line bg-bg p-2"
+              />
+              <button
+                onClick={setFinal}
+                disabled={!finalVenueId}
+                className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Confirm our venue
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="mt-6 flex flex-col gap-3">
           {active.map((v) => {
