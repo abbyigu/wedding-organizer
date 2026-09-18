@@ -99,8 +99,9 @@ export default function BudgetBuilder({
     const next = { ...settings, ...patch };
     setSettings(next);
     clearTimeout(lineTimer.current.settings);
-    lineTimer.current.settings = setTimeout(() => {
-      supabase.from("budget_settings").update(next).eq("id", true);
+    lineTimer.current.settings = setTimeout(async () => {
+      const { error } = await supabase.from("budget_settings").update(next).eq("id", true);
+      if (error) setError(error.message);
     }, 600);
   }
 
@@ -110,8 +111,9 @@ export default function BudgetBuilder({
     setVenues((vs) => vs.map((v) => (v.id === cur.id ? { ...v, budget_lines: lines } : v)));
     const key = `venue-${i}`;
     clearTimeout(lineTimer.current[key]);
-    lineTimer.current[key] = setTimeout(() => {
-      supabase.from("venues").update({ budget_lines: lines }).eq("id", cur.id);
+    lineTimer.current[key] = setTimeout(async () => {
+      const { error } = await supabase.from("venues").update({ budget_lines: lines }).eq("id", cur.id);
+      if (error) setError(error.message);
     }, 800);
   }
 
@@ -151,8 +153,9 @@ export default function BudgetBuilder({
     patchExpenseLocal(id, patch);
     const key = `expense-${id}-${Object.keys(patch)[0]}`;
     clearTimeout(lineTimer.current[key]);
-    lineTimer.current[key] = setTimeout(() => {
-      supabase.from("budget_expenses").update(patch).eq("id", id);
+    lineTimer.current[key] = setTimeout(async () => {
+      const { error } = await supabase.from("budget_expenses").update(patch).eq("id", id);
+      if (error) setError(error.message);
     }, 700);
   }
 

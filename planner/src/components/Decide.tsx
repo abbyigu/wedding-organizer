@@ -29,6 +29,7 @@ export default function Decide({
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [finalVenueId, setFinalVenueId] = useState(venues.find((v) => v.is_final)?.id ?? "");
   const [finalReason, setFinalReason] = useState(venues.find((v) => v.is_final)?.final_reason ?? "");
+  const [error, setError] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const settingsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabase = createClient();
@@ -56,8 +57,9 @@ export default function Decide({
     const next = criteria.map((c) => (c.key === key ? { ...c, weight } : c));
     setCriteria(next);
     if (settingsTimer.current) clearTimeout(settingsTimer.current);
-    settingsTimer.current = setTimeout(() => {
-      supabase.from("decision_settings").update({ criteria: next }).eq("id", true);
+    settingsTimer.current = setTimeout(async () => {
+      const { error } = await supabase.from("decision_settings").update({ criteria: next }).eq("id", true);
+      if (error) setError(error.message);
     }, 600);
   }
 
@@ -75,8 +77,9 @@ export default function Decide({
     setRatings((rs) => rs.map((r) => (r.id === mine.id ? { ...r, scores: nextScores } : r)));
     const timerKey = mine.id + key;
     clearTimeout(timers.current[timerKey]);
-    timers.current[timerKey] = setTimeout(() => {
-      supabase.from("venue_ratings").update({ scores: nextScores }).eq("id", mine.id);
+    timers.current[timerKey] = setTimeout(async () => {
+      const { error } = await supabase.from("venue_ratings").update({ scores: nextScores }).eq("id", mine.id);
+      if (error) setError(error.message);
     }, 700);
   }
 
@@ -89,8 +92,9 @@ export default function Decide({
     setRatings((rs) => rs.map((r) => (r.id === mine.id ? { ...r, note } : r)));
     const timerKey = mine.id + "note";
     clearTimeout(timers.current[timerKey]);
-    timers.current[timerKey] = setTimeout(() => {
-      supabase.from("venue_ratings").update({ note }).eq("id", mine.id);
+    timers.current[timerKey] = setTimeout(async () => {
+      const { error } = await supabase.from("venue_ratings").update({ note }).eq("id", mine.id);
+      if (error) setError(error.message);
     }, 700);
   }
 
@@ -139,6 +143,7 @@ export default function Decide({
         <p className="mt-2 max-w-2xl text-ink-2">
           Rate each venue on your own — you won&apos;t see the other person&apos;s answer until you&apos;ve cast yours.
         </p>
+        {error && <p className="mt-2 text-sm text-wine">{error}</p>}
 
         {finalVenue && (
           <div className="mt-6 rounded-2xl border border-gold bg-[color-mix(in_srgb,var(--gold)_18%,var(--paper))] p-5 shadow-sm">
