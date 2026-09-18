@@ -438,23 +438,29 @@ export default function BudgetBuilder({
                                 </td>
                                 <td className="px-4 py-2 align-top">
                                   {it.editable === "venue-line" && cur.budget_lines[it.ref as number] ? (
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step={5}
-                                      value={cur.budget_lines[it.ref as number][1]}
-                                      onChange={(e) => updateVenueLine(it.ref as number, +e.target.value || 0)}
-                                      className="w-20 rounded border border-line bg-bg px-2 py-1"
-                                    />
+                                    <div className="flex items-center gap-1.5">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        step={5}
+                                        value={cur.budget_lines[it.ref as number][1]}
+                                        onChange={(e) => updateVenueLine(it.ref as number, +e.target.value || 0)}
+                                        className="w-20 rounded border border-line bg-bg px-2 py-1"
+                                      />
+                                      <span className="text-xs text-ink-2">{unitLabel(cur.budget_lines[it.ref as number][2])}</span>
+                                    </div>
                                   ) : it.editable === "shared-line" ? (
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step={50}
-                                      value={settings.shared_line_amounts[it.ref as number] ?? SHARED_LINES[it.ref as number][1]}
-                                      onChange={(e) => updateSharedLine(it.ref as number, +e.target.value || 0)}
-                                      className="w-20 rounded border border-line bg-bg px-2 py-1"
-                                    />
+                                    <div className="flex items-center gap-1.5">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        step={50}
+                                        value={settings.shared_line_amounts[it.ref as number] ?? SHARED_LINES[it.ref as number][1]}
+                                        onChange={(e) => updateSharedLine(it.ref as number, +e.target.value || 0)}
+                                        className="w-20 rounded border border-line bg-bg px-2 py-1"
+                                      />
+                                      <span className="text-xs text-ink-2">flat</span>
+                                    </div>
                                   ) : editingThis && expense ? (
                                     <div className="flex items-center gap-1">
                                       <input
