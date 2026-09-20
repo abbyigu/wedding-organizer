@@ -310,9 +310,9 @@ export default function BudgetBuilder({
               <p className="text-xs text-ink-2">Added to venue-related lines</p>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <button onClick={() => updateSettings({ svc_pct: Math.max(0, settings.svc_pct - 1) })} className={`flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>−</button>
+              <button onClick={() => updateSettings({ svc_pct: Math.max(0, settings.svc_pct - 1) })} className={`flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>−</button>
               <span className="w-12 text-center font-serif text-lg">{settings.svc_pct}%</span>
-              <button onClick={() => updateSettings({ svc_pct: Math.min(30, settings.svc_pct + 1) })} className={`flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>+</button>
+              <button onClick={() => updateSettings({ svc_pct: Math.min(30, settings.svc_pct + 1) })} className={`flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>+</button>
             </div>
           </div>
 
@@ -322,9 +322,9 @@ export default function BudgetBuilder({
               <p className="text-xs text-ink-2">For unexpected costs</p>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <button onClick={() => updateSettings({ cont_pct: Math.max(0, settings.cont_pct - 1) })} className={`flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>−</button>
+              <button onClick={() => updateSettings({ cont_pct: Math.max(0, settings.cont_pct - 1) })} className={`flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>−</button>
               <span className="w-12 text-center font-serif text-lg">{settings.cont_pct}%</span>
-              <button onClick={() => updateSettings({ cont_pct: Math.min(25, settings.cont_pct + 1) })} className={`flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>+</button>
+              <button onClick={() => updateSettings({ cont_pct: Math.min(25, settings.cont_pct + 1) })} className={`flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink hover:border-sage-deep ${FOCUS_RING}`}>+</button>
             </div>
           </div>
 
