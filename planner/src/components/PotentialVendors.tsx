@@ -163,7 +163,7 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-2">Dump someone interesting in, then fill in details as you research.</p>
-        <button onClick={addVendor} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
+        <button onClick={addVendor} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
           <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
           Add vendor
         </button>
@@ -177,7 +177,7 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
             key={c}
             onClick={() => setCategoryFilter(c)}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-              categoryFilter === c ? "border-sage-deep bg-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep"
+              categoryFilter === c ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep"
             }`}
           >
             {c}
@@ -200,7 +200,7 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
             key={f.key}
             onClick={() => setQuickFilter((v) => (v === f.key ? "none" : f.key))}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-              quickFilter === f.key ? "border-sage-deep bg-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep"
+              quickFilter === f.key ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep"
             }`}
           >
             {f.label}
@@ -227,7 +227,7 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
               <button onClick={() => setOpenId(v.id)} className={`block text-left ${FOCUS_RING}`}>
                 {v.cover_photo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={normalizeUrl(v.cover_photo)} alt="" className="h-40 w-full object-cover" />
+                  <img src={normalizeUrl(v.cover_photo)} alt="" loading="lazy" className="h-40 w-full object-cover" />
                 ) : (
                   <div className="flex h-40 w-full items-center justify-center bg-bg text-ink-2">
                     <Camera className="h-8 w-8" strokeWidth={1.25} aria-hidden />
@@ -505,7 +505,7 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
                   <div className="flex items-end">
                     <button
                       onClick={() => moveToBooked(open)}
-                      className={`w-full rounded-full bg-green px-3 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}
+                      className={`w-full rounded-full bg-surface-green px-3 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}
                     >
                       Move to Booked Vendors →
                     </button>
@@ -553,7 +553,7 @@ function PhotoList({ photos, onAdd, onRemove }: { photos: string[]; onAdd: (url:
           {photos.map((url, i) => (
             <div key={i} className="group relative h-16 w-16 overflow-hidden rounded-lg border border-line">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={normalizeUrl(url)} alt="" className="h-full w-full object-cover" />
+              <img src={normalizeUrl(url)} alt="" loading="lazy" className="h-full w-full object-cover" />
               <button
                 onClick={() => onRemove(i)}
                 aria-label="Remove photo"

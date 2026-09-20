@@ -44,7 +44,7 @@ export default function UpdatePasswordPage() {
           <button
             type="submit"
             disabled={status === "busy"}
-            className="mt-2 rounded-full bg-sage-deep px-4 py-2 font-semibold text-[#F7F3EA] disabled:opacity-60"
+            className="mt-2 rounded-full bg-surface-sage-deep px-4 py-2 font-semibold text-white disabled:opacity-60"
           >
             {status === "busy" ? "Saving…" : "Save password"}
           </button>

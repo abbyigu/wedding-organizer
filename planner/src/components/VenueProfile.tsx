@@ -351,7 +351,7 @@ export default function VenueProfile({
                 {(v.photos ?? []).map((p) => (
                   <div key={p.path} className="overflow-hidden rounded-lg border border-line">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={urls[p.path]} alt={p.caption || v.name} className="aspect-[4/3] w-full object-cover" />
+                    <img src={urls[p.path]} alt={p.caption || v.name} loading="lazy" className="aspect-[4/3] w-full object-cover" />
                     <div className="flex items-center gap-1 border-t border-line bg-paper px-1.5 py-1">
                       <input
                         value={p.caption}

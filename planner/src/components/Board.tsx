@@ -26,7 +26,7 @@ function Avatars({ value }: { value: Assignee }) {
   const dot = (letter: string, key: string) => (
     <span
       key={key}
-      className="flex h-5 w-5 items-center justify-center rounded-full border border-paper bg-sage-deep text-[10px] font-semibold text-white"
+      className="flex h-5 w-5 items-center justify-center rounded-full border border-paper bg-surface-sage-deep text-[10px] font-semibold text-white"
     >
       {letter}
     </span>
@@ -311,7 +311,7 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
             <h1 className="font-serif text-3xl font-medium sm:text-4xl">Planning Board</h1>
             <p className="mt-2 max-w-2xl text-ink-2">Everything we need to do, from first ideas to wedding day.</p>
           </div>
-          <button onClick={() => addTask("todo")} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
+          <button onClick={() => addTask("todo")} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
             Add task
           </button>
@@ -322,14 +322,14 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
         <div className="mt-6 flex items-center gap-1 rounded-full border border-line bg-paper p-1" style={{ width: "fit-content" }}>
           <button
             onClick={() => setView("board")}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${view === "board" ? "bg-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"}`}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${view === "board" ? "bg-surface-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"}`}
           >
             <LayoutGrid className="h-4 w-4" strokeWidth={1.5} aria-hidden />
             Board
           </button>
           <button
             onClick={() => setView("list")}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${view === "list" ? "bg-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"}`}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${view === "list" ? "bg-surface-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"}`}
           >
             <ListIcon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
             List
@@ -375,7 +375,7 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
               key={key}
               onClick={() => setQuickFilter((v) => (v === key ? "none" : key))}
               className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                quickFilter === key ? "border-sage-deep bg-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep"
+                quickFilter === key ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep"
               }`}
             >
               {label}

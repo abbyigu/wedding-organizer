@@ -242,7 +242,7 @@ export default function VenueShortlist({
         <Link href={`/venues/${v.id}`} className={`relative block aspect-video rounded-t-[18px] bg-line ${FOCUS_RING}`}>
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrls[photo.path]} alt={v.name} className="h-full w-full object-cover" />
+            <img src={photoUrls[photo.path]} alt={v.name} loading="lazy" className="h-full w-full object-cover" />
           ) : (
             <div
               className="flex h-full w-full items-center justify-center font-serif text-4xl text-white"
@@ -387,7 +387,7 @@ export default function VenueShortlist({
             <button
               onClick={seed}
               disabled={seeding}
-              className={`mt-4 rounded-full bg-sage-deep px-4 py-2 font-semibold text-white disabled:opacity-60 ${FOCUS_RING}`}
+              className={`mt-4 rounded-full bg-surface-sage-deep px-4 py-2 font-semibold text-white disabled:opacity-60 ${FOCUS_RING}`}
             >
               {seeding ? "Adding…" : "Add the 6 shortlisted venues"}
             </button>
@@ -397,7 +397,7 @@ export default function VenueShortlist({
           <>
             <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
               <p className="text-sm text-ink-2">Choose 2–3 venues to compare side by side</p>
-              <button onClick={addPlace} className={`rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+              <button onClick={addPlace} className={`rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
                 ＋ Add a place
               </button>
             </div>
@@ -412,7 +412,7 @@ export default function VenueShortlist({
             {compared.length < 2 ? (
               <div className="mt-8 rounded-2xl border border-line bg-paper p-8 text-center shadow-sm">
                 <p className="text-ink-2">Select 2–3 venues from your shortlist to compare.</p>
-                <button onClick={() => setTab("shortlist")} className={`mt-3 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+                <button onClick={() => setTab("shortlist")} className={`mt-3 rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
                   Go to shortlist
                 </button>
               </div>
@@ -545,7 +545,7 @@ export default function VenueShortlist({
       {tab === "shortlist" && compareIds.length >= 2 && (
         <button
           onClick={() => setTab("compare")}
-          className={`fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full bg-green px-5 py-3 text-sm font-semibold text-white shadow-md ${FOCUS_RING}`}
+          className={`fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full bg-surface-green px-5 py-3 text-sm font-semibold text-white shadow-md ${FOCUS_RING}`}
         >
           {compareIds.length} venue{compareIds.length === 1 ? "" : "s"} selected · Compare now →
         </button>

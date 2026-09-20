@@ -100,7 +100,7 @@ export default function NavBar({ userName }: { userName: string }) {
       >
         {partner.charAt(0)}
       </span>
-      <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[var(--paper)] bg-sage-deep font-serif text-sm font-semibold text-white">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[var(--paper)] bg-surface-sage-deep font-serif text-sm font-semibold text-white">
         {userName.charAt(0) || "?"}
       </span>
     </span>
@@ -124,7 +124,7 @@ export default function NavBar({ userName }: { userName: string }) {
                   key={l.href}
                   href={l.href}
                   className={`flex items-center gap-2.5 rounded-lg py-2 text-sm font-semibold transition-colors ${l.indent ? "ml-3 border-l border-line pl-2.5 text-[13px]" : "px-3"} ${
-                    isActive(l.href) ? "bg-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
+                    isActive(l.href) ? "bg-surface-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
                   }`}
                 >
                   <l.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
@@ -197,7 +197,7 @@ export default function NavBar({ userName }: { userName: string }) {
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
                 className={`flex items-center gap-2.5 rounded-lg py-2 text-sm font-semibold transition-colors ${l.indent ? "ml-3 border-l border-line pl-2.5 text-[13px]" : "px-3"} ${
-                  isActive(l.href) ? "bg-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
+                  isActive(l.href) ? "bg-surface-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
                 }`}
               >
                 <l.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />

@@ -26,7 +26,7 @@ export default function GuestsComingLater({
         ))}
       </ul>
       {cta && (
-        <Link href={cta.href} className={`mt-5 inline-block rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+        <Link href={cta.href} className={`mt-5 inline-block rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
           {cta.label}
         </Link>
       )}

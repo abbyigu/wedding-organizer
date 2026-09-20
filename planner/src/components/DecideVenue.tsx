@@ -214,7 +214,7 @@ export default function DecideVenue({
                 <div key={name} className="flex items-center gap-2 text-sm">
                   <span
                     className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-serif text-xs font-semibold ${
-                      mine ? "bg-sage-deep text-white" : "bg-[color-mix(in_srgb,var(--sage)_35%,var(--paper))] text-sage-deep"
+                      mine ? "bg-surface-sage-deep text-white" : "bg-[color-mix(in_srgb,var(--sage)_35%,var(--paper))] text-sage-deep"
                     }`}
                   >
                     {name.charAt(0)}
@@ -244,7 +244,7 @@ export default function DecideVenue({
                   >
                     <span
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                        isCurrent ? "bg-sage-deep text-white" : done ? "bg-sage-deep/20 text-sage-deep" : "bg-line/60 text-ink-2"
+                        isCurrent ? "bg-surface-sage-deep text-white" : done ? "bg-sage-deep/20 text-sage-deep" : "bg-line/60 text-ink-2"
                       }`}
                     >
                       {n}
@@ -290,12 +290,14 @@ export default function DecideVenue({
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm font-semibold">{c.label}</span>
                             {considerations && (
-                              <span
+                              <button
+                                type="button"
                                 title={`Consider: ${considerations.join(", ")}`}
+                                aria-label={`Consider: ${considerations.join(", ")}`}
                                 className="flex h-4 w-4 items-center justify-center rounded-full text-ink-2"
                               >
                                 <HelpCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                              </span>
+                              </button>
                             )}
                           </div>
                           {CRITERION_HELP[c.key] && <p className="mt-0.5 text-xs text-ink-2">{CRITERION_HELP[c.key]}</p>}
@@ -308,7 +310,7 @@ export default function DecideVenue({
                             type="button"
                             onClick={() => updateWeight(c.key, n)}
                             className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold transition-colors ${
-                              c.weight === n ? "bg-sage-deep text-white" : "border border-line bg-bg text-ink-2 hover:bg-line/40"
+                              c.weight === n ? "bg-surface-sage-deep text-white" : "border border-line bg-bg text-ink-2 hover:bg-line/40"
                             }`}
                           >
                             {n}
@@ -372,7 +374,7 @@ export default function DecideVenue({
                 <button onClick={saveDraftNow} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-bg">
                   Save draft
                 </button>
-                <button onClick={() => setStep(2)} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+                <button onClick={() => setStep(2)} className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                   Continue to rate venues →
                 </button>
               </div>
@@ -427,7 +429,7 @@ export default function DecideVenue({
                         className="mt-2 w-full rounded-lg border border-line bg-bg p-2 text-sm"
                       />
                       {!mine && (
-                        <button onClick={() => submitRating(v)} className="mt-2 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+                        <button onClick={() => submitRating(v)} className="mt-2 rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                           Submit my rating
                         </button>
                       )}
@@ -464,7 +466,7 @@ export default function DecideVenue({
               <button onClick={() => setStep(1)} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-bg">
                 ← Back
               </button>
-              <button onClick={() => setStep(3)} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+              <button onClick={() => setStep(3)} className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                 Continue to reveal →
               </button>
             </div>
@@ -508,7 +510,7 @@ export default function DecideVenue({
               <button onClick={() => setStep(2)} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-bg">
                 ← Back
               </button>
-              <button onClick={() => setStep(4)} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+              <button onClick={() => setStep(4)} className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                 Continue to final decision →
               </button>
             </div>
@@ -540,7 +542,7 @@ export default function DecideVenue({
                 <button
                   onClick={setFinal}
                   disabled={!finalVenueId}
-                  className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   Confirm our venue
                 </button>
