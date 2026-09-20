@@ -19,7 +19,7 @@ export default async function DecidePage() {
     supabase.from("decisions").select("*").order("sort_order", { ascending: true }),
     supabase.from("decision_options").select("*"),
     supabase.from("decision_votes").select("decision_id, option_id, voter_id"),
-    supabase.from("venues").select("id, name, status, is_final"),
+    supabase.from("venues").select("id, name, status, is_final, photos").order("sort_order", { ascending: true }),
     supabase.from("venue_ratings").select("venue_id, rater_id"),
   ]);
 
@@ -28,6 +28,9 @@ export default async function DecidePage() {
   const myVenueVotes = (venueRatings ?? []).filter((r) => r.rater_id === userId && activeVenues.some((v) => v.id === r.venue_id)).length;
   const partnerVenueVotes = (venueRatings ?? []).filter((r) => r.rater_id !== userId && activeVenues.some((v) => v.id === r.venue_id)).length;
 
+  const coverPath = activeVenues.map((v) => v.photos?.[0]?.path as string | undefined).find(Boolean);
+  const venueCover = coverPath ? (await supabase.storage.from("venue-photos").createSignedUrl(coverPath, 3600)).data?.signedUrl ?? null : null;
+
   const summaries: DecisionSummary[] = (decisions ?? []).map((d: GenericDecision) => {
     if (d.link_href === "/decide/venue") {
       return {
@@ -35,6 +38,9 @@ export default async function DecidePage() {
         category: d.category,
         title: d.title,
         description: d.description,
+        detail: `${activeVenues.length} venue${activeVenues.length === 1 ? "" : "s"} being considered`,
+        image: venueCover,
+        createdAt: d.created_at,
         href: d.link_href,
         status: statusOf(activeVenues.length, myVenueVotes, partnerVenueVotes, !!finalVenue, partner),
         finalLabel: finalVenue?.name,
@@ -50,6 +56,9 @@ export default async function DecidePage() {
       category: d.category,
       title: d.title,
       description: d.description,
+      detail: decisionOptions.length ? `${decisionOptions.length} option${decisionOptions.length === 1 ? "" : "s"} to compare` : "",
+      image: decisionOptions.find((o) => o.image_url)?.image_url || null,
+      createdAt: d.created_at,
       href: d.link_href ?? `/decide/${d.id}`,
       status: statusOf(decisionOptions.length, myCount, partnerCount, d.is_final, partner),
       finalLabel: finalOption?.label,

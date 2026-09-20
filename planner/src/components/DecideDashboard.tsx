@@ -5,102 +5,85 @@ import { useMemo, useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import NavBar from "@/components/NavBar";
+import DashboardTopBar, { type Notice, type SearchItem } from "@/components/DashboardTopBar";
 import { createClient } from "@/lib/supabase/client";
 import { DECISION_CATEGORIES, type DecisionStatus, type DecisionStatusKind } from "@/lib/decisions";
-import {
-  Bus,
-  CircleCheck,
-  CircleHelp,
-  Handshake,
-  Landmark,
-  Lock,
-  Plus,
-  Sparkles,
-  Users,
-  Wallet,
-  X,
-} from "lucide-react";
+import { ArrowRight, CircleCheck, Gift, Heart, Leaf, Plus, X } from "lucide-react";
 
 export type DecisionSummary = {
   id: string;
   category: string;
   title: string;
   description: string;
+  detail: string;
+  image: string | null;
+  createdAt: string;
   href: string;
   status: DecisionStatus;
   finalLabel?: string;
 };
 
-const CATEGORY_ICON: Record<string, ComponentType<{ className?: string; strokeWidth?: number }>> = {
-  Venue: Landmark,
-  Guests: Users,
-  Budget: Wallet,
-  Vendors: Handshake,
-  "Style & Details": Sparkles,
-  Ceremony: Sparkles,
-  Reception: Sparkles,
-  "Travel & Logistics": Bus,
-};
+type Kind = DecisionStatusKind;
 
-const FILTERS: { key: string; label: string; test: (k: DecisionStatusKind) => boolean }[] = [
+const FILTERS: { key: string; label: string; test: (k: Kind) => boolean }[] = [
   { key: "all", label: "All", test: () => true },
-  { key: "needs_you", label: "Needs you", test: (k) => k === "not_started" || k === "in_progress" || k === "your_turn" },
-  { key: "waiting", label: "Waiting", test: (k) => k === "waiting_partner" },
+  { key: "still", label: "Still to decide", test: (k) => k === "not_started" || k === "in_progress" || k === "your_turn" },
+  { key: "waiting", label: "Waiting on each other", test: (k) => k === "waiting_partner" },
   { key: "ready", label: "Ready to reveal", test: (k) => k === "ready_to_reveal" },
-  { key: "completed", label: "Completed", test: (k) => k === "decided" },
+  { key: "decided", label: "Decided", test: (k) => k === "decided" },
 ];
 
-const RING_COLOR: Record<DecisionStatusKind, string> = {
-  decided: "var(--sage-deep)",
-  ready_to_reveal: "var(--wine)",
-  not_started: "var(--gold)",
-  in_progress: "var(--sage-deep)",
-  your_turn: "var(--sage-deep)",
-  waiting_partner: "var(--sage-deep)",
+const CTA_LABEL: Record<Kind, string> = {
+  decided: "View decision",
+  ready_to_reveal: "Reveal together",
+  not_started: "Start deciding",
+  in_progress: "Continue",
+  your_turn: "Continue",
+  waiting_partner: "View",
 };
 
-const CTA_LABEL: Record<DecisionStatusKind, string> = {
-  decided: "View decision →",
-  ready_to_reveal: "Reveal together →",
-  not_started: "Start →",
-  in_progress: "Continue →",
-  your_turn: "Continue →",
-  waiting_partner: "View →",
-};
+const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
+const PILL = "rounded-full px-3 py-1 text-[13px] font-semibold";
 
-function Ring({ status, Icon }: { status: DecisionStatus; Icon: ComponentType<{ className?: string; strokeWidth?: number }> }) {
-  const r = 26;
-  const c = 2 * Math.PI * r;
-  const filled = status.kind === "not_started" ? 0.08 : status.progress;
+function Cover({ s, className }: { s: DecisionSummary; className: string }) {
+  return s.image ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={s.image} alt="" className={`${className} object-cover`} />
+  ) : (
+    <div className={`${className} bg-[radial-gradient(circle_at_30%_30%,color-mix(in_srgb,var(--gold)_30%,var(--paper)),color-mix(in_srgb,var(--surface-blush)_28%,var(--paper)))]`} />
+  );
+}
+
+function Count({ n, tone }: { n: number; tone: string }) {
   return (
-    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center">
-      <svg viewBox="0 0 64 64" className="h-16 w-16 -rotate-90">
-        <circle cx="32" cy="32" r={r} fill="none" stroke="var(--line)" strokeWidth="5" />
-        <circle
-          cx="32"
-          cy="32"
-          r={r}
-          fill="none"
-          stroke={RING_COLOR[status.kind]}
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - filled)}
-        />
-      </svg>
-      <span className="absolute flex h-9 w-9 items-center justify-center rounded-full bg-bg text-ink-2">
-        {status.kind === "ready_to_reveal" ? (
-          <Lock className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        ) : (
-          <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        )}
-      </span>
-      {status.kind === "decided" && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-surface-sage-deep text-white">
-          <CircleCheck className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-        </span>
-      )}
+    <span className={`flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm text-ink ${tone}`}>{n}</span>
+  );
+}
+
+function Empty({ icon: Icon, title, body }: { icon: ComponentType<{ className?: string; strokeWidth?: number }>; title: string; body: string }) {
+  return (
+    <div className="flex flex-col items-center px-4 py-12 text-center">
+      <Icon className="h-9 w-9 text-ink-2" strokeWidth={1.25} aria-hidden />
+      <p className="mt-4 font-serif text-lg">{title}</p>
+      <p className="mt-2 max-w-[15rem] text-sm leading-relaxed text-ink-2">{body}</p>
     </div>
+  );
+}
+
+function DecisionCard({ s }: { s: DecisionSummary }) {
+  return (
+    <Link href={s.href} className={`flex flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-sm transition-colors hover:border-sage-deep ${FOCUS_RING}`}>
+      <Cover s={s} className="h-36 w-full" />
+      <div className="flex flex-1 flex-col p-4">
+        <p className="font-serif text-lg leading-snug">{s.title}</p>
+        <p className="mt-1 text-sm leading-relaxed text-ink-2">{s.finalLabel ? `Chosen: ${s.finalLabel}` : s.description || s.detail || s.category}</p>
+        {s.status.kind !== "not_started" && s.status.kind !== "decided" && <p className="mt-2 text-xs font-medium text-sage-deep">{s.status.label}</p>}
+        <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--surface-rose)_22%,var(--paper))] px-4 py-2 text-sm text-ink">
+          {CTA_LABEL[s.status.kind]}
+          <ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+        </span>
+      </div>
+    </Link>
   );
 }
 
@@ -109,6 +92,7 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
   const supabase = createClient();
   const [filter, setFilter] = useState("all");
   const [category, setCategory] = useState("All");
+  const [newestFirst, setNewestFirst] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const newDialogRef = useDialog(showNew, () => setShowNew(false));
   const [newTitle, setNewTitle] = useState("");
@@ -118,21 +102,36 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
 
   const categories = useMemo(() => ["All", ...Array.from(new Set(summaries.map((s) => s.category)))], [summaries]);
 
-  const activeFilterTest = FILTERS.find((f) => f.key === filter)?.test ?? (() => true);
-  const filtered = summaries.filter((s) => activeFilterTest(s.status.kind) && (category === "All" || s.category === category));
+  const visible = summaries
+    .filter((s) => category === "All" || s.category === category)
+    .sort((a, b) => (newestFirst ? -1 : 1) * a.createdAt.localeCompare(b.createdAt));
+  const group = (key: string) => visible.filter((s) => FILTERS.find((f) => f.key === key)!.test(s.status.kind));
+  const still = group("still");
+  const waiting = group("waiting");
+  const ready = group("ready");
+  const decidedList = group("decided");
+  const show = (key: string) => filter === "all" || filter === key;
 
   const needsAttention = summaries
     .filter((s) => s.status.kind !== "decided")
     .sort((a, b) => {
-      const order: DecisionStatusKind[] = ["ready_to_reveal", "your_turn", "in_progress", "waiting_partner", "not_started"];
+      const order: Kind[] = ["ready_to_reveal", "your_turn", "in_progress", "waiting_partner", "not_started"];
       return order.indexOf(a.status.kind) - order.indexOf(b.status.kind);
     })
-    .slice(0, 3);
+    .slice(0, 2);
 
-  const decided = summaries.filter((s) => s.status.kind === "decided").length;
-  const readyToReveal = summaries.filter((s) => s.status.kind === "ready_to_reveal").length;
-  const stillToDecide = summaries.filter((s) => ["not_started", "in_progress", "your_turn"].includes(s.status.kind)).length;
-  const waitingOnPartner = summaries.filter((s) => s.status.kind === "waiting_partner").length;
+  const count = (key: string) => summaries.filter((s) => FILTERS.find((f) => f.key === key)!.test(s.status.kind)).length;
+  const stats = [
+    { n: count("decided"), label: "Decided" },
+    { n: count("ready"), label: "Ready to reveal" },
+    { n: count("still"), label: "Still to decide" },
+    { n: count("waiting"), label: `Waiting on ${partner}` },
+  ];
+
+  const searchItems: SearchItem[] = summaries.map((s) => ({ label: s.title, hint: "Decision", href: s.href }));
+  const notices: Notice[] = summaries
+    .filter((s) => s.status.kind === "ready_to_reveal" || s.status.kind === "your_turn")
+    .map((s) => ({ label: s.status.kind === "ready_to_reveal" ? `${s.title} is ready to reveal` : `${partner} has voted on ${s.title}`, href: s.href }));
 
   async function createDecision() {
     if (!newTitle.trim()) return;
@@ -151,109 +150,185 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
     router.push(`/decide/${data.id}`);
   }
 
-  return (
-    <div className="min-h-screen lg:pl-56">
-      <NavBar userName={userName} />
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-3xl font-medium sm:text-4xl">Decide together</h1>
-            <p className="mt-2 max-w-2xl text-ink-2">Every choice brings your wedding into focus.</p>
-          </div>
-          <button
-            onClick={() => setShowNew(true)}
-            className="flex items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white"
-          >
-            <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> New decision
-          </button>
-        </div>
+  const selectClass = `rounded-full border border-line bg-paper px-4 py-2 text-sm text-ink ${FOCUS_RING}`;
 
-        <div className="mt-6 grid grid-cols-2 gap-3 rounded-2xl border border-line bg-paper p-5 shadow-sm sm:grid-cols-4">
-          {[
-            { n: decided, label: "Decided" },
-            { n: readyToReveal, label: "Ready to reveal" },
-            { n: stillToDecide, label: "Still to decide" },
-            { n: waitingOnPartner, label: `Waiting on ${partner}` },
-          ].map(({ n, label }) => (
-            <div key={label}>
-              <p className="font-serif text-3xl font-medium">{n}</p>
-              <p className="text-sm text-ink-2">{label}</p>
-            </div>
-          ))}
-        </div>
+  return (
+    <div className="min-h-screen pb-16 lg:pl-56">
+      <NavBar userName={userName} />
+      <div className="mx-auto max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8">
+        <DashboardTopBar userName={userName} partner={partner} items={searchItems} notices={notices} />
+
+        <header className="relative mt-8">
+          <h1 className="font-serif text-5xl font-light tracking-[-0.02em] sm:text-6xl xl:text-[4.5rem]">Decide together</h1>
+          <p className="mt-3 text-lg text-ink-2">Every choice brings your wedding into focus.</p>
+          <div className="pointer-events-none absolute right-0 top-0 hidden md:block" aria-hidden>
+            <p className="absolute right-24 top-2 -rotate-[8deg] text-right font-script text-[1.7rem] leading-[1.1] text-sage-deep">
+              Better
+              <br />
+              decisions
+              <br />
+              together
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/botanical-accent.webp" width={350} height={420} alt="" className="h-40 w-auto rotate-6 opacity-70" />
+          </div>
+          <dl className="mt-6 grid grid-cols-2 gap-y-5 sm:grid-cols-4 sm:divide-x sm:divide-line">
+            {stats.map(({ n, label }) => (
+              <div key={label} className="sm:px-8 sm:first:pl-3">
+                <dd className="font-serif text-3xl font-light">{n}</dd>
+                <dt className="text-sm text-ink-2">{label}</dt>
+              </div>
+            ))}
+          </dl>
+        </header>
 
         {needsAttention.length > 0 && (
-          <div className="mt-8">
-            <h2 className="font-serif text-xl font-medium">What needs you now</h2>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {needsAttention.map((s) => {
-                const Icon = CATEGORY_ICON[s.category] ?? CircleHelp;
-                return (
-                  <Link key={s.id} href={s.href} className="flex flex-col gap-2 rounded-2xl border border-line bg-paper p-4 shadow-sm hover:border-sage-deep">
-                    <div className="flex items-center gap-2">
-                      <Ring status={s.status} Icon={Icon} />
-                      <div>
-                        <p className="font-semibold">{s.title}</p>
-                        <p className="text-xs text-ink-2">{s.category}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-sage-deep">{s.status.label}</p>
-                  </Link>
-                );
-              })}
+          <section className="mt-10">
+            <div className="flex items-end justify-between gap-3">
+              <h2 className="font-serif text-2xl font-light">What needs you now</h2>
+              <Link href="#all-decisions" className={`rounded text-sm font-semibold text-wine ${FOCUS_RING}`}>
+                View all decisions <span aria-hidden>→</span>
+              </Link>
             </div>
-          </div>
-        )}
-
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-serif text-xl font-medium">Your wedding decisions</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-full border border-line bg-paper p-1 text-sm">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  onClick={() => setFilter(f.key)}
-                  className={`rounded-full px-3 py-1 font-semibold ${filter === f.key ? "bg-surface-sage-deep text-white" : "text-ink-2 hover:bg-bg"}`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            {categories.length > 2 && (
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="rounded-full border border-line bg-paper px-3 py-1.5 text-sm"
-              >
-                {categories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            )}
-          </div>
-        </div>
-
-        {filtered.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-2">No decisions match this filter.</p>
-        ) : (
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((s) => {
-              const Icon = CATEGORY_ICON[s.category] ?? CircleHelp;
-              return (
-                <Link key={s.id} href={s.href} className="flex flex-col gap-3 rounded-2xl border border-line bg-paper p-4 shadow-sm hover:border-sage-deep">
-                  <Ring status={s.status} Icon={Icon} />
-                  <div>
-                    <p className="font-semibold">{s.title}</p>
-                    <p className="text-xs text-ink-2">{s.finalLabel ? s.finalLabel : s.description || s.category}</p>
-                  </div>
-                  <div className="mt-auto flex items-center justify-between text-sm">
-                    <span className="text-ink-2">{s.status.label}</span>
-                    <span className="font-semibold text-sage-deep">{CTA_LABEL[s.status.kind]}</span>
+            <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
+              {needsAttention.map((s, i) => (
+                <Link key={s.id} href={s.href} className={`group relative flex min-h-[17rem] overflow-hidden rounded-2xl text-white ${FOCUS_RING}`}>
+                  {s.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.image} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+                  ) : (
+                    <div className={`absolute inset-0 ${i === 0 ? "bg-surface-wine" : "bg-surface-olive"}`} />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-black/5" />
+                  <div className="relative flex flex-col justify-end p-6 sm:p-8">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.24em]">{s.category}</p>
+                    <p className="mt-2 max-w-[16rem] text-balance font-serif text-3xl font-light leading-[1.05] sm:text-4xl">{s.title}</p>
+                    <p className="mt-3 max-w-xs text-sm leading-relaxed">{s.detail || s.description || s.status.label}</p>
+                    <span
+                      className={`mt-5 inline-flex w-fit items-center gap-3 rounded-full px-6 py-3 text-base ${
+                        i === 0 ? "bg-surface-wine text-white" : "bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] text-ink"
+                      }`}
+                    >
+                      {s.status.kind === "ready_to_reveal" ? "Reveal together" : i === 0 ? "Continue decision" : "Decide together"}
+                      <ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                    </span>
                   </div>
                 </Link>
-              );
-            })}
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section id="all-decisions" className="mt-12 scroll-mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-serif text-2xl font-light">Your wedding decisions</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <div role="group" aria-label="Filter decisions" className="flex flex-wrap rounded-full border border-line bg-paper p-1">
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFilter(f.key)}
+                    aria-pressed={filter === f.key}
+                    className={`${PILL} ${FOCUS_RING} ${filter === f.key ? "bg-surface-sage-deep text-white" : "text-ink hover:bg-bg"}`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              {categories.length > 2 && (
+                <select aria-label="Filter by category" value={category} onChange={(e) => setCategory(e.target.value)} className={selectClass}>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c === "All" ? "All categories" : c}</option>
+                  ))}
+                </select>
+              )}
+              <select aria-label="Sort decisions" value={newestFirst ? "new" : "old"} onChange={(e) => setNewestFirst(e.target.value === "new")} className={selectClass}>
+                <option value="new">Newest first</option>
+                <option value="old">Oldest first</option>
+              </select>
+              <button
+                onClick={() => setShowNew(true)}
+                className={`flex items-center gap-1.5 rounded-full bg-surface-wine px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}
+              >
+                <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> New decision
+              </button>
+            </div>
           </div>
+
+          <div className={`mt-6 grid gap-8 ${filter === "all" ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] lg:gap-0" : ""}`}>
+            {show("still") && (
+              <div className="lg:pr-8">
+                <div className="flex items-center gap-3">
+                  <h3 className="font-serif text-xl">Still to decide</h3>
+                  <Count n={still.length} tone="bg-[color-mix(in_srgb,var(--surface-rose)_30%,var(--paper))]" />
+                </div>
+                {still.length === 0 ? (
+                  <Empty icon={CircleCheck} title="Nothing left to decide" body="Every open decision is with one of you or already made." />
+                ) : (
+                  <div className={`mt-4 grid gap-4 ${filter === "all" ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+                    {still.map((s) => <DecisionCard key={s.id} s={s} />)}
+                  </div>
+                )}
+              </div>
+            )}
+            {show("waiting") && (
+              <div className={filter === "all" ? "lg:border-l lg:border-line lg:px-8" : ""}>
+                <div className="flex items-center gap-3">
+                  <h3 className="font-serif text-xl">Waiting on each other</h3>
+                  <Count n={waiting.length} tone="bg-[color-mix(in_srgb,var(--surface-rose)_30%,var(--paper))]" />
+                </div>
+                {waiting.length === 0 ? (
+                  <Empty icon={Heart} title="All caught up!" body="When a decision is waiting on one of you, it will show up here." />
+                ) : (
+                  <div className={`mt-4 grid gap-4 ${filter === "all" ? "" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+                    {waiting.map((s) => <DecisionCard key={s.id} s={s} />)}
+                  </div>
+                )}
+              </div>
+            )}
+            {show("ready") && (
+              <div className={filter === "all" ? "lg:border-l lg:border-line lg:pl-8" : ""}>
+                <div className="flex items-center gap-3">
+                  <h3 className="font-serif text-xl">Ready to reveal</h3>
+                  <Count n={ready.length} tone="bg-[color-mix(in_srgb,var(--gold)_25%,var(--paper))]" />
+                </div>
+                {ready.length === 0 ? (
+                  <Empty icon={Gift} title="Nothing to reveal yet!" body="Keep planning — a decision shows here once you've both voted on every option." />
+                ) : (
+                  <div className={`mt-4 grid gap-4 ${filter === "all" ? "" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+                    {ready.map((s) => <DecisionCard key={s.id} s={s} />)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {show("decided") && (
+          <section className="mt-12 border-t border-line pt-8">
+            <div className="flex items-center gap-3">
+              <Leaf className="h-6 w-6 text-sage-deep" strokeWidth={1.25} aria-hidden />
+              <h2 className="font-serif text-2xl font-light">Decided together</h2>
+              <Count n={decidedList.length} tone="bg-[color-mix(in_srgb,var(--surface-rose)_30%,var(--paper))]" />
+            </div>
+            {decidedList.length === 0 ? (
+              <div className="relative mt-5 overflow-hidden rounded-2xl bg-[color-mix(in_srgb,var(--sage)_22%,var(--paper))] px-6 py-9 text-center">
+                <p className="font-semibold">No decisions yet</p>
+                <p className="mt-1 text-sm text-ink-2">Once you&apos;ve made a decision together, it will appear here as a keepsake.</p>
+                <p aria-hidden className="pointer-events-none absolute bottom-3 right-8 hidden -rotate-6 text-right font-script text-2xl leading-[1.1] text-sage-deep md:block">
+                  So many
+                  <br />
+                  beautiful decisions
+                  <br />
+                  ahead
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {decidedList.map((s) => <DecisionCard key={s.id} s={s} />)}
+              </div>
+            )}
+          </section>
         )}
 
         {showNew && (
