@@ -69,7 +69,9 @@ export default function NavBar({ userName }: { userName: string }) {
   const partner = partnerName(userName);
 
   function isActive(href: string) {
-    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+    if (href === "/") return pathname === "/";
+    if (href.startsWith("/events/")) return pathname === href;
+    return pathname.startsWith(href);
   }
 
   const accountItems = (
@@ -124,7 +126,7 @@ export default function NavBar({ userName }: { userName: string }) {
                   key={l.href}
                   href={l.href}
                   className={`flex items-center gap-2.5 rounded-lg py-2 text-sm font-semibold transition-colors ${l.indent ? "ml-3 border-l border-line pl-2.5 text-[13px]" : "px-3"} ${
-                    isActive(l.href) ? "bg-surface-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
+                    isActive(l.href) ? "bg-surface-wine text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
                   }`}
                 >
                   <l.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
@@ -197,7 +199,7 @@ export default function NavBar({ userName }: { userName: string }) {
                 href={l.href}
                 onClick={() => setMenuOpen(false)}
                 className={`flex items-center gap-2.5 rounded-lg py-2 text-sm font-semibold transition-colors ${l.indent ? "ml-3 border-l border-line pl-2.5 text-[13px]" : "px-3"} ${
-                  isActive(l.href) ? "bg-surface-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
+                  isActive(l.href) ? "bg-surface-wine text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
                 }`}
               >
                 <l.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
