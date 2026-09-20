@@ -1,5 +1,6 @@
 "use client";
 
+import { useDialog } from "@/lib/use-dialog";
 import { useMemo, useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -109,6 +110,7 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
   const [filter, setFilter] = useState("all");
   const [category, setCategory] = useState("All");
   const [showNew, setShowNew] = useState(false);
+  const newDialogRef = useDialog(showNew, () => setShowNew(false));
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState(DECISION_CATEGORIES[1]);
   const [error, setError] = useState("");
@@ -256,11 +258,11 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
 
         {showNew && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={() => setShowNew(false)}>
-            <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <div ref={newDialogRef} role="dialog" aria-modal="true" aria-label="New decision" tabIndex={-1} className="w-full max-w-sm rounded-2xl border border-line bg-paper p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between">
                 <h3 className="font-serif text-xl font-medium">New decision</h3>
                 <button onClick={() => setShowNew(false)} aria-label="Close">
-                  <X className="h-5 w-5" strokeWidth={1.75} />
+                  <X className="h-5 w-5" strokeWidth={1.75} aria-hidden />
                 </button>
               </div>
               <p className="mt-1 text-sm text-ink-2">What are {userName} and {partner} deciding?</p>

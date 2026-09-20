@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, ExternalLink, Plus, Trash2 } from "lucide-react";
@@ -25,6 +26,7 @@ export default function WeddingEvents({
   initialEventGuests: EventGuest[];
   guests: Guest[];
 }) {
+  const confirm = useConfirm();
   const [events, setEvents] = useState(initialEvents);
   const [eventGuests, setEventGuests] = useState(initialEventGuests);
   const [error, setError] = useState("");
@@ -50,7 +52,7 @@ export default function WeddingEvents({
   }
 
   async function removeEvent(id: string) {
-    if (!confirm("Remove this event?")) return;
+    if (!(await confirm("Remove this event?"))) return;
     setEvents((es) => es.filter((e) => e.id !== id));
     await supabase.from("wedding_events").delete().eq("id", id);
   }

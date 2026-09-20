@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -72,6 +73,7 @@ export default function BudgetBuilder({
   initialExpenses: BudgetExpense[];
   initialVenueId?: string | null;
 }) {
+  const confirm = useConfirm();
   const [venues, setVenues] = useState(initialVenues);
   // A ?venue= link (e.g. "Edit breakdown" from a venue's own page) wins;
   // otherwise same precedence as the Overview page's "current venue", so
@@ -168,7 +170,7 @@ export default function BudgetBuilder({
   }
 
   async function removeExpense(id: string) {
-    if (!confirm("Remove this expense?")) return;
+    if (!(await confirm("Remove this expense?"))) return;
     setExpenses((es) => es.filter((e) => e.id !== id));
     await supabase.from("budget_expenses").delete().eq("id", id);
   }

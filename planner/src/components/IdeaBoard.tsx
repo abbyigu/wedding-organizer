@@ -1,5 +1,7 @@
 "use client";
 
+import { useDialog } from "@/lib/use-dialog";
+import { useConfirm } from "@/components/ConfirmProvider";
 import Link from "next/link";
 import { useRef, useState, type ReactNode } from "react";
 import { Ellipsis, FolderInput, Hammer, Heart, ListChecks, Lock, Pencil, SquareCheck, Users, X } from "lucide-react";
@@ -52,6 +54,7 @@ export default function IdeaBoard({
   userId: string;
   linkedDiyIdeaIds: string[];
 }) {
+  const confirm = useConfirm();
   const [ideas, setIdeas] = useState(initialIdeas);
   const [reactions, setReactions] = useState(initialReactions);
   const [diyLinked, setDiyLinked] = useState(new Set(linkedDiyIdeaIds));
@@ -63,6 +66,7 @@ export default function IdeaBoard({
   const [openId, setOpenId] = useState<string | null>(null);
   const [moreOpenId, setMoreOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ category: string; title: string; image_url: string; note: string; price: string } | null>(null);
+  const draftDialogRef = useDialog(Boolean(draft), () => setDraft(null));
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
   const partner = partnerName(userName);
@@ -71,6 +75,7 @@ export default function IdeaBoard({
   const visible = ideas.filter((i) => (mineOnly ? i.owner_id === userId : true));
   const shown = activeTab === "All ideas" ? visible : visible.filter((i) => i.category === activeTab);
   const open = ideas.find((i) => i.id === openId) ?? null;
+  const dialogRef = useDialog(Boolean(open), () => setOpenId(null));
 
   function myReaction(ideaId: string): ReactionValue | null {
     return reactions.find((r) => r.idea_id === ideaId && r.rater_id === userId)?.reaction ?? null;
@@ -168,12 +173,11 @@ export default function IdeaBoard({
   }
 
   function newCollection() {
-    const name = window.prompt("New collection name (e.g. Dress, DIY)")?.trim();
-    if (name) startDraft(name);
+    startDraft("");
   }
 
   async function saveDraft() {
-    if (!draft || !draft.title.trim()) return;
+    if (!draft || !draft.title.trim() || !draft.category.trim()) return;
     setError("");
     const idea = {
       ...blankIdea(ideas.length, draft.category, draft.title.trim()),
@@ -191,7 +195,7 @@ export default function IdeaBoard({
   }
 
   async function removeIdea(id: string) {
-    if (!confirm("Delete this idea?")) return;
+    if (!(await confirm("Delete this idea?"))) return;
     setIdeas((is) => is.filter((i) => i.id !== id));
     if (openId === id) setOpenId(null);
     await supabase.from("idea_pins").delete().eq("id", id);
@@ -430,8 +434,8 @@ export default function IdeaBoard({
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <button aria-label="Close" onClick={() => setOpenId(null)} className="absolute inset-0" />
-          <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-paper shadow-lg sm:flex-row">
+          <button aria-label="Close" tabIndex={-1} onClick={() => setOpenId(null)} className="absolute inset-0" />
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Idea details" tabIndex={-1} className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-paper shadow-lg sm:flex-row">
             <button
               onClick={() => setOpenId(null)}
               aria-label="Close"
@@ -466,8 +470,8 @@ export default function IdeaBoard({
                       Saved by {isOwner ? userName : partner}
                     </p>
 
-                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Collection</label>
-                    <select
+                    <label htmlFor="idea-board-f1" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Collection</label>
+                    <select id="idea-board-f1"
                       value={open.category}
                       onChange={(e) => scheduleIdeaSave(open.id, { category: e.target.value })}
                       disabled={!editable}
@@ -478,8 +482,8 @@ export default function IdeaBoard({
                       ))}
                     </select>
 
-                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Your reaction</label>
-                    <select
+                    <label htmlFor="idea-board-f2" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Your reaction</label>
+                    <select id="idea-board-f2"
                       value={mine ?? ""}
                       onChange={(e) => e.target.value && castReaction(open.id, e.target.value as ReactionValue)}
                       className="mx-1 mt-1 rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -497,8 +501,8 @@ export default function IdeaBoard({
                       ) : null}
                     </div>
 
-                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Price</label>
-                    <input
+                    <label htmlFor="idea-board-f3" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Price</label>
+                    <input id="idea-board-f3"
                       type="number"
                       min={0}
                       defaultValue={open.price ?? ""}
@@ -508,8 +512,8 @@ export default function IdeaBoard({
                       className="mx-1 mt-1 w-32 rounded border border-line bg-bg px-2 py-1 text-sm disabled:opacity-70"
                     />
 
-                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Image / source URL</label>
-                    <input
+                    <label htmlFor="idea-board-f4" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Image / source URL</label>
+                    <input id="idea-board-f4"
                       defaultValue={open.image_url}
                       onChange={(e) => scheduleIdeaSave(open.id, { image_url: e.target.value })}
                       disabled={!editable}
@@ -522,8 +526,8 @@ export default function IdeaBoard({
                       </a>
                     )}
 
-                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
-                    <textarea
+                    <label htmlFor="idea-board-f5" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
+                    <textarea id="idea-board-f5"
                       defaultValue={open.note}
                       onChange={(e) => scheduleIdeaSave(open.id, { note: e.target.value })}
                       disabled={!editable}
@@ -532,7 +536,7 @@ export default function IdeaBoard({
                       className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm disabled:opacity-70"
                     />
 
-                    <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Turn into action</label>
+                    <p className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Turn into action</p>
                     <div className="mx-1 mt-1 flex flex-wrap gap-2">
                       {!diyLinked.has(open.id) ? (
                         <button
@@ -591,8 +595,8 @@ export default function IdeaBoard({
 
       {draft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <button aria-label="Close" onClick={() => setDraft(null)} className="absolute inset-0" />
-          <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-paper shadow-lg sm:flex-row">
+          <button aria-label="Close" tabIndex={-1} onClick={() => setDraft(null)} className="absolute inset-0" />
+          <div ref={draftDialogRef} role="dialog" aria-modal="true" aria-label="New idea" tabIndex={-1} className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-paper shadow-lg sm:flex-row">
             <button
               onClick={() => setDraft(null)}
               aria-label="Close"
@@ -611,8 +615,8 @@ export default function IdeaBoard({
             <div className="flex-1 overflow-y-auto p-5">
               <h2 className="font-serif text-xl font-medium">New idea</h2>
 
-              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Title</label>
-              <input
+              <label htmlFor="idea-board-f6" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Title</label>
+              <input id="idea-board-f6"
                 autoFocus
                 value={draft.title}
                 onChange={(e) => setDraft((d) => d && { ...d, title: e.target.value })}
@@ -620,19 +624,26 @@ export default function IdeaBoard({
                 className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm"
               />
 
-              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Collection</label>
-              <select
+              <label htmlFor="idea-board-f7" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Collection</label>
+              <select id="idea-board-f7"
                 value={draft.category}
                 onChange={(e) => setDraft((d) => d && { ...d, category: e.target.value })}
                 className="mx-1 mt-1 rounded border border-line bg-bg px-2 py-1 text-sm"
               >
                 {[...new Set([draft.category, ...collectionTabs(ideas)])].map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>{c || "Choose a collection…"}</option>
                 ))}
               </select>
-
-              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Price</label>
               <input
+                aria-label="Or name a new collection"
+                value={collectionTabs(ideas).includes(draft.category) ? "" : draft.category}
+                onChange={(e) => setDraft((d) => d && { ...d, category: e.target.value })}
+                placeholder="Or name a new one, e.g. Dress or DIY"
+                className="mx-1 mt-2 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm"
+              />
+
+              <label htmlFor="idea-board-f8" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Price</label>
+              <input id="idea-board-f8"
                 type="number"
                 min={0}
                 value={draft.price}
@@ -641,16 +652,16 @@ export default function IdeaBoard({
                 className="mx-1 mt-1 w-32 rounded border border-line bg-bg px-2 py-1 text-sm"
               />
 
-              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Image / source URL</label>
-              <input
+              <label htmlFor="idea-board-f9" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Image / source URL</label>
+              <input id="idea-board-f9"
                 value={draft.image_url}
                 onChange={(e) => setDraft((d) => d && { ...d, image_url: e.target.value })}
                 placeholder="Paste an image address"
                 className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm"
               />
 
-              <label className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
-              <textarea
+              <label htmlFor="idea-board-f10" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
+              <textarea id="idea-board-f10"
                 value={draft.note}
                 onChange={(e) => setDraft((d) => d && { ...d, note: e.target.value })}
                 rows={4}
@@ -661,7 +672,7 @@ export default function IdeaBoard({
               <div className="mt-5 flex items-center gap-2 px-1">
                 <button
                   onClick={saveDraft}
-                  disabled={!draft.title.trim()}
+                  disabled={!draft.title.trim() || !draft.category.trim()}
                   className={`rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${FOCUS_RING}`}
                 >
                   Add to board

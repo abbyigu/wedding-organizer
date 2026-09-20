@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,7 @@ export default function VenueProfile({
   assumptions: Assumptions;
   sharedVals: number[];
 }) {
+  const confirm = useConfirm();
   const router = useRouter();
   const [v, setV] = useState(venue);
   const [urls, setUrls] = useState(signedUrls);
@@ -102,7 +104,7 @@ export default function VenueProfile({
   }
 
   async function removeVenue() {
-    if (!confirm(`Remove ${v.name}? Its notes and photos will be deleted.`)) return;
+    if (!(await confirm(`Remove ${v.name}? Its notes and photos will be deleted.`))) return;
     await Promise.all((v.photos ?? []).map((p) => supabase.storage.from("venue-photos").remove([p.path])));
     await supabase.from("venues").delete().eq("id", v.id);
     router.push("/");

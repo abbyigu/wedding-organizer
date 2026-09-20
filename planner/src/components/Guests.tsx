@@ -1,5 +1,7 @@
 "use client";
 
+import { useDialog } from "@/lib/use-dialog";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState } from "react";
 import { CircleCheck, Download, Ellipsis, HeartPulse, Plus, Search, UserRoundX, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -43,6 +45,7 @@ function guestTags(g: Guest): string[] {
 }
 
 export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
+  const confirm = useConfirm();
   const [guests, setGuests] = useState(initialGuests);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -65,6 +68,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
   const sageWidthPct = barMax > 0 ? (Math.min(capacityPct, 100) / barMax) * 100 : 0;
   const groups = [...new Set(guests.map((g) => g.category || "Uncategorized"))].sort();
   const open = guests.find((g) => g.id === openId) ?? null;
+  const dialogRef = useDialog(Boolean(open), () => setOpenId(null));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -136,7 +140,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
   }
 
   async function removeGuest(id: string) {
-    if (!confirm("Remove this household?")) return;
+    if (!(await confirm("Remove this household?"))) return;
     setGuests((gs) => gs.filter((g) => g.id !== id));
     setSelectedIds((s) => {
       const next = new Set(s);
@@ -165,8 +169,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
   }
 
   function moveOne(g: Guest) {
-    const name = window.prompt("Move to which group?", g.category)?.trim();
-    if (name) saveNow(g.id, { category: name });
+    setOpenId(g.id);
   }
 
   function exportCsv() {
@@ -388,7 +391,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                           onChange={() => toggleSelected(g.id)}
                           aria-label={`Select ${g.name}`}
                           className={`h-4 w-4 shrink-0 accent-sage-deep transition-opacity ${
-                            selectedIds.has(g.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                            selectedIds.has(g.id) ? "opacity-100" : "opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                           }`}
                         />
                         <span
@@ -436,7 +439,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                             aria-label="More actions"
                             aria-expanded={moreOpenId === g.id}
                             className={`flex h-7 w-7 items-center justify-center rounded-full text-ink-2 transition-opacity hover:bg-line hover:text-ink ${
-                              moreOpenId === g.id ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                              moreOpenId === g.id ? "opacity-100" : "opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                             }`}
                           >
                             <Ellipsis className="h-4 w-4" strokeWidth={1.5} aria-hidden />
@@ -464,7 +467,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                                   }}
                                   className="block w-full whitespace-nowrap px-4 py-2 text-left text-sm font-semibold text-ink hover:bg-bg"
                                 >
-                                  Move group
+                                  Change group
                                 </button>
                                 <button
                                   onClick={() => {
@@ -499,8 +502,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <button aria-label="Close" onClick={() => setOpenId(null)} className="absolute inset-0" />
-          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
+          <button aria-label="Close" tabIndex={-1} onClick={() => setOpenId(null)} className="absolute inset-0" />
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Edit household" tabIndex={-1} className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <input
                 defaultValue={open.name}
@@ -518,8 +521,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
             <div className="flex-1 overflow-y-auto p-5">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Group</label>
-                  <select
+                  <label htmlFor="guests-f1" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Group</label>
+                  <select id="guests-f1"
                     value={open.category}
                     onChange={(e) => scheduleSave(open.id, { category: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -531,8 +534,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Role</label>
-                  <input
+                  <label htmlFor="guests-f2" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Role</label>
+                  <input id="guests-f2"
                     defaultValue={open.group_label}
                     onChange={(e) => scheduleSave(open.id, { group_label: e.target.value })}
                     placeholder="e.g. Bride's family"
@@ -543,8 +546,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Adults</label>
-                  <input
+                  <label htmlFor="guests-f3" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Adults</label>
+                  <input id="guests-f3"
                     type="number"
                     min={0}
                     defaultValue={open.party_size}
@@ -553,8 +556,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Children</label>
-                  <input
+                  <label htmlFor="guests-f4" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Children</label>
+                  <input id="guests-f4"
                     type="number"
                     min={0}
                     defaultValue={open.kids_count}
@@ -564,8 +567,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                 </div>
               </div>
 
-              <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Plus-one / additional member note</label>
-              <input
+              <label htmlFor="guests-f5" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Plus-one / additional member note</label>
+              <input id="guests-f5"
                 defaultValue={open.plus_one}
                 onChange={(e) => scheduleSave(open.id, { plus_one: e.target.value })}
                 className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -573,8 +576,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Email</label>
-                  <input
+                  <label htmlFor="guests-f6" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Email</label>
+                  <input id="guests-f6"
                     type="email"
                     defaultValue={open.email}
                     onChange={(e) => scheduleSave(open.id, { email: e.target.value })}
@@ -582,8 +585,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Phone</label>
-                  <input
+                  <label htmlFor="guests-f7" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Phone</label>
+                  <input id="guests-f7"
                     type="tel"
                     defaultValue={open.phone}
                     onChange={(e) => scheduleSave(open.id, { phone: e.target.value })}
@@ -592,8 +595,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                 </div>
               </div>
 
-              <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Mailing address</label>
-              <input
+              <label htmlFor="guests-f8" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Mailing address</label>
+              <input id="guests-f8"
                 defaultValue={open.address}
                 onChange={(e) => scheduleSave(open.id, { address: e.target.value })}
                 className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -601,16 +604,16 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Dietary restrictions</label>
-                  <input
+                  <label htmlFor="guests-f9" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Dietary restrictions</label>
+                  <input id="guests-f9"
                     defaultValue={open.dietary}
                     onChange={(e) => scheduleSave(open.id, { dietary: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Accessibility needs</label>
-                  <input
+                  <label htmlFor="guests-f10" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Accessibility needs</label>
+                  <input id="guests-f10"
                     defaultValue={open.accessibility}
                     onChange={(e) => scheduleSave(open.id, { accessibility: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -620,16 +623,16 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Meal selection</label>
-                  <input
+                  <label htmlFor="guests-f11" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Meal selection</label>
+                  <input id="guests-f11"
                     defaultValue={open.meal_selection}
                     onChange={(e) => scheduleSave(open.id, { meal_selection: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Assigned table</label>
-                  <input
+                  <label htmlFor="guests-f12" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Assigned table</label>
+                  <input id="guests-f12"
                     defaultValue={open.table_assignment}
                     onChange={(e) => scheduleSave(open.id, { table_assignment: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -657,8 +660,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                 ))}
               </div>
 
-              <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-ink-2">Private planning notes</label>
-              <textarea
+              <label htmlFor="guests-f13" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-ink-2">Private planning notes</label>
+              <textarea id="guests-f13"
                 defaultValue={open.notes}
                 onChange={(e) => scheduleSave(open.id, { notes: e.target.value })}
                 rows={3}

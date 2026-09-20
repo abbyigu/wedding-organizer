@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -33,6 +34,7 @@ export default function DecisionDetail({
   userName: string;
   userId: string;
 }) {
+  const confirm = useConfirm();
   const [decision, setDecision] = useState(initialDecision);
   const [options, setOptions] = useState(initialOptions);
   const [votes, setVotes] = useState(initialVotes);
@@ -102,7 +104,7 @@ export default function DecisionDetail({
   }
 
   async function removeOption(id: string) {
-    if (!confirm("Remove this option?")) return;
+    if (!(await confirm("Remove this option?"))) return;
     const { error } = await supabase.from("decision_options").delete().eq("id", id);
     if (error) setError(error.message);
     else setOptions((os) => os.filter((o) => o.id !== id));

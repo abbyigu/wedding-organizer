@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +10,7 @@ import GuestsComingLater from "@/components/GuestsComingLater";
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
 export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBlock[] }) {
+  const confirm = useConfirm();
   const [blocks, setBlocks] = useState(initialBlocks);
   const [error, setError] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -32,7 +34,7 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
   }
 
   async function removeBlock(id: string) {
-    if (!confirm("Remove this hotel block?")) return;
+    if (!(await confirm("Remove this hotel block?"))) return;
     setBlocks((bs) => bs.filter((b) => b.id !== id));
     await supabase.from("hotel_blocks").delete().eq("id", id);
   }
@@ -79,8 +81,8 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
 
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Rate / night</label>
-                  <input
+                  <label htmlFor="travel-stay-f1" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Rate / night</label>
+                  <input id="travel-stay-f1"
                     type="number"
                     min={0}
                     defaultValue={b.rate ?? ""}
@@ -90,8 +92,8 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Booking deadline</label>
-                  <input
+                  <label htmlFor="travel-stay-f2" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Booking deadline</label>
+                  <input id="travel-stay-f2"
                     type="date"
                     defaultValue={b.booking_deadline ?? ""}
                     onChange={(e) => scheduleSave(b.id, { booking_deadline: e.target.value || null })}
@@ -99,8 +101,8 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Rooms reserved</label>
-                  <input
+                  <label htmlFor="travel-stay-f3" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Rooms reserved</label>
+                  <input id="travel-stay-f3"
                     type="number"
                     min={0}
                     defaultValue={b.rooms_reserved}
@@ -109,8 +111,8 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Rooms still available</label>
-                  <input
+                  <label htmlFor="travel-stay-f4" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Rooms still available</label>
+                  <input id="travel-stay-f4"
                     type="number"
                     min={0}
                     defaultValue={b.rooms_available}
@@ -122,8 +124,8 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Min. nights</label>
-                  <input
+                  <label htmlFor="travel-stay-f5" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Min. nights</label>
+                  <input id="travel-stay-f5"
                     type="number"
                     min={1}
                     defaultValue={b.min_nights}
@@ -132,8 +134,8 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Booking link</label>
-                  <input
+                  <label htmlFor="travel-stay-f6" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Booking link</label>
+                  <input id="travel-stay-f6"
                     defaultValue={b.booking_link}
                     onChange={(e) => scheduleSave(b.id, { booking_link: e.target.value })}
                     placeholder="https://…"
@@ -142,8 +144,8 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
                 </div>
               </div>
 
-              <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
-              <textarea
+              <label htmlFor="travel-stay-f7" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
+              <textarea id="travel-stay-f7"
                 defaultValue={b.notes}
                 onChange={(e) => scheduleSave(b.id, { notes: e.target.value })}
                 placeholder="Cancellation policy, accessibility, pet-friendly, confirmation codes…"

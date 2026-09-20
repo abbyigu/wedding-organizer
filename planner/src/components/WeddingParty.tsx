@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +10,7 @@ import { blankWeddingPartyMember, ROLE_SUGGESTIONS, SIDES, type Side, type Weddi
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
 export default function WeddingParty({ initialMembers, userName }: { initialMembers: WeddingPartyMember[]; userName: string }) {
+  const confirm = useConfirm();
   const [members, setMembers] = useState(initialMembers);
   const [error, setError] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -32,7 +34,7 @@ export default function WeddingParty({ initialMembers, userName }: { initialMemb
   }
 
   async function removeMember(id: string) {
-    if (!confirm("Remove this person from the wedding party?")) return;
+    if (!(await confirm("Remove this person from the wedding party?"))) return;
     setMembers((ms) => ms.filter((m) => m.id !== id));
     await supabase.from("wedding_party").delete().eq("id", id);
   }
@@ -105,24 +107,24 @@ export default function WeddingParty({ initialMembers, userName }: { initialMemb
               </summary>
               <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-ink-2">Email</label>
-                  <input
+                  <label htmlFor="wedding-party-f1" className="text-xs font-semibold uppercase tracking-wide text-ink-2">Email</label>
+                  <input id="wedding-party-f1"
                     defaultValue={m.email}
                     onChange={(e) => scheduleSave(m.id, { email: e.target.value })}
                     className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-ink-2">Phone</label>
-                  <input
+                  <label htmlFor="wedding-party-f2" className="text-xs font-semibold uppercase tracking-wide text-ink-2">Phone</label>
+                  <input id="wedding-party-f2"
                     defaultValue={m.phone}
                     onChange={(e) => scheduleSave(m.id, { phone: e.target.value })}
                     className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-ink-2">Attire / sizing</label>
-                  <textarea
+                  <label htmlFor="wedding-party-f3" className="text-xs font-semibold uppercase tracking-wide text-ink-2">Attire / sizing</label>
+                  <textarea id="wedding-party-f3"
                     defaultValue={m.attire}
                     onChange={(e) => scheduleSave(m.id, { attire: e.target.value })}
                     rows={2}
@@ -131,8 +133,8 @@ export default function WeddingParty({ initialMembers, userName }: { initialMemb
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
-                  <textarea
+                  <label htmlFor="wedding-party-f4" className="text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
+                  <textarea id="wedding-party-f4"
                     defaultValue={m.notes}
                     onChange={(e) => scheduleSave(m.id, { notes: e.target.value })}
                     rows={2}

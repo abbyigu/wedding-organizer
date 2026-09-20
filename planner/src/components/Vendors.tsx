@@ -1,5 +1,7 @@
 "use client";
 
+import { useDialog } from "@/lib/use-dialog";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState } from "react";
 import { Plus, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -23,6 +25,7 @@ function statusPillClass(status: VendorStatus) {
 }
 
 export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }) {
+  const confirm = useConfirm();
   const [vendors, setVendors] = useState(initialVendors);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -32,6 +35,7 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
   const supabase = createClient();
 
   const open = vendors.find((v) => v.id === openId) ?? null;
+  const dialogRef = useDialog(Boolean(open), () => setOpenId(null));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -74,7 +78,7 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
   }
 
   async function removeVendor(id: string) {
-    if (!confirm("Remove this vendor?")) return;
+    if (!(await confirm("Remove this vendor?"))) return;
     setVendors((vs) => vs.filter((v) => v.id !== id));
     if (openId === id) setOpenId(null);
     await supabase.from("vendors").delete().eq("id", id);
@@ -133,8 +137,8 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <button aria-label="Close" onClick={() => setOpenId(null)} className="absolute inset-0" />
-          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
+          <button aria-label="Close" tabIndex={-1} onClick={() => setOpenId(null)} className="absolute inset-0" />
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Edit vendor" tabIndex={-1} className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <input
                 defaultValue={open.name}
@@ -148,8 +152,8 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
             <div className="flex-1 overflow-y-auto p-5">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Category</label>
-                  <select
+                  <label htmlFor="vendors-f1" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Category</label>
+                  <select id="vendors-f1"
                     value={open.category}
                     onChange={(e) => scheduleSave(open.id, { category: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -160,8 +164,8 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Status</label>
-                  <select
+                  <label htmlFor="vendors-f2" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Status</label>
+                  <select id="vendors-f2"
                     value={open.status}
                     onChange={(e) => saveNow(open.id, { status: e.target.value as VendorStatus })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -175,16 +179,16 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Contact name</label>
-                  <input
+                  <label htmlFor="vendors-f3" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Contact name</label>
+                  <input id="vendors-f3"
                     defaultValue={open.contact_name}
                     onChange={(e) => scheduleSave(open.id, { contact_name: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Phone</label>
-                  <input
+                  <label htmlFor="vendors-f4" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Phone</label>
+                  <input id="vendors-f4"
                     type="tel"
                     defaultValue={open.phone}
                     onChange={(e) => scheduleSave(open.id, { phone: e.target.value })}
@@ -195,8 +199,8 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Email</label>
-                  <input
+                  <label htmlFor="vendors-f5" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Email</label>
+                  <input id="vendors-f5"
                     type="email"
                     defaultValue={open.email}
                     onChange={(e) => scheduleSave(open.id, { email: e.target.value })}
@@ -204,8 +208,8 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Website</label>
-                  <input
+                  <label htmlFor="vendors-f6" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Website</label>
+                  <input id="vendors-f6"
                     defaultValue={open.website}
                     onChange={(e) => scheduleSave(open.id, { website: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -215,8 +219,8 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Cost</label>
-                  <input
+                  <label htmlFor="vendors-f7" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Cost</label>
+                  <input id="vendors-f7"
                     type="number"
                     min={0}
                     defaultValue={open.cost ?? ""}
@@ -236,8 +240,8 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
                 </label>
               </div>
 
-              <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
-              <textarea
+              <label htmlFor="vendors-f8" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
+              <textarea id="vendors-f8"
                 defaultValue={open.notes}
                 onChange={(e) => scheduleSave(open.id, { notes: e.target.value })}
                 rows={3}

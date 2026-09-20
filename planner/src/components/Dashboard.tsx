@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import Link from "next/link";
 import { useMemo, useRef, useState, type ComponentType } from "react";
 import {
@@ -105,6 +106,7 @@ export default function Dashboard({
   ideaCards: OverviewCard[];
 }) {
   const venues = initialVenues;
+  const confirm = useConfirm();
   const [error, setError] = useState("");
   const [customTasks, setCustomTasks] = useState(initialCustomTasks);
   const [completingIds, setCompletingIds] = useState<string[]>([]);
@@ -161,7 +163,7 @@ export default function Dashboard({
   }
 
   async function removeCustomTask(id: string) {
-    if (!confirm("Delete this task?")) return;
+    if (!(await confirm("Delete this task?"))) return;
     setCustomTasks((ts) => ts.filter((t) => t.id !== id));
     const supabase = createClient();
     await supabase.from("custom_tasks").delete().eq("id", id);
@@ -190,7 +192,7 @@ export default function Dashboard({
   }
 
   async function removeEvent(id: string) {
-    if (!confirm("Delete this event?")) return;
+    if (!(await confirm("Delete this event?"))) return;
     setEvents((es) => es.filter((e) => e.id !== id));
     const supabase = createClient();
     await supabase.from("upcoming_events").delete().eq("id", id);
@@ -250,7 +252,7 @@ export default function Dashboard({
                 together
               </p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/botanical-accent.png" alt="" aria-hidden className="h-24 w-auto opacity-80" />
+              <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="h-24 w-auto opacity-80" />
             </div>
           </div>
         </div>

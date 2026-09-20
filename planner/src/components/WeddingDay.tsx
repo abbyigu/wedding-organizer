@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -35,7 +36,7 @@ function ComingLater({ userName }: { userName: string }) {
             <p className="mt-2 text-ink-2">Coming later — once your venue and date are locked in.</p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
+          <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
         </div>
 
         <div className="mt-6 rounded-2xl border border-line bg-paper p-6 shadow-sm">
@@ -58,6 +59,7 @@ function ComingLater({ userName }: { userName: string }) {
 }
 
 export default function WeddingDay({ initialEvents, userName, venueConfirmed }: { initialEvents: WeddingDayEvent[]; userName: string; venueConfirmed: boolean }) {
+  const confirm = useConfirm();
   const [events, setEvents] = useState(initialEvents);
   const [error, setError] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -87,7 +89,7 @@ export default function WeddingDay({ initialEvents, userName, venueConfirmed }: 
   }
 
   async function removeEvent(id: string) {
-    if (!confirm("Remove this moment?")) return;
+    if (!(await confirm("Remove this moment?"))) return;
     setEvents((es) => es.filter((e) => e.id !== id));
     await supabase.from("wedding_day_events").delete().eq("id", id);
   }
@@ -106,7 +108,7 @@ export default function WeddingDay({ initialEvents, userName, venueConfirmed }: 
             Add a moment
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
+          <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
         </div>
         {error && <p className="mt-3 text-sm text-wine">{error}</p>}
 

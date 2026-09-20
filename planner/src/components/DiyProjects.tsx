@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
 import { ChevronDown, ChevronRight, ExternalLink, Plus, Trash2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -23,6 +24,7 @@ const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visibl
 const FIELD = "w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm outline-none focus:border-line focus:bg-bg";
 
 export default function DiyProjects({ initialProjects, userName }: { initialProjects: DiyProject[]; userName: string }) {
+  const confirm = useConfirm();
   const [projects, setProjects] = useState(initialProjects);
   const [error, setError] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export default function DiyProjects({ initialProjects, userName }: { initialProj
   }
 
   async function removeProject(id: string) {
-    if (!confirm("Remove this project? Its Planning Board card will be removed too.")) return;
+    if (!(await confirm("Remove this project? Its Planning Board card will be removed too."))) return;
     setProjects((ps) => ps.filter((p) => p.id !== id));
     if (openId === id) setOpenId(null);
     await supabase.from("diy_projects").delete().eq("id", id);
@@ -90,7 +92,7 @@ export default function DiyProjects({ initialProjects, userName }: { initialProj
             <p className="mt-2 text-ink-2">Where ideas become real — cost, materials, and progress for everything you&apos;re making.</p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
+          <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
         </div>
         {error && <p className="mt-3 text-sm text-wine">{error}</p>}
         <p className="mt-2 text-xs text-ink-2">Every project also shows up on the Planning Board under the DIY category.</p>
@@ -297,7 +299,7 @@ export default function DiyProjects({ initialProjects, userName }: { initialProj
                                       <button
                                         onClick={() => removePhoto(p, i)}
                                         aria-label="Remove photo"
-                                        className="absolute right-0.5 top-0.5 rounded-full bg-bg/90 p-0.5 text-ink-2 opacity-0 group-hover:opacity-100 hover:text-wine"
+                                        className="absolute right-0.5 top-0.5 rounded-full bg-bg/90 p-0.5 text-ink-2 opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 hover:text-wine"
                                       >
                                         <X className="h-3 w-3" strokeWidth={2} aria-hidden />
                                       </button>

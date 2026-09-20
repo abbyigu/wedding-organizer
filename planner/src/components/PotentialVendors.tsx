@@ -1,5 +1,7 @@
 "use client";
 
+import { useDialog } from "@/lib/use-dialog";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Camera, MapPin, Plus, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -34,10 +36,10 @@ const FIELD = "mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div>
-      <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">{label}</label>
+    <label className="block">
+      <span className="block text-xs font-semibold uppercase tracking-wide text-ink-2">{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 
@@ -59,6 +61,7 @@ const QUICK_FILTERS = [
 type QuickFilter = (typeof QUICK_FILTERS)[number]["key"] | "none";
 
 export default function PotentialVendors({ initialVendors }: { initialVendors: PotentialVendor[] }) {
+  const confirm = useConfirm();
   const [vendors, setVendors] = useState(initialVendors);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -71,6 +74,7 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
   const supabase = createClient();
 
   const open = vendors.find((v) => v.id === openId) ?? null;
+  const dialogRef = useDialog(Boolean(open), () => setOpenId(null));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -122,7 +126,7 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
   }
 
   async function removeVendor(id: string) {
-    if (!confirm("Remove this potential vendor?")) return;
+    if (!(await confirm("Remove this potential vendor?"))) return;
     setVendors((vs) => vs.filter((v) => v.id !== id));
     if (openId === id) setOpenId(null);
     setCompareIds((ids) => ids.filter((x) => x !== id));
@@ -130,7 +134,7 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
   }
 
   async function moveToBooked(v: PotentialVendor) {
-    if (!confirm(`Move ${v.name} to Booked Vendors? It'll be removed from your Potential shortlist.`)) return;
+    if (!(await confirm(`Move ${v.name} to Booked Vendors? It'll be removed from your Potential shortlist.`, "Move it"))) return;
     setError("");
     const bookedPatch: Partial<Vendor> = {
       ...blankBookedVendor(0),
@@ -285,8 +289,8 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <button aria-label="Close" onClick={() => setOpenId(null)} className="absolute inset-0" />
-          <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
+          <button aria-label="Close" tabIndex={-1} onClick={() => setOpenId(null)} className="absolute inset-0" />
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Edit potential vendor" tabIndex={-1} className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <input
                 defaultValue={open.name}
@@ -557,7 +561,7 @@ function PhotoList({ photos, onAdd, onRemove }: { photos: string[]; onAdd: (url:
               <button
                 onClick={() => onRemove(i)}
                 aria-label="Remove photo"
-                className="absolute right-0.5 top-0.5 rounded-full bg-bg/90 p-0.5 text-ink-2 opacity-0 group-hover:opacity-100 hover:text-wine"
+                className="absolute right-0.5 top-0.5 rounded-full bg-bg/90 p-0.5 text-ink-2 opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 hover:text-wine"
               >
                 <X className="h-3 w-3" strokeWidth={2} aria-hidden />
               </button>

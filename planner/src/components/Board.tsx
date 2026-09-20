@@ -1,5 +1,7 @@
 "use client";
 
+import { useDialog } from "@/lib/use-dialog";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState } from "react";
 import { CalendarDays, Clock, Ellipsis, LayoutGrid, List as ListIcon, Plus, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -43,6 +45,7 @@ function Avatars({ value }: { value: Assignee }) {
 }
 
 export default function Board({ initialTasks, userName }: { initialTasks: PlanningTask[]; userName: string }) {
+  const confirm = useConfirm();
   const [tasks, setTasks] = useState(initialTasks);
   const [error, setError] = useState("");
   const [view, setView] = useState<"board" | "list">("board");
@@ -62,6 +65,7 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
   const me = userName.trim().toLowerCase() as Assignee;
   const partner = partnerOf(userName);
   const open = tasks.find((t) => t.id === openId) ?? null;
+  const dialogRef = useDialog(Boolean(open), () => setOpenId(null));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -163,7 +167,7 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
   }
 
   async function removeTask(id: string) {
-    if (!confirm("Delete this task?")) return;
+    if (!(await confirm("Delete this task?"))) return;
     setTasks((ts) => ts.filter((t) => t.id !== id));
     if (openId === id) setOpenId(null);
     const supabase = createClient();
@@ -316,7 +320,7 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
             Add task
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-10 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
+          <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-10 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
         </div>
 
         <div className="mt-6 flex items-center gap-1 rounded-full border border-line bg-paper p-1" style={{ width: "fit-content" }}>
@@ -464,8 +468,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <button aria-label="Close" onClick={() => setOpenId(null)} className="absolute inset-0" />
-          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
+          <button aria-label="Close" tabIndex={-1} onClick={() => setOpenId(null)} className="absolute inset-0" />
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Edit task" tabIndex={-1} className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <input
                 defaultValue={open.title}
@@ -479,8 +483,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
             <div className="flex-1 overflow-y-auto p-5">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Category</label>
-                  <select
+                  <label htmlFor="board-f1" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Category</label>
+                  <select id="board-f1"
                     value={open.category}
                     onChange={(e) => scheduleSave(open.id, { category: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -491,8 +495,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Status</label>
-                  <select
+                  <label htmlFor="board-f2" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Status</label>
+                  <select id="board-f2"
                     value={open.status}
                     onChange={(e) => saveNow(open.id, { status: e.target.value as TaskStatus })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -506,8 +510,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Assigned to</label>
-                  <select
+                  <label htmlFor="board-f3" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Assigned to</label>
+                  <select id="board-f3"
                     value={open.assigned_to}
                     onChange={(e) => scheduleSave(open.id, { assigned_to: e.target.value as Assignee })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -518,8 +522,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Priority</label>
-                  <select
+                  <label htmlFor="board-f4" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Priority</label>
+                  <select id="board-f4"
                     value={open.priority}
                     onChange={(e) => scheduleSave(open.id, { priority: e.target.value as Priority })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -532,8 +536,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Due date</label>
-                  <input
+                  <label htmlFor="board-f5" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Due date</label>
+                  <input id="board-f5"
                     type="date"
                     defaultValue={open.due_date ?? ""}
                     onChange={(e) => scheduleSave(open.id, { due_date: e.target.value || null })}
@@ -541,8 +545,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Time estimate</label>
-                  <input
+                  <label htmlFor="board-f6" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Time estimate</label>
+                  <input id="board-f6"
                     defaultValue={open.effort}
                     onChange={(e) => scheduleSave(open.id, { effort: e.target.value })}
                     placeholder="e.g. 15 min"
@@ -551,8 +555,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
                 </div>
               </div>
 
-              <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Estimated cost</label>
-              <input
+              <label htmlFor="board-f7" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Estimated cost</label>
+              <input id="board-f7"
                 type="number"
                 min={0}
                 defaultValue={open.estimated_cost ?? ""}
@@ -561,8 +565,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
                 className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
               />
 
-              <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Notes &amp; links</label>
-              <textarea
+              <label htmlFor="board-f8" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Notes &amp; links</label>
+              <textarea id="board-f8"
                 defaultValue={open.notes}
                 onChange={(e) => scheduleSave(open.id, { notes: e.target.value })}
                 rows={3}

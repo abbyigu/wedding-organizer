@@ -360,7 +360,7 @@ export default function VenueShortlist({
             <p className="mt-2 text-ink-2">Shortlist your options, then compare the ones that matter.</p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
+          <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
         </div>
 
         {venues.length > 0 && (

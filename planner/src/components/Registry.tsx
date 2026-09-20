@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +11,7 @@ import { blankRegistryEntry, type RegistryEntry } from "@/lib/registry";
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
 export default function Registry({ initialEntries, userName }: { initialEntries: RegistryEntry[]; userName: string }) {
+  const confirm = useConfirm();
   const [entries, setEntries] = useState(initialEntries);
   const [error, setError] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -33,7 +35,7 @@ export default function Registry({ initialEntries, userName }: { initialEntries:
   }
 
   async function removeEntry(id: string) {
-    if (!confirm("Remove this registry?")) return;
+    if (!(await confirm("Remove this registry?"))) return;
     setEntries((es) => es.filter((e) => e.id !== id));
     await supabase.from("registries").delete().eq("id", id);
   }

@@ -1,5 +1,7 @@
 "use client";
 
+import { useDialog } from "@/lib/use-dialog";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
 import { CalendarDays, CircleCheck, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -16,6 +18,7 @@ function statusPillClass(status: PaymentStatus) {
 const STATUS_LABEL: Record<PaymentStatus, string> = { upcoming: "Upcoming", overdue: "Overdue", paid: "Paid" };
 
 export default function BudgetPayments({ initialPayments }: { initialPayments: Payment[] }) {
+  const confirm = useConfirm();
   const [payments, setPayments] = useState(initialPayments);
   const [error, setError] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -23,6 +26,7 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
   const supabase = createClient();
 
   const open = payments.find((p) => p.id === openId) ?? null;
+  const dialogRef = useDialog(Boolean(open), () => setOpenId(null));
   const paid = payments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount, 0);
   const committed = payments.reduce((s, p) => s + p.amount, 0);
   const sorted = [...payments].sort((a, b) => {
@@ -62,7 +66,7 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
   }
 
   async function removePayment(id: string) {
-    if (!confirm("Delete this payment?")) return;
+    if (!(await confirm("Delete this payment?"))) return;
     setPayments((ps) => ps.filter((p) => p.id !== id));
     if (openId === id) setOpenId(null);
     await supabase.from("payments").delete().eq("id", id);
@@ -126,8 +130,8 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <button aria-label="Close" onClick={() => setOpenId(null)} className="absolute inset-0" />
-          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
+          <button aria-label="Close" tabIndex={-1} onClick={() => setOpenId(null)} className="absolute inset-0" />
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Edit payment" tabIndex={-1} className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <input
                 defaultValue={open.label}
@@ -141,16 +145,16 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
             <div className="flex-1 overflow-y-auto p-5">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Vendor</label>
-                  <input
+                  <label htmlFor="budget-payments-f1" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Vendor</label>
+                  <input id="budget-payments-f1"
                     defaultValue={open.vendor}
                     onChange={(e) => scheduleSave(open.id, { vendor: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Category</label>
-                  <select
+                  <label htmlFor="budget-payments-f2" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Category</label>
+                  <select id="budget-payments-f2"
                     value={open.category}
                     onChange={(e) => scheduleSave(open.id, { category: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -164,8 +168,8 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Amount</label>
-                  <input
+                  <label htmlFor="budget-payments-f3" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Amount</label>
+                  <input id="budget-payments-f3"
                     type="number"
                     min={0}
                     defaultValue={open.amount}
@@ -174,8 +178,8 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Due date</label>
-                  <input
+                  <label htmlFor="budget-payments-f4" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Due date</label>
+                  <input id="budget-payments-f4"
                     type="date"
                     defaultValue={open.due_date ?? ""}
                     onChange={(e) => scheduleSave(open.id, { due_date: e.target.value || null })}
@@ -196,8 +200,8 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Payment method</label>
-                  <input
+                  <label htmlFor="budget-payments-f5" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Payment method</label>
+                  <input id="budget-payments-f5"
                     defaultValue={open.method}
                     onChange={(e) => scheduleSave(open.id, { method: e.target.value })}
                     placeholder="e.g. e-transfer"
@@ -205,8 +209,8 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Confirmation #</label>
-                  <input
+                  <label htmlFor="budget-payments-f6" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Confirmation #</label>
+                  <input id="budget-payments-f6"
                     defaultValue={open.confirmation_number}
                     onChange={(e) => scheduleSave(open.id, { confirmation_number: e.target.value })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
@@ -214,16 +218,16 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
                 </div>
               </div>
 
-              <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Receipt or contract link</label>
-              <input
+              <label htmlFor="budget-payments-f7" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Receipt or contract link</label>
+              <input id="budget-payments-f7"
                 defaultValue={open.link}
                 onChange={(e) => scheduleSave(open.id, { link: e.target.value })}
                 placeholder="Paste a link to the file"
                 className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
               />
 
-              <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
-              <textarea
+              <label htmlFor="budget-payments-f8" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
+              <textarea id="budget-payments-f8"
                 defaultValue={open.notes}
                 onChange={(e) => scheduleSave(open.id, { notes: e.target.value })}
                 rows={3}

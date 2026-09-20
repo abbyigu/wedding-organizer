@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
@@ -31,6 +32,7 @@ export default function Private({
   userName: string;
   userId: string;
 }) {
+  const confirm = useConfirm();
   const [notes, setNotes] = useState(initialNotes);
   const [surprises, setSurprises] = useState(initialSurprises);
   const [error, setError] = useState("");
@@ -58,7 +60,7 @@ export default function Private({
   }
 
   async function removeNote(id: string) {
-    if (!confirm("Delete this note? This can't be undone.")) return;
+    if (!(await confirm("Delete this note? This can't be undone."))) return;
     setNotes((ns) => ns.filter((n) => n.id !== id));
     await supabase.from("private_notes").delete().eq("id", id);
   }
@@ -86,7 +88,7 @@ export default function Private({
   }
 
   async function removeSurprise(id: string) {
-    if (!confirm("Delete this surprise?")) return;
+    if (!(await confirm("Delete this surprise?"))) return;
     setSurprises((ss) => ss.filter((s) => s.id !== id));
     await supabase.from("surprises").delete().eq("id", id);
   }
