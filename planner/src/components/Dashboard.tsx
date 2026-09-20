@@ -49,529 +49,136 @@ const CARD_ICON: Record<string, ComponentType<{ className?: string; strokeWidth?
 
 function MiniCard({ card }: { card: OverviewCard }) {
   const Icon = CARD_ICON[card.key] ?? Landmark;
-  return (
-    <Link
-      href={card.href}
-      className={`flex items-center gap-3 rounded-xl border border-line bg-paper p-3.5 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}
-    >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] text-sage-deep">
-        <Icon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{card.title}</p>
-        <p className="truncate text-xs text-ink-2">{card.status}</p>
-      </div>
-    </Link>
-  );
-}
-
-export default function Dashboard({
-  initialVenues,
-  userName,
-  greetingText,
-  assumptions,
-  sharedVals,
-  daysUntilWedding,
-  guestTotal,
-  guestAdults,
-  guestKids,
-  decisionsWaitingCount,
-  decisionsWaitingVenue,
-  roadmap,
-  actionItems,
-  initialCustomTasks,
-  initialEvents,
-  celebrationCards,
-  peopleCards,
-  ideaCards,
-}: {
-  initialVenues: Venue[];
-  userName: string;
-  greetingText: string;
-  assumptions: Assumptions;
-  sharedVals: number[];
-  daysUntilWedding: number;
-  guestTotal: number;
-  guestAdults: number;
-  guestKids: number;
-  decisionsWaitingCount: number;
-  decisionsWaitingVenue: string | null;
-  roadmap: { phaseLabel: string; step: number; totalSteps: number; nextMilestone: string; previousPhaseLabel: string | null };
-  actionItems: ActionItem[];
-  initialCustomTasks: CustomTask[];
-  initialEvents: UpcomingEvent[];
-  celebrationCards: OverviewCard[];
-  peopleCards: OverviewCard[];
-  ideaCards: OverviewCard[];
-}) {
-  const venues = initialVenues;
-  const [error, setError] = useState("");
-  const [customTasks, setCustomTasks] = useState(initialCustomTasks);
-  const [completingIds, setCompletingIds] = useState<string[]>([]);
-  const [recentlyCompleted, setRecentlyCompleted] = useState<CustomTask[]>([]);
-  const [events, setEvents] = useState(initialEvents);
-  const taskTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const eventTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const as = assumptions;
-
-  const stats = useMemo(() => {
-    const active = venues.filter((v) => v.status !== "out");
-    const withCost = active
-      .map((v) => ({ v, g: calcVenue(v, as, sharedVals).grand }))
-      .sort((a, b) => a.g - b.g);
-    return {
-      active: active.length,
-      lowestNumeric: withCost[0]?.g ?? 0,
-      lowest: withCost[0] ? fmt(withCost[0].g) : "—",
-      nextAction: nextVenueAction(venues),
-    };
-  }, [venues, as, sharedVals]);
-
-  async function addCustomTask() {
-    setError("");
-    const supabase = createClient();
-    const { data, error } = await supabase.from("custom_tasks").insert(blankCustomTask(userName)).select().single();
-    if (error) setError(error.message);
-    else if (data) setCustomTasks((ts) => [...ts, data as CustomTask]);
-  }
-
-  function scheduleCustomTaskSave(id: string, patch: Partial<CustomTask>) {
-    setCustomTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-    const key = id + Object.keys(patch)[0];
-    clearTimeout(taskTimers.current[key]);
-    taskTimers.current[key] = setTimeout(async () => {
-      const supabase = createClient();
-      const { error } = await supabase.from("custom_tasks").update(patch).eq("id", id);
-      if (error) setError(error.message);
-    }, 700);
-  }
-
-  async function completeCustomTask(id: string) {
-    setCompletingIds((ids) => [...ids, id]);
-    const supabase = createClient();
-    await supabase.from("custom_tasks").update({ done: true }).eq("id", id);
-    setTimeout(() => {
-      setCustomTasks((ts) => {
-        const task = ts.find((t) => t.id === id);
-        if (task) setRecentlyCompleted((rc) => [{ ...task, done: true }, ...rc]);
-        return ts.filter((t) => t.id !== id);
-      });
-      setCompletingIds((ids) => ids.filter((x) => x !== id));
-    }, 350);
-  }
-
-  async function removeCustomTask(id: string) {
-    if (!confirm("Delete this task?")) return;
-    setCustomTasks((ts) => ts.filter((t) => t.id !== id));
-    const supabase = createClient();
-    await supabase.from("custom_tasks").delete().eq("id", id);
-  }
-
-  async function addEvent() {
-    setError("");
-    const supabase = createClient();
-    const { data, error } = await supabase.from("upcoming_events").insert(blankEvent()).select().single();
-    if (error) setError(error.message);
-    else if (data) setEvents((es) => [...es, data as UpcomingEvent].sort((a, b) => a.event_date.localeCompare(b.event_date)));
-  }
-
-  function scheduleEventSave(id: string, patch: Partial<UpcomingEvent>) {
-    setEvents((es) => {
-      const next = es.map((e) => (e.id === id ? { ...e, ...patch } : e));
-      return patch.event_date ? [...next].sort((a, b) => a.event_date.localeCompare(b.event_date)) : next;
-    });
-    const key = id + Object.keys(patch)[0];
-    clearTimeout(eventTimers.current[key]);
-    eventTimers.current[key] = setTimeout(async () => {
-      const supabase = createClient();
-      const { error } = await supabase.from("upcoming_events").update(patch).eq("id", id);
-      if (error) setError(error.message);
-    }, 700);
-  }
-
-  async function removeEvent(id: string) {
-    if (!confirm("Delete this event?")) return;
-    setEvents((es) => es.filter((e) => e.id !== id));
-    const supabase = createClient();
-    await supabase.from("upcoming_events").delete().eq("id", id);
-  }
-
-  const guestOver = guestTotal - GUEST_CAPACITY;
-  const budgetPct = Math.min(100, Math.max(0, (stats.lowestNumeric / BUDGET_CEILING) * 100));
-
-  const nextMoveQueue = useMemo(
-    () => [
-      ...actionItems.map((a) => ({ title: a.title, description: a.description, person: a.person, effort: a.effort, href: a.href })),
-      ...customTasks.map((t) => ({
-        title: t.title,
-        description: t.description || "Custom task",
-        person: t.person || userName,
-        effort: t.effort || "—",
-        href: "#next-actions",
-      })),
-    ],
-    [actionItems, customTasks, userName],
-  );
-  const nextMove = nextMoveQueue[0] ?? null;
-  const progressItems = nextMoveQueue.slice(1, 3);
-
-  const guestsCard: OverviewCard = {
-    key: "guests",
-    title: "Guests",
-    status: guestOver > 0 ? `${guestOver} over target` : `${guestAdults} adults + ${guestKids} kids`,
-    href: "/guests",
-  };
-  const venueCard: OverviewCard = { key: "venue", title: "Venue", status: stats.nextAction, href: "/venues" };
+  const featuredVenue = venues.find((v) => v.is_final) ?? venues.find((v) => v.is_favourite) ?? venues.find((v) => v.status === "finalist") ?? venues[0];
+  const venuePhoto = featuredVenue?.photos?.[0]?.path ?? "";
+  const heroPhoto = venues.flatMap((v) => v.photos ?? []).find((p) => p.path)?.path ?? venuePhoto;
+  const journeyPct = Math.round(((Math.max(1, roadmap.step) - 1) / Math.max(1, roadmap.totalSteps - 1)) * 100);
+  const nextThree = nextMoveQueue.slice(0, 3);
 
   return (
-    <div className="min-h-screen pb-20 lg:pl-56">
+    <div className="min-h-screen bg-bg pb-16 lg:pl-56">
       <NavBar userName={userName} />
+      <main className="mx-auto max-w-[1540px] px-5 py-5 lg:px-8">
+        {error && <p className="mb-3 text-sm text-wine">{error}</p>}
 
-      <div className="mx-auto max-w-[1500px] px-5 py-7 lg:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-ink-2">Good morning, Ariel &amp; Fred</p>
-            <h1 className="mt-3 max-w-3xl font-serif text-5xl font-medium leading-[0.98] tracking-[-0.035em] sm:text-6xl lg:text-7xl">Your wedding is taking shape</h1>
-            <p className="mt-4 text-base text-ink-2">{daysUntilWedding} days until your wedding day · {greetingText}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-4">
-            <div className="flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-2 shadow-sm">
-              <CalendarDays className="h-4 w-4 text-ink-2" strokeWidth={1.5} aria-hidden />
-              <span className="text-sm text-ink-2">
-                <b className="font-serif text-base font-semibold text-ink">{daysUntilWedding}</b> days to go
-              </span>
-            </div>
-            <div className="hidden items-center gap-3 lg:flex">
-              <p className="text-right font-serif text-[10px] uppercase leading-tight tracking-[0.15em] text-ink-2">
-                A more
-                <br />
-                beautiful
-                <br />
-                together
-              </p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/botanical-accent.png" alt="" aria-hidden className="h-24 w-auto opacity-80" />
-            </div>
-          </div>
-        </div>
-
-        {error && <p className="mt-3 text-sm text-wine">{error}</p>}
-
-        {nextMove && (
-          <div
-            className="mt-8 flex flex-col gap-5 rounded-[28px] border border-line p-7 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:p-9"
-            style={{ background: "color-mix(in srgb, var(--sage) 14%, var(--paper))" }}
-          >
-            <div className="flex items-start gap-4">
-              <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-sage-deep font-serif text-base font-semibold text-white">
-                1
-              </span>
+        <section className="grid items-stretch gap-7 xl:grid-cols-[0.72fr_1.45fr]">
+          <div className="flex flex-col justify-center py-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.30em] text-ink-2">Good morning, Ariel &amp; Fred</p>
+            <h1 className="mt-4 max-w-[560px] font-serif text-[clamp(3.4rem,5vw,5.7rem)] font-medium leading-[0.88] tracking-[-0.045em] text-ink">
+              Your wedding<br />is taking shape
+            </h1>
+            <div className="mt-6 flex items-end gap-5">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">Your next move</p>
-                <h2 className="mt-1 font-serif text-2xl font-medium sm:text-3xl">{nextMove.title}</h2>
-                <p className="mt-1 text-ink-2">{nextMove.description}</p>
-                <p className="mt-3 flex items-center gap-1.5 text-sm text-ink-2">
-                  <Clock className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                  {nextMove.person} · {nextMove.effort}
-                </p>
+                <p className="font-serif text-4xl text-ink">{daysUntilWedding} days</p>
+                <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-ink-2">until your wedding day</p>
               </div>
+              <span className="pb-1 font-serif text-5xl italic text-gold">♡</span>
             </div>
-            <Link
-              href={nextMove.href}
-              className={`shrink-0 rounded-full bg-surface-sage-deep px-5 py-2.5 text-center text-sm font-semibold text-white ${FOCUS_RING}`}
-            >
-              Start task →
+            <Link href={nextMove?.href ?? "/board"} className={`mt-7 inline-flex w-fit items-center gap-5 rounded-full bg-surface-sage-deep px-8 py-3.5 font-serif text-lg text-white ${FOCUS_RING}`}>
+              Continue planning <span>→</span>
             </Link>
           </div>
-        )}
 
-        <div className="mt-8 grid grid-cols-2 divide-y divide-line overflow-hidden rounded-[24px] border border-line bg-paper shadow-sm sm:grid-cols-4 sm:divide-y-0 sm:divide-x">
-          <Link href="/guests" className={`flex items-center gap-3 p-5 ${FOCUS_RING}`}>
-            <Users className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
-            <div className="min-w-0">
-              <p>
-                <b className="font-serif text-xl">{guestTotal}</b> <span className="text-sm text-ink-2">Guests</span>
-              </p>
-              <p className={`text-xs ${guestOver > 0 ? "font-semibold text-wine" : "text-ink-2"}`}>
-                {guestOver > 0 ? `${guestOver} over target` : `${guestAdults} adults + ${guestKids} kids`}
-              </p>
+          <div className="relative min-h-[360px] overflow-hidden rounded-[18px] bg-[color-mix(in_srgb,var(--sage)_18%,var(--paper))] xl:min-h-[410px]">
+            {heroPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={heroPhoto} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--wine)_18%,var(--paper)),color-mix(in_srgb,var(--gold)_24%,var(--paper)),color-mix(in_srgb,var(--sage)_30%,var(--paper)))]" />
+            )}
+            <div className="absolute right-6 top-7 rotate-[-7deg] text-right font-serif text-2xl italic leading-tight text-white drop-shadow">
+              Good things<br />are worth<br />planning for.
             </div>
-          </Link>
-
-          <Link href="/budget" className={`flex items-center gap-3 p-5 ${FOCUS_RING}`}>
-            <Wallet className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
-            <div className="min-w-0">
-              <p>
-                <b className="font-serif text-xl">{stats.lowest}</b> <span className="text-sm text-ink-2">Estimate</span>
-              </p>
-              <p className="text-xs text-ink-2">Cheapest venue + shared costs · {Math.round(budgetPct)}% of ceiling</p>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-3 p-5">
-            <CalendarDays className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
-            <div className="min-w-0">
-              <p>
-                <b className="font-serif text-xl">{daysUntilWedding}</b> <span className="text-sm text-ink-2">Countdown</span>
-              </p>
-              <p className="text-xs text-ink-2">days to go</p>
+            <div className="absolute bottom-5 right-5 bg-paper/90 px-8 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.28em] text-ink-2 shadow-sm">
+              Same love<br />brighter days
             </div>
           </div>
+        </section>
 
-          <Link href="#next-actions" className={`flex items-center gap-3 p-5 ${FOCUS_RING}`}>
-            <ListChecks className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
-            <div className="min-w-0">
-              <p>
-                <b className="font-serif text-xl">{actionItems.length + customTasks.length}</b>{" "}
-                <span className="text-sm text-ink-2">Open tasks</span>
-              </p>
-              <p className="text-xs text-ink-2">need attention</p>
-            </div>
-          </Link>
-        </div>
-
-        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="rounded-[24px] border border-line bg-paper p-6 shadow-sm lg:col-span-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-serif text-2xl font-medium">Your wedding journey</h3>
-                <p className="mt-1 text-sm text-ink-2">Key steps to keep things moving forward.</p>
-              </div>
-              <Link href="/board" className={`shrink-0 text-sm font-semibold text-green rounded ${FOCUS_RING}`}>
-                View roadmap →
+        <section className="mt-5 border-b border-line pb-7">
+          <div className="flex items-end justify-between">
+            <h2 className="font-serif text-3xl font-medium">Next three steps</h2>
+            <Link href="/board" className="text-[10px] font-semibold uppercase tracking-[0.22em] text-wine">View all tasks →</Link>
+          </div>
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            {nextThree.map((item, i) => (
+              <Link key={item.title} href={item.href} className={`group flex items-center gap-5 border-r border-line py-2 pr-5 last:border-r-0 ${FOCUS_RING}`}>
+                <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-serif text-xl text-white ${i === 0 ? "bg-surface-wine" : i === 1 ? "bg-[color-mix(in_srgb,var(--wine)_62%,white)]" : "bg-[color-mix(in_srgb,var(--gold)_75%,var(--wine))]"}`}>{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink">{item.title}</p>
+                  <p className="mt-0.5 truncate text-sm text-ink-2">{item.description}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-wine opacity-0 transition group-hover:opacity-100" />
               </Link>
-            </div>
-            <ol className="mt-4 flex flex-col divide-y divide-line">
-              {roadmap.previousPhaseLabel && (
-                <li className="flex items-center gap-3 py-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sage-deep text-xs text-white">✓</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-ink-2 line-through decoration-ink-2/50">{roadmap.previousPhaseLabel}</p>
-                    <p className="text-xs text-ink-2">
-                      Step {roadmap.step - 1} of {roadmap.totalSteps}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs font-semibold text-ink-2">Completed</span>
-                </li>
-              )}
-              {progressItems.map((item, i) => (
-                <li key={item.title}>
-                  <Link href={item.href} className={`flex flex-wrap items-center gap-3 rounded py-3 sm:flex-nowrap ${FOCUS_RING} hover:bg-bg`}>
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--sage)_25%,var(--paper))] text-xs font-semibold text-sage-deep">
-                      {(roadmap.previousPhaseLabel ? 2 : 1) + i}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold">{item.title}</p>
-                      <p className="text-sm text-ink-2">{item.description}</p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2.5 py-1 text-xs font-semibold text-ink">
-                      {item.person} · {item.effort}
-                    </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
-                  </Link>
-                </li>
-              ))}
-              {!roadmap.previousPhaseLabel && progressItems.length === 0 && (
-                <li className="py-3 text-sm text-ink-2">Nothing urgent — you&apos;re all caught up.</li>
-              )}
-            </ol>
+            ))}
           </div>
+        </section>
 
-          <div className="flex flex-col gap-4">
-            <Link href="/decide" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--wine)_20%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-wine text-white">
-                <Heart className="h-5 w-5" strokeWidth={1.5} aria-hidden />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-serif text-base font-medium">Decisions waiting</h3>
-                <p className="text-sm text-ink-2">
-                  {decisionsWaitingCount === 0
-                    ? "You're all caught up"
-                    : `${decisionsWaitingCount} private vote${decisionsWaitingCount === 1 ? "" : "s"} need${decisionsWaitingCount === 1 ? "s" : ""} your answer${decisionsWaitingVenue ? ` — ${decisionsWaitingVenue}` : ""}`}
-                </p>
+        <section className="py-7">
+          <h2 className="font-serif text-3xl font-medium">Your wedding journey</h2>
+          <div className="relative mt-6 grid grid-cols-5 gap-3">
+            <div className="absolute left-[9%] right-[9%] top-6 h-px bg-line" />
+            <div className="absolute left-[9%] top-6 h-px bg-surface-sage-deep" style={{ width: `${Math.min(82, journeyPct * 0.82)}%` }} />
+            {[
+              ["Dream", "Complete", "✓"],
+              ["Decide", "In progress", `${Math.max(1, Math.min(99, journeyPct))}%`],
+              ["Build", "Upcoming", "□"],
+              ["Coordinate", "Upcoming", "♧"],
+              ["Wedding Day", "Coming soon", "♡"],
+            ].map(([label, state, icon], i) => (
+              <div key={label} className="relative z-10 text-center">
+                <span className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full border bg-paper font-serif text-base ${i === 0 ? "border-sage-deep bg-surface-sage-deep text-white" : i === 1 ? "border-[5px] border-wine text-wine" : "border-line text-ink-2"}`}>{icon}</span>
+                <p className="mt-2 font-serif text-lg">{label}</p>
+                <p className={`text-[9px] font-semibold uppercase tracking-[0.22em] ${i === 1 ? "text-wine" : "text-ink-2"}`}>{state}</p>
               </div>
-              <span className="shrink-0 text-sm font-semibold text-wine">Review →</span>
-            </Link>
+            ))}
+          </div>
+        </section>
 
-            <div className="flex-1 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="flex items-center gap-2 font-serif text-lg font-medium">
-                  <CalendarClock className="h-4 w-4 text-ink-2" strokeWidth={1.5} aria-hidden />
-                  Coming up
-                </h3>
-                <button
-                  onClick={addEvent}
-                  className={`rounded-full border border-line px-2.5 py-1 text-xs font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}
-                >
-                  ＋ Add
-                </button>
+        <section className="grid overflow-hidden rounded-[18px] border border-line bg-paper lg:grid-cols-4">
+          <div className="border-b border-line p-6 lg:border-b-0 lg:border-r">
+            <div className="flex items-center justify-between"><h3 className="font-serif text-xl">Guest List</h3><Link href="/guests" className="text-xs text-wine">View list →</Link></div>
+            <div className="mt-5 flex items-center gap-5">
+              <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-[14px] border-[color-mix(in_srgb,var(--sage)_75%,var(--paper))] bg-paper text-center">
+                <span><b className="block font-serif text-2xl">{guestTotal}</b><small>guests</small></span>
               </div>
-              {events.length === 0 ? (
-                <p className="mt-3 text-sm text-ink-2">Nothing on the calendar yet.</p>
-              ) : (
-                <ul className="mt-3 flex flex-col gap-2">
-                  {events.map((ev) => (
-                    <li key={ev.id} className="flex items-start gap-2 rounded-xl border border-line bg-bg p-2.5">
-                      <span className="mt-0.5 shrink-0 rounded-lg bg-[color-mix(in_srgb,var(--sage)_22%,var(--paper))] px-2 py-1 text-center text-xs font-semibold text-green">
-                        {formatEventDate(ev.event_date)}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <input
-                          defaultValue={ev.title}
-                          onChange={(e) => scheduleEventSave(ev.id, { title: e.target.value })}
-                          className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold outline-none focus:border-line focus:bg-paper"
-                        />
-                        <div className="flex items-center gap-2 px-1">
-                          <input
-                            type="date"
-                            defaultValue={ev.event_date}
-                            onChange={(e) => scheduleEventSave(ev.id, { event_date: e.target.value })}
-                            className="rounded border border-transparent bg-transparent text-xs text-ink-2 outline-none focus:border-line focus:bg-paper"
-                          />
-                          <select
-                            defaultValue={ev.type}
-                            onChange={(e) => scheduleEventSave(ev.id, { type: e.target.value as UpcomingEvent["type"] })}
-                            className="rounded border border-transparent bg-transparent text-xs text-ink-2 outline-none focus:border-line focus:bg-paper"
-                          >
-                            {EVENT_TYPE_ORDER.map((t) => (
-                              <option key={t} value={t}>{EVENT_TYPES[t]}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <button onClick={() => removeEvent(ev.id)} aria-label={`Delete ${ev.title}`} className="shrink-0 text-sm text-wine">×</button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className="text-sm text-ink-2"><p><b className="text-ink">{guestAdults}</b> adults</p><p className="mt-2"><b className="text-ink">{guestKids}</b> kids</p></div>
             </div>
           </div>
-        </div>
 
-        <div className="mt-8">
-          <h3 className="font-serif text-lg font-medium">Your celebrations</h3>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {celebrationCards.map((c) => <MiniCard key={c.key} card={c} />)}
+          <div className="border-b border-line p-6 lg:border-b-0 lg:border-r">
+            <div className="flex items-center justify-between"><h3 className="font-serif text-xl">Budget</h3><Link href="/budget" className="text-xs text-wine">View details →</Link></div>
+            <p className="mt-6 font-serif text-4xl">{stats.lowest}</p>
+            <p className="text-sm text-ink-2">of {fmt(BUDGET_CEILING)}</p>
+            <div className="mt-4 h-3 overflow-hidden rounded-full bg-bg"><div className="h-full rounded-full bg-surface-sage-deep" style={{ width: `${budgetPct}%` }} /></div>
+            <p className="mt-5 font-serif text-xl italic text-sage-deep">Right on track!</p>
           </div>
-        </div>
 
-        <div className="mt-8">
-          <h3 className="font-serif text-lg font-medium">People &amp; partners</h3>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <MiniCard card={guestsCard} />
-            {peopleCards.map((c) => <MiniCard key={c.key} card={c} />)}
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <h3 className="font-serif text-lg font-medium">Ideas taking shape</h3>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <MiniCard card={venueCard} />
-            {ideaCards.map((c) => <MiniCard key={c.key} card={c} />)}
-          </div>
-        </div>
-
-        <div id="next-actions" className="mt-10 scroll-mt-20 rounded-[24px] border border-line bg-paper p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif text-xl font-medium">All tasks</h2>
-            <button
-              onClick={addCustomTask}
-              className={`rounded-full border border-line px-2.5 py-1 text-xs font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}
-            >
-              ＋ Add
-            </button>
-          </div>
-          {actionItems.length === 0 && customTasks.length === 0 ? (
-            <p className="mt-4 text-sm text-ink-2">Nothing urgent — you&apos;re all caught up.</p>
-          ) : (
-            <ol className="mt-4 flex flex-col gap-3">
-              {actionItems.slice(0, 3).map((item, i) => (
-                <li
-                  key={item.title}
-                  className={`flex flex-wrap items-start gap-3 rounded-xl border border-line bg-bg p-3 sm:flex-nowrap ${CARD_TRANSITION} hover:border-sage-deep`}
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-sage-deep text-xs font-semibold text-white">
-                    {i + 1}
-                  </span>
-                  <Link href={item.href} className={`min-w-0 flex-1 rounded ${FOCUS_RING}`}>
-                    <p className="font-semibold">{item.title}</p>
-                    <p className="text-sm text-ink-2">{item.description}</p>
-                  </Link>
-                  <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2.5 py-1 text-xs font-semibold text-ink">
-                    {item.person} · {item.effort}
-                  </span>
-                </li>
+          <div className="border-b border-line p-6 lg:border-b-0 lg:border-r">
+            <div className="flex items-center justify-between"><h3 className="font-serif text-xl">Upcoming Milestones</h3><Link href="/board" className="text-xs text-wine">View all →</Link></div>
+            <div className="mt-5 space-y-3">
+              {nextMoveQueue.slice(0, 5).map((item, i) => (
+                <Link key={item.title} href={item.href} className="flex items-center gap-3 text-sm">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${i % 3 === 0 ? "bg-surface-wine" : i % 3 === 1 ? "bg-[color-mix(in_srgb,var(--gold)_85%,var(--wine))]" : "bg-surface-sage-deep"}`} />
+                  <span className="truncate">{item.title}</span>
+                </Link>
               ))}
-              {customTasks.map((task) => {
-                const completing = completingIds.includes(task.id);
-                return (
-                <li
-                  key={task.id}
-                  className={`flex flex-wrap items-start gap-2 rounded-xl border border-line bg-bg p-3 transition-all duration-300 motion-reduce:transition-none sm:flex-nowrap hover:border-sage-deep hover:shadow-sm ${
-                    completing ? "-translate-x-1 opacity-0" : "opacity-100"
-                  }`}
-                >
-                  <button
-                    onClick={() => completeCustomTask(task.id)}
-                    aria-label={`Mark "${task.title}" done`}
-                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-sage-deep text-xs transition-colors ${
-                      completing ? "bg-surface-sage-deep text-white" : "text-transparent hover:bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] hover:text-sage-deep"
-                    }`}
-                  >
-                    ✓
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <input
-                      defaultValue={task.title}
-                      onChange={(e) => scheduleCustomTaskSave(task.id, { title: e.target.value })}
-                      className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 font-semibold outline-none focus:border-line focus:bg-paper"
-                    />
-                    <input
-                      defaultValue={task.description}
-                      onChange={(e) => scheduleCustomTaskSave(task.id, { description: e.target.value })}
-                      placeholder="Details…"
-                      className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-ink-2 outline-none focus:border-line focus:bg-paper"
-                    />
-                    <div className="mt-1 flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--gold)_20%,var(--paper))] px-2 py-0.5 text-xs font-semibold text-ink">
-                      <input
-                        defaultValue={task.person}
-                        onChange={(e) => scheduleCustomTaskSave(task.id, { person: e.target.value })}
-                        placeholder="Who"
-                        className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-ink-2"
-                      />
-                      <span>·</span>
-                      <input
-                        defaultValue={task.effort}
-                        onChange={(e) => scheduleCustomTaskSave(task.id, { effort: e.target.value })}
-                        placeholder="Effort"
-                        className="w-16 min-w-0 bg-transparent outline-none placeholder:font-normal placeholder:text-ink-2"
-                      />
-                    </div>
-                  </div>
-                  <button onClick={() => removeCustomTask(task.id)} aria-label={`Delete ${task.title}`} className="shrink-0 self-center text-sm text-wine">×</button>
-                </li>
-                );
-              })}
-            </ol>
-          )}
-          {recentlyCompleted.length > 0 && (
-            <details className="mt-3 border-t border-line pt-3">
-              <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-2 marker:content-none">
-                <span className="mr-1 inline-block transition-transform [details[open]_&]:rotate-90">▸</span>
-                Recently completed ({recentlyCompleted.length})
-              </summary>
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {recentlyCompleted.map((t) => (
-                  <li key={t.id} className="flex items-center gap-2 text-sm text-ink-2">
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-sage-deep text-[10px] text-white">✓</span>
-                    <span className="truncate line-through decoration-ink-2/50">{t.title}</span>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="flex items-center justify-between"><h3 className="font-serif text-xl">Venue</h3><Link href="/venues" className="text-xs text-wine">View details →</Link></div>
+            {venuePhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={venuePhoto} alt={featuredVenue?.name ?? "Venue"} className="mt-4 h-28 w-full rounded-xl object-cover" />
+            ) : (
+              <div className="mt-4 flex h-28 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--sage)_18%,var(--paper))]"><Landmark className="h-8 w-8 text-sage-deep" /></div>
+            )}
+            <p className="mt-3 font-serif text-xl">{featuredVenue?.name ?? "Still dreaming"}</p>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-ink-2">{featuredVenue?.location ?? "Explore your venue shortlist"}</p>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
