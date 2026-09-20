@@ -227,12 +227,12 @@ export default function Dashboard({
     <div className="min-h-screen pb-20 lg:pl-56">
       <NavBar userName={userName} />
 
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-[1500px] px-5 py-7 lg:px-8">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
-            <p className="font-serif italic text-wine">Come as you are, stay as long as you like.</p>
-            <h1 className="mt-1 font-serif text-3xl font-medium sm:text-4xl">{greetingText}</h1>
-            <p className="mt-2 text-ink-2">Your wedding at a glance · early September 2029</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-ink-2">Good morning, Ariel &amp; Fred</p>
+            <h1 className="mt-3 max-w-3xl font-serif text-5xl font-medium leading-[0.98] tracking-[-0.035em] sm:text-6xl lg:text-7xl">Your wedding is taking shape</h1>
+            <p className="mt-4 text-base text-ink-2">{daysUntilWedding} days until your wedding day · {greetingText}</p>
           </div>
           <div className="flex shrink-0 items-center gap-4">
             <div className="flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-2 shadow-sm">
@@ -259,7 +259,7 @@ export default function Dashboard({
 
         {nextMove && (
           <div
-            className="mt-8 flex flex-col gap-4 rounded-2xl p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+            className="mt-8 flex flex-col gap-5 rounded-[28px] border border-line p-7 shadow-sm sm:flex-row sm:items-center sm:justify-between lg:p-9"
             style={{ background: "color-mix(in srgb, var(--sage) 14%, var(--paper))" }}
           >
             <div className="flex items-start gap-4">
@@ -285,7 +285,7 @@ export default function Dashboard({
           </div>
         )}
 
-        <div className="mt-6 grid grid-cols-2 divide-y divide-line rounded-2xl border border-line bg-paper shadow-sm sm:grid-cols-4 sm:divide-y-0 sm:divide-x">
+        <div className="mt-8 grid grid-cols-2 divide-y divide-line overflow-hidden rounded-[24px] border border-line bg-paper shadow-sm sm:grid-cols-4 sm:divide-y-0 sm:divide-x">
           <Link href="/guests" className={`flex items-center gap-3 p-5 ${FOCUS_RING}`}>
             <Users className="h-5 w-5 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
             <div className="min-w-0">
@@ -330,11 +330,11 @@ export default function Dashboard({
           </Link>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm lg:col-span-2">
+        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="rounded-[24px] border border-line bg-paper p-6 shadow-sm lg:col-span-2">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-serif text-xl font-medium">Planning progress</h3>
+                <h3 className="font-serif text-2xl font-medium">Your wedding journey</h3>
                 <p className="mt-1 text-sm text-ink-2">Key steps to keep things moving forward.</p>
               </div>
               <Link href="/board" className={`shrink-0 text-sm font-semibold text-green rounded ${FOCUS_RING}`}>
@@ -471,7 +471,7 @@ export default function Dashboard({
           </div>
         </div>
 
-        <div id="next-actions" className="mt-8 scroll-mt-20 rounded-2xl border border-line bg-paper p-5 shadow-sm">
+        <div id="next-actions" className="mt-10 scroll-mt-20 rounded-[24px] border border-line bg-paper p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="font-serif text-xl font-medium">All tasks</h2>
             <button
