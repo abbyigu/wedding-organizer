@@ -87,7 +87,7 @@ export default function WeddingEvents({
     <div>
       <div className="flex items-center justify-between">
         <p className="text-sm text-ink-2">Every wedding-related event, and who&apos;s invited.</p>
-        <button onClick={addEvent} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+        <button onClick={addEvent} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
           <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
           Add event
         </button>
@@ -128,7 +128,7 @@ export default function WeddingEvents({
                         Full page <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden />
                       </Link>
                     )}
-                    <button onClick={() => removeEvent(ev.id)} aria-label={`Remove ${ev.title}`} className={`shrink-0 rounded-full p-1 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
+                    <button onClick={() => removeEvent(ev.id)} aria-label={`Remove ${ev.title}`} className={`shrink-0 rounded-full p-2.5 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
                       <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                     </button>
                   </div>

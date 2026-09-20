@@ -87,7 +87,7 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
 
       <div className="mt-6 flex items-center justify-between">
         <h2 className="font-serif text-xl font-medium">All payments</h2>
-        <button onClick={addPayment} className={`flex items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+        <button onClick={addPayment} className={`flex items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
           <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
           Add payment
         </button>

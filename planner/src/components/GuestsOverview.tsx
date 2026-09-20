@@ -63,7 +63,7 @@ export default function GuestsOverview({ guests, hotelBlocks }: { guests: Guest[
         <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
           <h2 className="font-serif text-xl font-medium">Quick actions</h2>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/guests/list" className={`rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+            <Link href="/guests/list" className={`rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
               ＋ Add household
             </Link>
             <Link href="/guests/communications" className={`flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink-2 hover:border-sage-deep hover:text-ink ${FOCUS_RING}`}>

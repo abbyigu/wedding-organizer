@@ -89,24 +89,25 @@ export default function EventDetail({
 
         <div className="mt-6 grid grid-cols-1 gap-4 rounded-2xl border border-line bg-paper p-5 shadow-sm sm:grid-cols-2">
           <div>
-            <label className={LABEL}>Date</label>
-            <input type="date" defaultValue={event.event_date ?? ""} onChange={(e) => scheduleSave({ event_date: e.target.value || null })} className={FIELD} />
+            <label htmlFor="event-date" className={LABEL}>Date</label>
+            <input id="event-date" type="date" defaultValue={event.event_date ?? ""} onChange={(e) => scheduleSave({ event_date: e.target.value || null })} className={FIELD} />
           </div>
           <div>
-            <label className={LABEL}>Time</label>
-            <input defaultValue={event.time} onChange={(e) => scheduleSave({ time: e.target.value })} className={FIELD} />
+            <label htmlFor="event-time" className={LABEL}>Time</label>
+            <input id="event-time" defaultValue={event.time} onChange={(e) => scheduleSave({ time: e.target.value })} className={FIELD} />
           </div>
           <div>
-            <label className={LABEL}>Location</label>
-            <input defaultValue={event.location} onChange={(e) => scheduleSave({ location: e.target.value })} className={FIELD} />
+            <label htmlFor="event-location" className={LABEL}>Location</label>
+            <input id="event-location" defaultValue={event.location} onChange={(e) => scheduleSave({ location: e.target.value })} className={FIELD} />
           </div>
           <div>
-            <label className={LABEL}>Dress code</label>
-            <input defaultValue={event.dress_code} onChange={(e) => scheduleSave({ dress_code: e.target.value })} className={FIELD} />
+            <label htmlFor="event-dress-code" className={LABEL}>Dress code</label>
+            <input id="event-dress-code" defaultValue={event.dress_code} onChange={(e) => scheduleSave({ dress_code: e.target.value })} className={FIELD} />
           </div>
           <div>
-            <label className={LABEL}>Capacity</label>
+            <label htmlFor="event-capacity" className={LABEL}>Capacity</label>
             <input
+              id="event-capacity"
               type="number"
               defaultValue={event.capacity ?? ""}
               onChange={(e) => scheduleSave({ capacity: e.target.value === "" ? null : +e.target.value })}
@@ -116,8 +117,9 @@ export default function EventDetail({
         </div>
 
         <div className="mt-4 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <h3 className="mb-3 font-semibold">Menu</h3>
+          <h3 id="event-menu-heading" className="mb-3 font-semibold">Menu</h3>
           <textarea
+            aria-labelledby="event-menu-heading"
             defaultValue={event.menu}
             onChange={(e) => scheduleSave({ menu: e.target.value })}
             rows={3}
@@ -127,8 +129,9 @@ export default function EventDetail({
         </div>
 
         <div className="mt-4 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <h3 className="mb-3 font-semibold">Vendor</h3>
+          <h3 id="event-vendor-heading" className="mb-3 font-semibold">Vendor</h3>
           <select
+            aria-labelledby="event-vendor-heading"
             value={event.vendor_id ?? ""}
             onChange={(e) => scheduleSave({ vendor_id: e.target.value || null })}
             className={FIELD}
@@ -149,11 +152,13 @@ export default function EventDetail({
         </div>
 
         <div className="mt-4 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <h3 className="font-semibold">Budget</h3>
+          <h3 id="event-budget-heading" className="font-semibold">Budget</h3>
           <p className="mb-3 text-xs text-ink-2">A rough estimate for this event — separate from the Budget Builder&apos;s totals.</p>
           <div className="flex items-center gap-2">
-            <span className="text-ink-2">$</span>
+            <label htmlFor="event-budget-amount" className="text-ink-2">$</label>
             <input
+              id="event-budget-amount"
+              aria-labelledby="event-budget-heading"
               type="number"
               defaultValue={event.budget_estimate ?? ""}
               onChange={(e) => scheduleSave({ budget_estimate: e.target.value === "" ? null : +e.target.value })}
@@ -162,6 +167,7 @@ export default function EventDetail({
             {event.budget_estimate != null && <span className="text-sm text-ink-2">({fmt(event.budget_estimate)})</span>}
           </div>
           <textarea
+            aria-label="What's included in this budget estimate"
             defaultValue={event.budget_notes}
             onChange={(e) => scheduleSave({ budget_notes: e.target.value })}
             placeholder="What's included in this estimate…"
@@ -171,8 +177,8 @@ export default function EventDetail({
         </div>
 
         <div className="mt-4 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <h3 className="mb-3 font-semibold">Notes</h3>
-          <textarea defaultValue={event.notes} onChange={(e) => scheduleSave({ notes: e.target.value })} rows={3} className={FIELD} />
+          <h3 id="event-notes-heading" className="mb-3 font-semibold">Notes</h3>
+          <textarea aria-labelledby="event-notes-heading" defaultValue={event.notes} onChange={(e) => scheduleSave({ notes: e.target.value })} rows={3} className={FIELD} />
         </div>
 
         <div className="mt-4 rounded-2xl border border-line bg-paper p-5 shadow-sm">
@@ -185,6 +191,7 @@ export default function EventDetail({
               <div key={g.id} className="flex items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
                 <span className="min-w-0 truncate text-sm font-semibold text-ink">{g.name}</span>
                 <select
+                  aria-label={`RSVP status for ${g.name}`}
                   value={statusFor(g.id)}
                   onChange={(e) => setGuestStatus(g.id, e.target.value as EventGuestStatus)}
                   className={`shrink-0 rounded-full border border-line bg-bg px-2.5 py-1 text-xs font-semibold ${FOCUS_RING}`}

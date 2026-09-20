@@ -41,7 +41,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={signingIn}
-              className="mt-2 rounded-full bg-sage-deep px-4 py-2 font-semibold text-[#F7F3EA] disabled:opacity-60"
+              className="mt-2 rounded-full bg-surface-sage-deep px-4 py-2 font-semibold text-white disabled:opacity-60"
             >
               {signingIn ? "Signing in…" : "Sign in"}
             </button>
@@ -70,7 +70,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={resetting}
-              className="mt-2 rounded-full bg-sage-deep px-4 py-2 font-semibold text-[#F7F3EA] disabled:opacity-60"
+              className="mt-2 rounded-full bg-surface-sage-deep px-4 py-2 font-semibold text-white disabled:opacity-60"
             >
               {resetting ? "Sending…" : "Send reset link"}
             </button>

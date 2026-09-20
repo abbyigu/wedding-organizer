@@ -95,7 +95,7 @@ function Ring({ status, Icon }: { status: DecisionStatus; Icon: ComponentType<{ 
         )}
       </span>
       {status.kind === "decided" && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-sage-deep text-white">
+        <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-surface-sage-deep text-white">
           <CircleCheck className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
         </span>
       )}
@@ -160,7 +160,7 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
           </div>
           <button
             onClick={() => setShowNew(true)}
-            className="flex items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white"
+            className="flex items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white"
           >
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> New decision
           </button>
@@ -211,7 +211,7 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
                 <button
                   key={f.key}
                   onClick={() => setFilter(f.key)}
-                  className={`rounded-full px-3 py-1 font-semibold ${filter === f.key ? "bg-sage-deep text-white" : "text-ink-2 hover:bg-bg"}`}
+                  className={`rounded-full px-3 py-1 font-semibold ${filter === f.key ? "bg-surface-sage-deep text-white" : "text-ink-2 hover:bg-bg"}`}
                 >
                   {f.label}
                 </button>
@@ -284,7 +284,7 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
               <button
                 onClick={createDecision}
                 disabled={!newTitle.trim() || creating}
-                className="mt-3 w-full rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-3 w-full rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {creating ? "Creating…" : "Create decision"}
               </button>

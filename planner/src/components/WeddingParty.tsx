@@ -46,7 +46,7 @@ export default function WeddingParty({ initialMembers, userName }: { initialMemb
             <h1 className="font-serif text-3xl font-medium sm:text-4xl">Wedding Party</h1>
             <p className="mt-2 text-ink-2">Everyone standing up with you — roles, sides, attire and contact info.</p>
           </div>
-          <button onClick={addMember} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+          <button onClick={addMember} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Add member
           </button>
         </div>
@@ -98,7 +98,7 @@ export default function WeddingParty({ initialMembers, userName }: { initialMemb
                     removeMember(m.id);
                   }}
                   aria-label={`Remove ${m.name}`}
-                  className={`shrink-0 rounded-full p-1 text-ink-2 hover:bg-paper hover:text-wine ${FOCUS_RING}`}
+                  className={`shrink-0 rounded-full p-2.5 text-ink-2 hover:bg-paper hover:text-wine ${FOCUS_RING}`}
                 >
                   <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                 </button>

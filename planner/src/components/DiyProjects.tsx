@@ -122,7 +122,7 @@ export default function DiyProjects({ initialProjects, userName }: { initialProj
                       <div key={p.id} className="overflow-hidden rounded-xl border border-line bg-paper shadow-sm">
                         {p.reference_image && (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={normalizeUrl(p.reference_image)} alt="" className="h-28 w-full object-cover" />
+                          <img src={normalizeUrl(p.reference_image)} alt="" loading="lazy" className="h-28 w-full object-cover" />
                         )}
                         <div className="p-3">
                           <div className="flex items-start justify-between gap-2">
@@ -130,7 +130,7 @@ export default function DiyProjects({ initialProjects, userName }: { initialProj
                               {isOpen ? <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-2" aria-hidden /> : <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-2" aria-hidden />}
                               <span className="truncate font-semibold">{p.title}</span>
                             </button>
-                            <button onClick={() => removeProject(p.id)} aria-label={`Remove ${p.title}`} className={`shrink-0 rounded-full p-1 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
+                            <button onClick={() => removeProject(p.id)} aria-label={`Remove ${p.title}`} className={`shrink-0 rounded-full p-2.5 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
                               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                             </button>
                           </div>
@@ -293,7 +293,7 @@ export default function DiyProjects({ initialProjects, userName }: { initialProj
                                   {p.progress_photos.map((url, i) => (
                                     <div key={i} className="group relative h-16 w-16 overflow-hidden rounded-lg border border-line">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={normalizeUrl(url)} alt="" className="h-full w-full object-cover" />
+                                      <img src={normalizeUrl(url)} alt="" loading="lazy" className="h-full w-full object-cover" />
                                       <button
                                         onClick={() => removePhoto(p, i)}
                                         aria-label="Remove photo"

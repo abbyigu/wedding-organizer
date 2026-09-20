@@ -276,7 +276,7 @@ export default function BudgetBuilder({
                       key={s.key}
                       onClick={() => updateSettings({ guest_scenario: s.key })}
                       className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${FOCUS_RING} ${
-                        settings.guest_scenario === s.key ? "border-sage-deep bg-sage-deep text-white" : "border-line bg-bg text-ink hover:border-sage-deep"
+                        settings.guest_scenario === s.key ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-bg text-ink hover:border-sage-deep"
                       }`}
                     >
                       {s.label}

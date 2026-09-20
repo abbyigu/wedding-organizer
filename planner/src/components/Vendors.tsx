@@ -84,7 +84,7 @@ export default function Vendors({ initialVendors }: { initialVendors: Vendor[] }
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-2">Everyone you&apos;re hiring, in one place.</p>
-        <button onClick={addVendor} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
+        <button onClick={addVendor} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
           <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
           Add vendor
         </button>

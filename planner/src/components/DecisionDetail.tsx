@@ -201,7 +201,7 @@ export default function DecisionDetail({
                 <button type="button" onClick={() => setStep(n)} className="flex items-center gap-2">
                   <span
                     className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                      isCurrent ? "bg-sage-deep text-white" : done ? "bg-sage-deep/20 text-sage-deep" : "bg-line/60 text-ink-2"
+                      isCurrent ? "bg-surface-sage-deep text-white" : done ? "bg-sage-deep/20 text-sage-deep" : "bg-line/60 text-ink-2"
                     }`}
                   >
                     {n}
@@ -227,16 +227,18 @@ export default function DecisionDetail({
               <h3 className="mb-3 font-semibold">What are you deciding?</h3>
               <div className="flex flex-col gap-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-ink-2">Title</label>
+                  <label htmlFor="decision-title" className="text-xs font-semibold uppercase tracking-wide text-ink-2">Title</label>
                   <input
+                    id="decision-title"
                     value={decision.title}
                     onChange={(e) => saveDecision({ title: e.target.value })}
                     className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-ink-2">Category</label>
+                  <label htmlFor="decision-category" className="text-xs font-semibold uppercase tracking-wide text-ink-2">Category</label>
                   <select
+                    id="decision-category"
                     value={decision.category}
                     onChange={(e) => saveDecision({ category: e.target.value })}
                     className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2"
@@ -247,8 +249,9 @@ export default function DecisionDetail({
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-ink-2">Why it matters (optional)</label>
+                  <label htmlFor="decision-description" className="text-xs font-semibold uppercase tracking-wide text-ink-2">Why it matters (optional)</label>
                   <textarea
+                    id="decision-description"
                     value={decision.description}
                     onChange={(e) => saveDecision({ description: e.target.value })}
                     rows={2}
@@ -259,7 +262,7 @@ export default function DecisionDetail({
               </div>
             </div>
             <div className="flex items-center justify-end rounded-2xl border border-line bg-paper p-4 shadow-sm">
-              <button onClick={() => setStep(2)} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+              <button onClick={() => setStep(2)} className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                 Continue to criteria →
               </button>
             </div>
@@ -275,6 +278,7 @@ export default function DecisionDetail({
                 {decision.criteria.map((c) => (
                   <div key={c.key} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
                     <input
+                      aria-label="Criterion name"
                       value={c.label}
                       onChange={(e) => updateCriterionLabel(c.key, e.target.value)}
                       className="rounded-lg border border-line bg-bg px-3 py-1.5 text-sm font-semibold sm:w-64"
@@ -286,7 +290,7 @@ export default function DecisionDetail({
                           type="button"
                           onClick={() => updateWeight(c.key, n)}
                           className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold transition-colors ${
-                            c.weight === n ? "bg-sage-deep text-white" : "border border-line bg-bg text-ink-2 hover:bg-line/40"
+                            c.weight === n ? "bg-surface-sage-deep text-white" : "border border-line bg-bg text-ink-2 hover:bg-line/40"
                           }`}
                         >
                           {n}
@@ -295,7 +299,7 @@ export default function DecisionDetail({
                       <button
                         onClick={() => removeCriterion(c.key)}
                         disabled={decision.criteria.length <= 1}
-                        className="ml-1 rounded-lg p-1.5 text-ink-2 hover:bg-bg disabled:opacity-30"
+                        className="ml-1 rounded-lg p-2.5 text-ink-2 hover:bg-bg disabled:opacity-30"
                         aria-label={`Remove ${c.label}`}
                       >
                         <Trash2 className="h-4 w-4" strokeWidth={1.75} />
@@ -312,7 +316,7 @@ export default function DecisionDetail({
               <button onClick={() => setStep(1)} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-bg">
                 ← Back
               </button>
-              <button onClick={() => setStep(3)} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+              <button onClick={() => setStep(3)} className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                 Continue to options →
               </button>
             </div>
@@ -328,15 +332,17 @@ export default function DecisionDetail({
                   <div key={o.id} className="rounded-xl border border-line bg-bg p-3">
                     <div className="flex items-center gap-2">
                       <input
+                        aria-label="Option name"
                         value={o.label}
                         onChange={(e) => updateOption(o.id, { label: e.target.value })}
                         className="flex-1 rounded-lg border border-line bg-paper px-3 py-1.5 text-sm font-semibold"
                       />
-                      <button onClick={() => removeOption(o.id)} className="rounded-lg p-1.5 text-ink-2 hover:bg-line/40" aria-label={`Remove ${o.label}`}>
+                      <button onClick={() => removeOption(o.id)} className="rounded-lg p-2.5 text-ink-2 hover:bg-line/40" aria-label={`Remove ${o.label}`}>
                         <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                       </button>
                     </div>
                     <textarea
+                      aria-label="Notes"
                       value={o.notes}
                       onChange={(e) => updateOption(o.id, { notes: e.target.value })}
                       placeholder="Notes (optional)"
@@ -354,7 +360,7 @@ export default function DecisionDetail({
               <button onClick={() => setStep(2)} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-bg">
                 ← Back
               </button>
-              <button onClick={() => setStep(4)} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+              <button onClick={() => setStep(4)} className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                 Continue to private vote →
               </button>
             </div>
@@ -412,7 +418,7 @@ export default function DecisionDetail({
                           className="mt-2 w-full rounded-lg border border-line bg-bg p-2 text-sm"
                         />
                         {!mine && (
-                          <button onClick={() => submitVote(o.id)} className="mt-2 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+                          <button onClick={() => submitVote(o.id)} className="mt-2 rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                             Submit my vote
                           </button>
                         )}
@@ -449,7 +455,7 @@ export default function DecisionDetail({
               <button onClick={() => setStep(3)} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-bg">
                 ← Back
               </button>
-              <button onClick={() => setStep(5)} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+              <button onClick={() => setStep(5)} className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                 Continue to reveal →
               </button>
             </div>
@@ -491,7 +497,7 @@ export default function DecisionDetail({
               <button onClick={() => setStep(4)} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-bg">
                 ← Back
               </button>
-              <button onClick={() => setStep(6)} className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white">
+              <button onClick={() => setStep(6)} className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white">
                 Continue to final choice →
               </button>
             </div>
@@ -523,7 +529,7 @@ export default function DecisionDetail({
                 <button
                   onClick={confirmFinal}
                   disabled={!finalOptionId}
-                  className="rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  className="rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   Confirm decision
                 </button>

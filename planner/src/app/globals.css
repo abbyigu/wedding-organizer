@@ -12,6 +12,14 @@
   --wood: #a5764c;
   --wine: #6e2a36;
   --green: #2e4a32;
+
+  /* Fixed-value surfaces for solid buttons/badges carrying white text.
+     Never redefined per theme: --sage-deep/--wine/--green above intentionally
+     lighten in dark mode for use as text/accent color, which would make
+     white-on-solid illegible if buttons used those same tokens directly. */
+  --surface-sage-deep: #5f7a5a;
+  --surface-green: #2e4a32;
+  --surface-wine: #6e2a36;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -56,6 +64,9 @@
   --color-wood: var(--wood);
   --color-wine: var(--wine);
   --color-green: var(--green);
+  --color-surface-sage-deep: var(--surface-sage-deep);
+  --color-surface-green: var(--surface-green);
+  --color-surface-wine: var(--surface-wine);
   --font-serif: var(--font-fraunces);
   --font-sans: var(--font-instrument-sans);
 }

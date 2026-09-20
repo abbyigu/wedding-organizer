@@ -263,7 +263,7 @@ export default function Dashboard({
             style={{ background: "color-mix(in srgb, var(--sage) 14%, var(--paper))" }}
           >
             <div className="flex items-start gap-4">
-              <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sage-deep font-serif text-base font-semibold text-white">
+              <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-sage-deep font-serif text-base font-semibold text-white">
                 1
               </span>
               <div>
@@ -278,7 +278,7 @@ export default function Dashboard({
             </div>
             <Link
               href={nextMove.href}
-              className={`shrink-0 rounded-full bg-sage-deep px-5 py-2.5 text-center text-sm font-semibold text-white ${FOCUS_RING}`}
+              className={`shrink-0 rounded-full bg-surface-sage-deep px-5 py-2.5 text-center text-sm font-semibold text-white ${FOCUS_RING}`}
             >
               Start task →
             </Link>
@@ -344,7 +344,7 @@ export default function Dashboard({
             <ol className="mt-4 flex flex-col divide-y divide-line">
               {roadmap.previousPhaseLabel && (
                 <li className="flex items-center gap-3 py-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage-deep text-xs text-white">✓</span>
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sage-deep text-xs text-white">✓</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-ink-2 line-through decoration-ink-2/50">{roadmap.previousPhaseLabel}</p>
                     <p className="text-xs text-ink-2">
@@ -379,7 +379,7 @@ export default function Dashboard({
 
           <div className="flex flex-col gap-4">
             <Link href="/decide" className={`flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--wine)_20%,var(--paper))] p-4 shadow-sm ${CARD_TRANSITION} ${FOCUS_RING}`}>
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-wine text-white">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-wine text-white">
                 <Heart className="h-5 w-5" strokeWidth={1.5} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
@@ -490,7 +490,7 @@ export default function Dashboard({
                   key={item.title}
                   className={`flex flex-wrap items-start gap-3 rounded-xl border border-line bg-bg p-3 sm:flex-nowrap ${CARD_TRANSITION} hover:border-sage-deep`}
                 >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sage-deep text-xs font-semibold text-white">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-sage-deep text-xs font-semibold text-white">
                     {i + 1}
                   </span>
                   <Link href={item.href} className={`min-w-0 flex-1 rounded ${FOCUS_RING}`}>
@@ -514,8 +514,8 @@ export default function Dashboard({
                   <button
                     onClick={() => completeCustomTask(task.id)}
                     aria-label={`Mark "${task.title}" done`}
-                    className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-sage-deep text-xs transition-colors ${
-                      completing ? "bg-sage-deep text-white" : "text-transparent hover:bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] hover:text-sage-deep"
+                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-sage-deep text-xs transition-colors ${
+                      completing ? "bg-surface-sage-deep text-white" : "text-transparent hover:bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] hover:text-sage-deep"
                     }`}
                   >
                     ✓
@@ -563,7 +563,7 @@ export default function Dashboard({
               <ul className="mt-2 flex flex-col gap-1.5">
                 {recentlyCompleted.map((t) => (
                   <li key={t.id} className="flex items-center gap-2 text-sm text-ink-2">
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sage-deep text-[10px] text-white">✓</span>
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-sage-deep text-[10px] text-white">✓</span>
                     <span className="truncate line-through decoration-ink-2/50">{t.title}</span>
                   </li>
                 ))}

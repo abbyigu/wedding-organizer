@@ -48,7 +48,7 @@ function ComingLater({ userName }: { userName: string }) {
               <li key={s} className="flex items-center gap-2"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sage-deep" />{s}</li>
             ))}
           </ul>
-          <Link href="/venues" className={`mt-5 inline-block rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+          <Link href="/venues" className={`mt-5 inline-block rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
             Go confirm a venue →
           </Link>
         </div>
@@ -101,7 +101,7 @@ export default function WeddingDay({ initialEvents, userName, venueConfirmed }: 
             <h1 className="font-serif text-3xl font-medium sm:text-4xl">Wedding Day</h1>
             <p className="mt-2 text-ink-2">The run of show, moment by moment.</p>
           </div>
-          <button onClick={addEvent} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
+          <button onClick={addEvent} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
             Add a moment
           </button>
@@ -119,7 +119,7 @@ export default function WeddingDay({ initialEvents, userName, venueConfirmed }: 
           {events.map((ev, i) => (
             <div key={ev.id} className="flex gap-4 rounded-2xl border border-line bg-paper p-4 shadow-sm">
               <div className="flex flex-col items-center pt-1">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage-deep text-xs font-semibold text-white">{i + 1}</span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sage-deep text-xs font-semibold text-white">{i + 1}</span>
                 {i < events.length - 1 && <span className="mt-1 w-px flex-1 bg-line" />}
               </div>
               <div className="flex-1 pb-1">
@@ -135,7 +135,7 @@ export default function WeddingDay({ initialEvents, userName, venueConfirmed }: 
                     onChange={(e) => scheduleSave(ev.id, { title: e.target.value })}
                     className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 font-serif text-lg font-medium outline-none focus:border-line focus:bg-bg"
                   />
-                  <button onClick={() => removeEvent(ev.id)} aria-label={`Remove ${ev.title}`} className={`shrink-0 rounded-full p-1 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
+                  <button onClick={() => removeEvent(ev.id)} aria-label={`Remove ${ev.title}`} className={`shrink-0 rounded-full p-2.5 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
                     <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                   </button>
                 </div>

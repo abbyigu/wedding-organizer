@@ -71,7 +71,7 @@ export default function GuestsRsvp({ initialGuests }: { initialGuests: Guest[] }
             key={key}
             onClick={() => setFilter(key)}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-              filter === key ? "border-sage-deep bg-sage-deep text-white" : "border-line bg-bg text-ink hover:border-sage-deep"
+              filter === key ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-bg text-ink hover:border-sage-deep"
             }`}
           >
             {label}

@@ -221,7 +221,7 @@ export default function IdeaBoard({
           </div>
           <button
             onClick={addIdeaToCurrentTab}
-            className={`flex items-center gap-1.5 bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}
+            className={`flex items-center gap-1.5 bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}
           >
             ＋ Add an idea
           </button>
@@ -233,13 +233,13 @@ export default function IdeaBoard({
           <div className="flex gap-1 rounded-full border border-line bg-bg p-1">
             <button
               onClick={() => setView("ideas")}
-              className={`rounded-full px-3 py-1 text-sm font-semibold ${view === "ideas" ? "bg-sage-deep text-white" : "text-ink-2 hover:text-ink"}`}
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${view === "ideas" ? "bg-surface-sage-deep text-white" : "text-ink-2 hover:text-ink"}`}
             >
               Ideas
             </button>
             <button
               onClick={() => setView("mood")}
-              className={`rounded-full px-3 py-1 text-sm font-semibold ${view === "mood" ? "bg-sage-deep text-white" : "text-ink-2 hover:text-ink"}`}
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${view === "mood" ? "bg-surface-sage-deep text-white" : "text-ink-2 hover:text-ink"}`}
             >
               Mood Board
             </button>
@@ -265,7 +265,7 @@ export default function IdeaBoard({
               key={t}
               onClick={() => setActiveTab(t)}
               className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold ${
-                activeTab === t ? "border-sage-deep bg-sage-deep text-white" : "border-line bg-bg text-ink hover:border-sage-deep"
+                activeTab === t ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-bg text-ink hover:border-sage-deep"
               }`}
             >
               {t}
@@ -292,7 +292,7 @@ export default function IdeaBoard({
                     aria-label={`Open ${idea.title}`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={normalizeUrl(idea.image_url)} alt={idea.title} className="w-full object-cover" />
+                    <img src={normalizeUrl(idea.image_url)} alt={idea.title} loading="lazy" className="w-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -312,7 +312,7 @@ export default function IdeaBoard({
                     <button onClick={() => setOpenId(idea.id)} className={`block w-full text-left ${FOCUS_RING}`} aria-label={`Open ${idea.title}`}>
                       {idea.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={normalizeUrl(idea.image_url)} alt={idea.title} className="w-full object-cover" />
+                        <img src={normalizeUrl(idea.image_url)} alt={idea.title} loading="lazy" className="w-full object-cover" />
                       ) : (
                         <div className="flex aspect-square w-full items-center justify-center bg-[color-mix(in_srgb,var(--wine)_12%,var(--paper))] text-3xl">📌</div>
                       )}
@@ -323,7 +323,7 @@ export default function IdeaBoard({
                       disabled={!editable}
                       aria-label={idea.is_favourite ? "Remove favourite" : "Mark as favourite"}
                       aria-pressed={idea.is_favourite}
-                      className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_85%,transparent)] shadow-sm"
+                      className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_85%,transparent)] shadow-sm"
                     >
                       <Heart className={`h-3.5 w-3.5 ${idea.is_favourite ? "fill-wine text-wine" : "text-ink-2"}`} strokeWidth={1.5} aria-hidden />
                     </button>
@@ -336,7 +336,7 @@ export default function IdeaBoard({
 
                     {editable && (
                       <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                        <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_90%,transparent)] text-ink hover:bg-paper">
+                        <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_90%,transparent)] text-ink hover:bg-paper">
                           <SquareCheck className="pointer-events-none h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                           <select
                             value=""
@@ -353,11 +353,11 @@ export default function IdeaBoard({
                         <button
                           onClick={() => setOpenId(idea.id)}
                           aria-label={`Edit ${idea.title}`}
-                          className="flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_90%,transparent)] text-ink hover:bg-paper"
+                          className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_90%,transparent)] text-ink hover:bg-paper"
                         >
                           <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                         </button>
-                        <span className="relative flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_90%,transparent)] text-ink hover:bg-paper">
+                        <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_90%,transparent)] text-ink hover:bg-paper">
                           <FolderInput className="pointer-events-none h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                           <select
                             value={idea.category}
@@ -376,7 +376,7 @@ export default function IdeaBoard({
                               onClick={() => setMoreOpenId((id) => (id === idea.id ? null : idea.id))}
                               aria-label="More actions"
                               aria-expanded={moreOpenId === idea.id}
-                              className="flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_90%,transparent)] text-ink hover:bg-paper"
+                              className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_90%,transparent)] text-ink hover:bg-paper"
                             >
                               <Ellipsis className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                             </button>
@@ -662,7 +662,7 @@ export default function IdeaBoard({
                 <button
                   onClick={saveDraft}
                   disabled={!draft.title.trim()}
-                  className={`rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${FOCUS_RING}`}
+                  className={`rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${FOCUS_RING}`}
                 >
                   Add to board
                 </button>

@@ -45,7 +45,7 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
             <h2 className="font-serif text-xl font-medium">Accommodation</h2>
             <p className="mt-1 text-sm text-ink-2">Hotel blocks and room-booking details, in one place.</p>
           </div>
-          <button onClick={addBlock} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
+          <button onClick={addBlock} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
             Add hotel block
           </button>
@@ -66,7 +66,7 @@ export default function TravelStay({ initialBlocks }: { initialBlocks: HotelBloc
                   onChange={(e) => scheduleSave(b.id, { name: e.target.value })}
                   className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 font-serif text-lg font-medium outline-none focus:border-line focus:bg-bg"
                 />
-                <button onClick={() => removeBlock(b.id)} aria-label={`Remove ${b.name}`} className={`shrink-0 rounded-full p-1 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
+                <button onClick={() => removeBlock(b.id)} aria-label={`Remove ${b.name}`} className={`shrink-0 rounded-full p-2.5 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
                   <Trash2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                 </button>
               </div>

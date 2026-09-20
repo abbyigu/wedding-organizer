@@ -184,7 +184,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-ink-2">{summary.households} households · shared and live.</p>
-          <button onClick={addGuest} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
+          <button onClick={addGuest} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
             Add household
           </button>
@@ -311,7 +311,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                 key={key}
                 onClick={() => setRsvpFilter(key)}
                 className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  rsvpFilter === key ? "bg-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
+                  rsvpFilter === key ? "bg-surface-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"
                 }`}
               >
                 {label}
@@ -324,7 +324,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
           <button
             onClick={() => setNeedsOnly((v) => !v)}
             className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold ${
-              needsOnly ? "border-sage-deep bg-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep hover:text-ink"
+              needsOnly ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep hover:text-ink"
             }`}
           >
             <HeartPulse className="h-4 w-4" strokeWidth={1.5} aria-hidden />
