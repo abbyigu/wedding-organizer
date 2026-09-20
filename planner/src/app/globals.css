@@ -20,6 +20,12 @@
   --surface-sage-deep: #5f7a5a;
   --surface-green: #2e4a32;
   --surface-wine: #6e2a36;
+  --surface-olive: #4a5a2a;
+  --surface-rose: #b8334f;
+  --surface-blush: #cf5873;
+  --surface-amber: #c9601f;
+  --surface-lavender: #8477c4;
+  --surface-plum: #6f4d92;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -67,8 +73,15 @@
   --color-surface-sage-deep: var(--surface-sage-deep);
   --color-surface-green: var(--surface-green);
   --color-surface-wine: var(--surface-wine);
+  --color-surface-olive: var(--surface-olive);
+  --color-surface-rose: var(--surface-rose);
+  --color-surface-blush: var(--surface-blush);
+  --color-surface-amber: var(--surface-amber);
+  --color-surface-lavender: var(--surface-lavender);
+  --color-surface-plum: var(--surface-plum);
   --font-serif: var(--font-fraunces);
   --font-sans: var(--font-instrument-sans);
+  --font-script: var(--font-caveat);
 }
 
 body {

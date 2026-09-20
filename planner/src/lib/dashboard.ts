@@ -87,7 +87,30 @@ export function computeRoadmap(ctx: RoadmapContext) {
     totalSteps: PHASES.length,
     nextMilestone: idx === -1 ? "All set — enjoy the day" : PHASES[currentIndex].milestone,
     previousPhaseLabel: currentIndex > 0 ? PHASES[currentIndex - 1].label : null,
+    phasesDone: PHASES.map((p) => p.done(ctx)),
   };
+}
+
+export type JourneyStage = { key: string; label: string; pct: number; state: "complete" | "current" | "upcoming" };
+
+// The five-step arc shown on the dashboard, every percentage derived from
+// real roadmap phases and data — no stage is ever marked done by default.
+export function computeJourney(o: { phasesDone: boolean[]; ideaCount: number; vendorsBooked: number; daysUntil: number }): JourneyStage[] {
+  const raw: [string, string, boolean[]][] = [
+    ["dream", "Dream", [o.phasesDone[0], o.ideaCount > 0]],
+    ["decide", "Decide", o.phasesDone.slice(1, 6)],
+    ["build", "Build", [o.phasesDone[6], o.vendorsBooked > 0]],
+    ["coordinate", "Coordinate", [o.phasesDone[7]]],
+    ["day", "Wedding Day", [o.daysUntil === 0]],
+  ];
+  const pcts = raw.map(([, , checks]) => Math.round((100 * checks.filter(Boolean).length) / checks.length));
+  const currentIdx = pcts.findIndex((p) => p < 100);
+  return raw.map(([key, label], i) => ({
+    key,
+    label,
+    pct: pcts[i],
+    state: currentIdx === -1 || i < currentIdx ? "complete" : i === currentIdx ? "current" : "upcoming",
+  }));
 }
 
 export type ActionItem = { title: string; description: string; person: string; effort: string; href: string };
@@ -124,7 +147,7 @@ export function computeActionItems(ctx: {
       description: "Narrow the list before requesting complete quotes.",
       person: "Together",
       effort: "15 min",
-      href: "/",
+      href: "/venues",
     });
   }
 
