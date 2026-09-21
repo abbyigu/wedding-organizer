@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
-import { Coins, Heart, ListChecks, MapPinned, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Coins, FileText, GitCompareArrows, Heart, ListChecks, MapPin, MapPinned, Plus, Sparkles, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
+import DashboardTopBar, { type SearchItem } from "@/components/DashboardTopBar";
 import {
   STARTERS,
   STATUS_ORDER,
@@ -15,6 +16,7 @@ import {
   checklistPercent,
   fmt,
   type Assumptions,
+  type Status,
   type Venue,
 } from "@/lib/venues";
 
@@ -22,6 +24,27 @@ const CARD_COLORS = ["var(--sage-deep)", "var(--wood)", "var(--wine)", "var(--gr
 const MAX_COMPARE = 3;
 const CARD_TRANSITION = "transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:transform-none";
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
+
+// Each pipeline stage tints its card, so colour alone tells you where a place stands.
+const STATUS_TINT: Record<Status, string> = {
+  researching: "color-mix(in srgb, var(--gold) 6%, var(--paper))",
+  contacted: "color-mix(in srgb, var(--gold) 15%, var(--paper))",
+  tour_booked: "color-mix(in srgb, var(--surface-blush) 14%, var(--paper))",
+  quote_received: "color-mix(in srgb, var(--gold) 26%, var(--paper))",
+  finalist: "color-mix(in srgb, var(--sage) 26%, var(--paper))",
+  out: "color-mix(in srgb, var(--line) 60%, var(--paper))",
+};
+const STATUS_ACCENT: Record<Status, string> = {
+  researching: "var(--sage-deep)",
+  contacted: "var(--gold)",
+  tour_booked: "var(--surface-blush)",
+  quote_received: "var(--wood)",
+  finalist: "var(--sage-deep)",
+  out: "var(--line)",
+};
+const TOOL_SELECT = `rounded-full border border-line bg-paper px-4 py-2.5 text-sm text-ink ${FOCUS_RING}`;
+
+const capacityNumber = (v: Venue) => parseInt(v.capacity.replace(/[^\d]/g, ""), 10) || 0;
 
 type Calc = ReturnType<typeof calcVenue>;
 
@@ -161,6 +184,11 @@ export default function VenueShortlist({
   const [moreOpenTabs, setMoreOpenTabs] = useState<Set<string>>(new Set());
   const [showAllFields, setShowAllFields] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
+  const [locFilter, setLocFilter] = useState("all");
+  const [capFilter, setCapFilter] = useState(0);
+  const [priceFilter, setPriceFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
+  const [sortBy, setSortBy] = useState<"stage" | "price_low" | "price_high" | "name">("stage");
   const as = assumptions;
   const TABS = useMemo(() => buildTabs(), []);
 
@@ -171,6 +199,29 @@ export default function VenueShortlist({
       return calcVenue(a, as, sharedVals).grand - calcVenue(b, as, sharedVals).grand;
     });
   }, [venues, as, sharedVals]);
+
+  const filtered = useMemo(() => {
+    const list = sorted.filter((v) => {
+      const grand = calcVenue(v, as, sharedVals).grand;
+      if (locFilter !== "all" && v.location !== locFilter) return false;
+      if (capFilter && capacityNumber(v) < capFilter) return false;
+      if (priceFilter === "low" && grand >= 10000) return false;
+      if (priceFilter === "mid" && (grand < 10000 || grand > 25000)) return false;
+      if (priceFilter === "high" && grand <= 25000) return false;
+      if (statusFilter !== "all" && v.status !== statusFilter) return false;
+      return true;
+    });
+    if (sortBy === "price_low") list.sort((a, b) => calcVenue(a, as, sharedVals).grand - calcVenue(b, as, sharedVals).grand);
+    if (sortBy === "price_high") list.sort((a, b) => calcVenue(b, as, sharedVals).grand - calcVenue(a, as, sharedVals).grand);
+    if (sortBy === "name") list.sort((a, b) => a.name.localeCompare(b.name));
+    return list;
+  }, [sorted, as, sharedVals, locFilter, capFilter, priceFilter, statusFilter, sortBy]);
+  const favourites = filtered.filter((v) => v.is_favourite && v.status !== "out").slice(0, 3);
+  const exploring = filtered.filter((v) => !favourites.includes(v));
+  const locations = [...new Set(venues.map((v) => v.location).filter(Boolean))].sort();
+  const heroVenue = [...sorted].sort((a, b) => Number(b.is_favourite) - Number(a.is_favourite)).find((v) => v.photos?.[0]);
+  const heroPhoto = heroVenue ? photoUrls[heroVenue.photos[0].path] : null;
+  const searchItems: SearchItem[] = venues.map((v) => ({ label: v.name, hint: v.location || "Venue", href: `/venues/${v.id}` }));
 
   const compared = compareIds.map((id) => venues.find((v) => v.id === id)).filter((v): v is Venue => Boolean(v));
 
@@ -231,75 +282,116 @@ export default function VenueShortlist({
     });
   }
 
-  function venueCard(v: Venue, i: number) {
-    const calc = calcVenue(v, as, sharedVals);
-    const photo = v.photos?.[0];
-    const pct = checklistPercent(v);
+  function compareBox(v: Venue) {
     const checked = compareIds.includes(v.id);
-    const compareDisabled = !checked && compareIds.length >= MAX_COMPARE;
+    const disabled = !checked && compareIds.length >= MAX_COMPARE;
     return (
-      <div key={v.id} className={`flex flex-col overflow-hidden rounded-[20px] border border-line bg-paper shadow-sm ${CARD_TRANSITION}`}>
-        <Link href={`/venues/${v.id}`} className={`relative block aspect-video rounded-t-[18px] bg-line ${FOCUS_RING}`}>
-          {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrls[photo.path]} alt={v.name} loading="lazy" className="h-full w-full object-cover" />
-          ) : (
-            <div
-              className="flex h-full w-full items-center justify-center font-serif text-4xl text-white"
-              style={{ background: CARD_COLORS[i % CARD_COLORS.length] }}
-            >
-              {v.name.charAt(0)}
-            </div>
-          )}
-          <span className="absolute right-2.5 top-2.5 rounded-full bg-[color-mix(in_srgb,var(--paper)_85%,transparent)] px-2.5 py-0.5 text-xs font-semibold text-ink shadow-sm">
-            {STATUSES[v.status]}
-          </span>
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-2.5 pt-7">
-            <span className="block font-serif text-lg font-semibold text-white">{v.name}</span>
-          </div>
-        </Link>
+      <label className={`flex items-center gap-2 text-sm text-ink ${disabled ? "opacity-50" : ""}`}>
+        <input type="checkbox" checked={checked} disabled={disabled} onChange={() => toggleCompare(v.id)} className={`h-4 w-4 accent-sage-deep ${FOCUS_RING}`} />
+        Compare
+      </label>
+    );
+  }
 
-        <div className="flex flex-col gap-2 p-4">
-          <div className="flex items-center justify-between text-sm text-ink-2">
-            <span>
-              {calc.venueSource === "estimated" ? "≈ " : ""}
-              <b className="text-ink">{fmt(calc.grand)}</b>
-              {calc.venueSource !== "estimated" && (
-                <span className="ml-1 text-xs font-semibold text-sage-deep">({calc.venueSource})</span>
-              )}
-            </span>
-            <span>Capacity <b className="text-ink">{v.capacity || "TBD"}</b></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
-              <div className="h-full rounded-full bg-sage-deep" style={{ width: `${pct}%` }} />
+  function heartButton(v: Venue, className: string) {
+    return (
+      <button
+        onClick={() => toggleFavourite(v)}
+        aria-label={v.is_favourite ? `Remove ${v.name} from favourites` : `Add ${v.name} to favourites`}
+        aria-pressed={v.is_favourite}
+        className={`flex h-10 w-10 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] shadow-sm ${FOCUS_RING} ${className}`}
+      >
+        <Heart className={`h-[18px] w-[18px] ${v.is_favourite ? "fill-wine text-wine" : "text-ink"}`} strokeWidth={1.5} aria-hidden />
+      </button>
+    );
+  }
+
+  function cover(v: Venue, i: number, className: string) {
+    const photo = v.photos?.[0];
+    return photo ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={photoUrls[photo.path]} alt="" loading="lazy" className={`${className} object-cover`} />
+    ) : (
+      <div className={`${className} flex items-center justify-center font-serif text-5xl text-white`} style={{ background: CARD_COLORS[i % CARD_COLORS.length] }}>
+        {v.name.charAt(0)}
+      </div>
+    );
+  }
+
+  const facts = (v: Venue, calc: Calc) => (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-ink">
+      <span className="flex items-center gap-1.5">
+        <Users className="h-4 w-4 text-ink-2" strokeWidth={1.5} aria-hidden />
+        {v.capacity || "Capacity TBD"}
+      </span>
+      <span>
+        {calc.venueSource === "estimated" ? "≈ " : ""}
+        <b className="font-semibold">{fmt(calc.grand)}</b>
+        {calc.venueSource !== "estimated" && <span className="ml-1 text-xs font-semibold text-sage-deep">({calc.venueSource})</span>}
+      </span>
+    </div>
+  );
+
+  function favouriteCard(v: Venue, i: number) {
+    const calc = calcVenue(v, as, sharedVals);
+    return (
+      <div key={v.id} className="flex flex-col overflow-hidden rounded-2xl bg-paper shadow-sm">
+        <div className="relative">
+          <Link href={`/venues/${v.id}`} aria-label={`Open ${v.name}`} className={`relative block aspect-[16/9] ${FOCUS_RING}`}>
+            {cover(v, i, "absolute inset-0 h-full w-full")}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+              <span className="block font-serif text-3xl font-light leading-tight">{v.name}</span>
+              <span className="mt-1 block">{v.location || "Location TBD"}</span>
             </div>
-            <span className="shrink-0 text-xs font-semibold text-ink-2">{pct}% researched</span>
+          </Link>
+          {heartButton(v, "absolute left-3 top-3")}
+          <span className="pointer-events-none absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] px-3.5 py-1.5 text-sm text-ink shadow-sm">
+            {v.status === "finalist" ? STATUSES.finalist : (<><Heart className="h-3.5 w-3.5 text-wine" strokeWidth={1.5} aria-hidden /> Our favourite</>)}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+          {facts(v, calc)}
+          <div className="flex items-center gap-4">
+            {compareBox(v)}
+            <Link href={`/venues/${v.id}`} className={`flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink hover:border-sage-deep ${FOCUS_RING}`}>
+              View details <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+            </Link>
           </div>
-          <div className="mt-1 flex items-center justify-between border-t border-line pt-2">
-            <label className={`flex items-center gap-1.5 text-sm font-semibold ${compareDisabled ? "text-ink-2 opacity-50" : "text-ink-2"}`}>
-              <input
-                type="checkbox"
-                checked={checked}
-                disabled={compareDisabled}
-                onChange={() => toggleCompare(v.id)}
-                className={`h-4 w-4 accent-sage-deep ${FOCUS_RING}`}
-              />
-              Compare
-            </label>
-            <button
-              onClick={() => toggleFavourite(v)}
-              aria-label={v.is_favourite ? "Remove favourite" : "Mark as favourite"}
-              aria-pressed={v.is_favourite}
-              className={`flex items-center gap-1.5 text-sm font-semibold text-ink-2 ${FOCUS_RING}`}
-            >
-              <Heart
-                className={`h-4 w-4 ${v.is_favourite ? "fill-wine text-wine" : "text-ink-2"}`}
-                strokeWidth={1.5}
-                aria-hidden
-              />
-              Favourite
-            </button>
+        </div>
+      </div>
+    );
+  }
+
+  function exploreCard(v: Venue, i: number) {
+    const calc = calcVenue(v, as, sharedVals);
+    const pct = checklistPercent(v);
+    return (
+      <div key={v.id} className={`flex flex-col overflow-hidden rounded-2xl border border-line shadow-sm ${CARD_TRANSITION}`} style={{ background: STATUS_TINT[v.status] }}>
+        <div className="relative">
+          <Link href={`/venues/${v.id}`} aria-label={`Open ${v.name}`} className={`relative block aspect-[4/3] ${FOCUS_RING}`}>
+            {cover(v, i, "absolute inset-0 h-full w-full")}
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-4 pb-3 pt-10">
+              <span className="block font-serif text-xl text-white">{v.name}</span>
+            </div>
+          </Link>
+          <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] px-3 py-1 text-xs font-medium text-ink shadow-sm">{STATUSES[v.status]}</span>
+          {heartButton(v, "absolute right-3 top-3")}
+        </div>
+        <div className="flex flex-1 flex-col gap-3 p-4">
+          <p className="text-sm text-ink-2">{v.location || "Location TBD"}</p>
+          {facts(v, calc)}
+          <div className="mt-auto flex items-center gap-2" title={`${pct}% of the quote checklist answered`}>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--ink-2)_15%,transparent)]">
+              <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 3)}%`, background: STATUS_ACCENT[v.status] }} />
+            </div>
+            <span className="text-xs text-ink-2">{pct}%</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-line pt-3">
+            {compareBox(v)}
+            <Link href={`/venues/${v.id}`} className={`flex items-center gap-1.5 rounded text-sm text-ink hover:text-sage-deep ${FOCUS_RING}`}>
+              Details <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+            </Link>
           </div>
         </div>
       </div>
@@ -353,31 +445,79 @@ export default function VenueShortlist({
     <div className="min-h-screen pb-24 lg:pl-56">
       <NavBar userName={userName} />
 
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden">
-          <div>
-            <h1 className="font-serif text-3xl font-medium sm:text-4xl">Venue</h1>
-            <p className="mt-2 text-ink-2">Shortlist your options, then compare the ones that matter.</p>
+      <div className="mx-auto max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8">
+        <DashboardTopBar
+          userName={userName}
+          partner={userName.trim().toLowerCase() === "ariel" ? "Fred" : "Ariel"}
+          items={searchItems}
+          notices={[]}
+          placeholder="Search venues, locations, or keywords…"
+          onSelect={(item) => router.push(item.href)}
+        />
+
+        <section className="mt-8 grid items-stretch gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <div className="relative flex flex-col justify-center">
+            <h1 className="font-serif text-5xl font-light leading-[1.05] tracking-[-0.02em] sm:text-6xl">
+              Find the place
+              <br />
+              that feels like <span className="font-script text-[1.15em] text-wine">us.</span>
+            </h1>
+            <p className="mt-4 max-w-sm text-lg text-ink-2">Shortlist your options, fall in love with a few, then compare what matters.</p>
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
-        </div>
+          <div className="relative min-h-[13rem] overflow-hidden rounded-2xl bg-[color-mix(in_srgb,var(--sage)_30%,var(--paper))]">
+            {heroPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={heroPhoto} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,color-mix(in_srgb,var(--gold)_35%,var(--paper)),color-mix(in_srgb,var(--surface-blush)_25%,var(--paper)))]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-l from-black/40 via-transparent to-transparent" />
+            <p aria-hidden className="absolute right-6 top-5 hidden -rotate-6 text-right font-script text-4xl leading-[1.05] text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.45)] sm:block">
+              Good venues,
+              <br />
+              better memories ♡
+            </p>
+            {heroVenue && (
+              <p className="absolute bottom-4 left-4 bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] px-4 py-2.5 text-sm text-ink shadow-sm">
+                {heroVenue.name}
+                {heroVenue.location && <span className="block text-[11px] uppercase tracking-[0.14em] text-ink-2">{heroVenue.location}</span>}
+              </p>
+            )}
+          </div>
+        </section>
 
         {venues.length > 0 && (
-          <div className="mt-6 flex gap-5 border-b border-line">
-            <Link
-              href="/venues"
-              className={`border-b-2 pb-2.5 text-sm font-semibold ${tab === "shortlist" ? "border-green text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
-            >
-              Shortlist
-            </Link>
-            <Link
-              href="/venues?tab=compare"
-              className={`border-b-2 pb-2.5 text-sm font-semibold ${tab === "compare" ? "border-green text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
-            >
-              Compare venues
-            </Link>
-          </div>
+          <>
+            <dl className="mt-7 flex flex-wrap items-center gap-x-10 gap-y-4">
+              {[
+                { n: venues.length, label: venues.length === 1 ? "place" : "places", Icon: MapPin },
+                { n: venues.filter((v) => v.is_favourite).length, label: "favourites", Icon: Heart },
+                { n: venues.filter((v) => v.status === "tour_booked").length, label: "tour booked", Icon: CalendarDays },
+                { n: venues.filter((v) => v.quote_received).length, label: "quotes", Icon: FileText },
+                { n: compareIds.length, label: "selected to compare", Icon: GitCompareArrows },
+              ].map(({ n, label, Icon }) => (
+                <div key={label} className="flex items-center gap-3 text-ink-2">
+                  <Icon className="h-6 w-6" strokeWidth={1.25} aria-hidden />
+                  <div>
+                    <dd className="font-serif text-2xl font-light leading-none text-ink">{n}</dd>
+                    <dt className="mt-1 text-sm">{label}</dt>
+                  </div>
+                </div>
+              ))}
+              <button onClick={addPlace} className={`ml-auto flex items-center gap-2 rounded-full bg-surface-olive px-6 py-3 text-base font-medium text-white ${FOCUS_RING}`}>
+                <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Add a venue
+              </button>
+            </dl>
+
+            <div className="mt-6 flex gap-8 border-b border-line">
+              <Link href="/venues" className={`border-b-2 pb-3 text-lg ${tab === "shortlist" ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>
+                Shortlist
+              </Link>
+              <Link href="/venues?tab=compare" className={`border-b-2 pb-3 text-lg ${tab === "compare" ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>
+                Compare
+              </Link>
+            </div>
+          </>
         )}
 
         {venues.length === 0 ? (
@@ -395,17 +535,69 @@ export default function VenueShortlist({
           </div>
         ) : tab === "shortlist" ? (
           <>
-            <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
-              <p className="text-sm text-ink-2">Choose 2–3 venues to compare side by side</p>
-              <button onClick={addPlace} className={`rounded-full bg-surface-sage-deep px-4 py-2 text-sm font-semibold text-white ${FOCUS_RING}`}>
-                ＋ Add a place
-              </button>
-            </div>
             {error && <p className="mt-3 text-sm text-wine">{error}</p>}
-
-            <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {sorted.map((v, i) => venueCard(v, i))}
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <select aria-label="Filter by location" value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className={TOOL_SELECT}>
+                <option value="all">All locations</option>
+                {locations.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+              <select aria-label="Filter by capacity" value={capFilter} onChange={(e) => setCapFilter(+e.target.value)} className={TOOL_SELECT}>
+                <option value={0}>Capacity</option>
+                <option value={100}>Fits 100+</option>
+                <option value={150}>Fits 150+</option>
+                <option value={200}>Fits 200+</option>
+              </select>
+              <select aria-label="Filter by price" value={priceFilter} onChange={(e) => setPriceFilter(e.target.value)} className={TOOL_SELECT}>
+                <option value="all">Price</option>
+                <option value="low">Under $10K</option>
+                <option value="mid">$10K – $25K</option>
+                <option value="high">Over $25K</option>
+              </select>
+              <select aria-label="Filter by stage" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | Status)} className={TOOL_SELECT}>
+                <option value="all">Any stage</option>
+                {STATUS_ORDER.map((st) => (
+                  <option key={st} value={st}>{STATUSES[st]}</option>
+                ))}
+              </select>
+              <select aria-label="Sort venues" value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className={`${TOOL_SELECT} ml-auto`}>
+                <option value="stage">Sort by stage</option>
+                <option value="price_low">Price: low to high</option>
+                <option value="price_high">Price: high to low</option>
+                <option value="name">Name</option>
+              </select>
             </div>
+
+            <section className="mt-6 rounded-3xl bg-[color-mix(in_srgb,var(--surface-blush)_10%,var(--paper))] p-5 sm:p-6" aria-labelledby="favourites-title">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h2 id="favourites-title" className="font-serif text-3xl font-light">Our favourites</h2>
+                  <p className="mt-1 text-ink-2">The places that make us say “this could be it”.</p>
+                </div>
+                <p aria-hidden className="-rotate-3 font-script text-3xl text-wine">Top contenders ♡</p>
+              </div>
+              {favourites.length === 0 ? (
+                <p className="mt-5 rounded-2xl bg-paper px-5 py-8 text-center text-sm text-ink-2">Tap the heart on a place you love and it will appear here as a large card.</p>
+              ) : (
+                <div className={`mt-5 grid gap-5 md:grid-cols-2 ${favourites.length === 3 ? "xl:grid-cols-3" : ""}`}>{favourites.map((v, i) => favouriteCard(v, i))}</div>
+              )}
+            </section>
+
+            <section className="mt-10" aria-labelledby="exploring-title">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h2 id="exploring-title" className="font-serif text-3xl font-light">Places we&apos;re exploring</h2>
+                  <p className="mt-1 text-ink-2">Keep researching, plan a visit, and see what feels right.</p>
+                </div>
+                <p aria-hidden className="-rotate-3 font-script text-2xl leading-tight text-sage-deep">Different places, same dream ♡</p>
+              </div>
+              {exploring.length === 0 ? (
+                <p className="mt-5 text-sm text-ink-2">{filtered.length === 0 ? "No places match these filters." : "Every place you're tracking is a favourite."}</p>
+              ) : (
+                <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{exploring.map((v, i) => exploreCard(v, i + favourites.length))}</div>
+              )}
+            </section>
           </>
         ) : (
           <>
@@ -504,6 +696,10 @@ export default function VenueShortlist({
                               key={v.id}
                               className={`min-w-48 px-4 py-3 text-left align-top ${v.id === leaderId ? "bg-[color-mix(in_srgb,var(--sage)_10%,var(--paper))]" : ""}`}
                             >
+                              {v.photos?.[0] && photoUrls[v.photos[0].path] && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={photoUrls[v.photos[0].path]} alt="" className="mb-2 h-24 w-full rounded-lg object-cover" />
+                              )}
                               <Link href={`/venues/${v.id}`} className="font-serif text-base font-medium text-ink hover:text-sage-deep">
                                 {v.is_favourite ? "★ " : ""}
                                 {v.name}
