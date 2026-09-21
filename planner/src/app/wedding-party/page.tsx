@@ -12,6 +12,7 @@ export default async function WeddingPartyPage() {
   } = await supabase.auth.getUser();
   const { data: members } = await supabase.from("wedding_party").select("*").order("sort_order", { ascending: true });
 
+  const { data: style } = await supabase.from("wedding_style").select("palette, palette_name").eq("id", true).maybeSingle();
   const { data: tasks, error: tasksError } = await supabase.from("wedding_party_tasks").select("*").order("sort_order", { ascending: true });
 
   return (
@@ -19,6 +20,7 @@ export default async function WeddingPartyPage() {
       initialMembers={(members ?? []) as WeddingPartyMember[]}
       initialTasks={(tasks ?? []) as PartyTask[]}
       tasksMissing={!!tasksError}
+      palette={{ colours: (style?.palette ?? []) as string[], name: (style?.palette_name ?? "") as string }}
       userName={displayName(user?.email)}
     />
   );

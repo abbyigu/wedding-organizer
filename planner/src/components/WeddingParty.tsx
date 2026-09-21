@@ -49,11 +49,13 @@ export default function WeddingParty({
   initialMembers,
   initialTasks,
   tasksMissing,
+  palette,
   userName,
 }: {
   initialMembers: WeddingPartyMember[];
   initialTasks: PartyTask[];
   tasksMissing: boolean;
+  palette: { colours: string[]; name: string };
   userName: string;
 }) {
   const confirm = useConfirm();
@@ -186,6 +188,15 @@ export default function WeddingParty({
           </button>
         )}
       </div>
+      {palette.colours.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-bg px-4 py-3">
+          <span className="text-sm font-semibold">Our wedding palette{palette.name ? `: ${palette.name}` : ""}</span>
+          <ul className="flex gap-1.5" aria-label="Wedding palette">
+            {palette.colours.map((hex, i) => <li key={`${i}-${hex}`} className="h-6 w-6 rounded-full border border-line" style={{ backgroundColor: hex }} title={hex} />)}
+          </ul>
+          <span className="text-xs text-ink-2">From Decide Together. Just a reference, so nothing here changes on its own.</span>
+        </div>
+      )}
       {withColour.length === 0 ? (
         <p className="mt-4 text-sm text-ink-2">No colours picked yet. Open someone&apos;s profile and choose their attire colour to see the palette here.</p>
       ) : (
