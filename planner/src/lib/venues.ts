@@ -25,6 +25,8 @@ export type Venue = {
   colors: string;
   quote_received: boolean;
   is_favourite: boolean;
+  lat?: number | null; // absent until migration 033 has been run
+  lng?: number | null;
   quote_checklist: Record<string, boolean>;
   budget_note: string;
   budget_lines: BudgetLine[];

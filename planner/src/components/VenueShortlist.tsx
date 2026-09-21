@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, CalendarDays, Coins, FileText, GitCompareArrows, Heart, ListChecks, MapPin, MapPinned, Plus, Sparkles, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import dynamic from "next/dynamic";
 import NavBar from "@/components/NavBar";
 import DashboardTopBar, { type SearchItem } from "@/components/DashboardTopBar";
 import {
@@ -19,6 +20,8 @@ import {
   type Status,
   type Venue,
 } from "@/lib/venues";
+
+const VenueMap = dynamic(() => import("@/components/VenueMap"), { ssr: false, loading: () => <div className="h-[34rem] rounded-2xl bg-bg" /> });
 
 const CARD_COLORS = ["var(--sage-deep)", "var(--wood)", "var(--wine)", "var(--green)", "var(--gold)", "var(--sage)"];
 const MAX_COMPARE = 3;
@@ -176,7 +179,8 @@ export default function VenueShortlist({
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tab: "shortlist" | "compare" = searchParams.get("tab") === "compare" ? "compare" : "shortlist";
+  const tabParam = searchParams.get("tab");
+  const tab: "shortlist" | "compare" | "map" = tabParam === "compare" || tabParam === "map" ? tabParam : "shortlist";
   function setTab(next: "shortlist" | "compare") {
     router.push(next === "compare" ? "/venues?tab=compare" : "/venues", { scroll: false });
   }
@@ -222,6 +226,9 @@ export default function VenueShortlist({
   const heroVenue = [...sorted].sort((a, b) => Number(b.is_favourite) - Number(a.is_favourite)).find((v) => v.photos?.[0]);
   const heroPhoto = heroVenue ? photoUrls[heroVenue.photos[0].path] : null;
   const searchItems: SearchItem[] = venues.map((v) => ({ label: v.name, hint: v.location || "Venue", href: `/venues/${v.id}` }));
+
+  const mapped = venues.filter((v): v is Venue & { lat: number; lng: number } => v.lat != null && v.lng != null);
+  const unmapped = venues.filter((v) => v.lat == null || v.lng == null);
 
   const compared = compareIds.map((id) => venues.find((v) => v.id === id)).filter((v): v is Venue => Boolean(v));
 
@@ -516,6 +523,9 @@ export default function VenueShortlist({
               <Link href="/venues?tab=compare" className={`border-b-2 pb-3 text-lg ${tab === "compare" ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>
                 Compare
               </Link>
+              <Link href="/venues?tab=map" className={`border-b-2 pb-3 text-lg ${tab === "map" ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>
+                Map
+              </Link>
             </div>
           </>
         )}
@@ -598,7 +608,53 @@ export default function VenueShortlist({
                 <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{exploring.map((v, i) => exploreCard(v, i + favourites.length))}</div>
               )}
             </section>
+
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[color-mix(in_srgb,var(--sage)_18%,var(--paper))] px-6 py-5">
+              <div className="flex items-center gap-4">
+                <MapPin className="h-8 w-8 text-ink" strokeWidth={1.25} aria-hidden />
+                <div>
+                  <p className="font-serif text-xl">See it on the map</p>
+                  <p className="text-sm text-ink-2">
+                    {mapped.length > 0 ? `${mapped.length} of ${venues.length} places pinned — explore where everything is.` : "Add a map pin to a venue, then explore where everything is."}
+                  </p>
+                </div>
+              </div>
+              <Link href="/venues?tab=map" className={`rounded-full bg-surface-green px-6 py-2.5 text-sm font-medium text-white ${FOCUS_RING}`}>
+                Open map view
+              </Link>
+            </div>
           </>
+        ) : tab === "map" ? (
+          <div className="mt-6">
+            {mapped.length === 0 ? (
+              <div className="rounded-2xl border border-line bg-paper p-8 text-center shadow-sm">
+                <h2 className="font-serif text-2xl">No places on the map yet</h2>
+                <p className="mx-auto mt-2 max-w-md text-ink-2">Open a venue and add its latitude and longitude under “Map pin” in its details. Places with coordinates appear here.</p>
+              </div>
+            ) : (
+              <VenueMap venues={mapped} />
+            )}
+            {unmapped.length > 0 && mapped.length > 0 && (
+              <p className="mt-4 text-sm text-ink-2">
+                Not on the map yet — add a map pin to:{" "}
+                {unmapped.map((v, i) => (
+                  <span key={v.id}>
+                    {i > 0 && ", "}
+                    <Link href={`/venues/${v.id}`} className="font-semibold text-sage-deep underline underline-offset-2">{v.name}</Link>
+                  </span>
+                ))}
+              </p>
+            )}
+            {unmapped.length > 0 && mapped.length === 0 && (
+              <ul className="mt-4 flex flex-wrap gap-2 text-sm">
+                {unmapped.map((v) => (
+                  <li key={v.id}>
+                    <Link href={`/venues/${v.id}`} className="rounded-full border border-line bg-paper px-3 py-1.5 text-ink hover:border-sage-deep">{v.name}</Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ) : (
           <>
             {compared.length < 2 ? (

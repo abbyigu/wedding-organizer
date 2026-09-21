@@ -28,6 +28,7 @@ export default function VenueProfile({
   const [v, setV] = useState(venue);
   const [urls, setUrls] = useState(signedUrls);
   const [saved, setSaved] = useState("");
+  const [coords, setCoords] = useState({ lat: venue.lat != null ? String(venue.lat) : "", lng: venue.lng != null ? String(venue.lng) : "" });
   const [uploading, setUploading] = useState(false);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
@@ -101,6 +102,20 @@ export default function VenueProfile({
     const next = !v[key];
     setV((p) => ({ ...p, [key]: next }));
     save({ [key]: next } as Partial<Venue>);
+  }
+
+  // Accepts one number per box, or "46.85, -71.21" (what Google Maps copies) pasted into either.
+  function updateCoords(which: "lat" | "lng", raw: string) {
+    const pair = raw.split(/[,\s]+/).filter(Boolean);
+    const next = pair.length === 2 && !raw.includes("°") ? { lat: pair[0], lng: pair[1] } : { ...coords, [which]: raw };
+    setCoords(next);
+    const parse = (t: string, max: number) => (t.trim() === "" ? null : Math.abs(Number(t)) <= max && Number.isFinite(Number(t)) ? Number(t) : undefined);
+    const lat = parse(next.lat, 90);
+    const lng = parse(next.lng, 180);
+    if (lat === undefined || lng === undefined) return;
+    setV((p) => ({ ...p, lat, lng }));
+    clearTimeout(timers.current["coords"]);
+    timers.current["coords"] = setTimeout(() => save({ lat, lng }), 800);
   }
 
   async function removeVenue() {
@@ -234,6 +249,19 @@ export default function VenueProfile({
                 <div>
                   <span className="mb-1 block text-sm font-semibold">Capacity</span>
                   <input {...field("capacity")} placeholder="e.g. 100 seated w/ dance" className="w-full rounded-lg border border-line bg-bg px-3 py-2 outline-none focus:border-sage-deep" />
+                </div>
+                <div>
+                  <span className="mb-1 block text-sm font-semibold">Map pin</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={coords.lat} onChange={(e) => updateCoords("lat", e.target.value)} inputMode="decimal" placeholder="Latitude, e.g. 46.8523" aria-label="Latitude" className="w-full rounded-lg border border-line bg-bg px-3 py-2 outline-none focus:border-sage-deep" />
+                    <input value={coords.lng} onChange={(e) => updateCoords("lng", e.target.value)} inputMode="decimal" placeholder="Longitude, e.g. -71.2075" aria-label="Longitude" className="w-full rounded-lg border border-line bg-bg px-3 py-2 outline-none focus:border-sage-deep" />
+                  </div>
+                  <p className="mt-1 text-xs text-ink-2">
+                    In Google Maps, right-click the place and click the numbers to copy — you can paste both into either box.{" "}
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${v.name} ${v.location}`.trim())}`} target="_blank" rel="noreferrer" className="font-semibold text-sage-deep underline underline-offset-2">
+                      Find it on Google Maps ↗
+                    </a>
+                  </p>
                 </div>
                 <div>
                   <span className="mb-1 block text-sm font-semibold">Website</span>
