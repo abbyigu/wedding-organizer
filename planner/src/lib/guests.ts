@@ -22,6 +22,13 @@ export type Guest = {
   table_assignment: string;
   gift_received: boolean;
   thank_you_sent: boolean;
+  // Migration 044 — absent until it has been run.
+  gift_description?: string;
+  gift_source?: string;
+  gift_date?: string | null;
+  thank_you_required?: boolean;
+  thank_you_date?: string | null;
+  gift_notes?: string;
   sort_order: number;
   created_at: string;
   updated_at: string;

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useDialog } from "@/lib/use-dialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState } from "react";
-import { CircleCheck, Download, Ellipsis, HeartPulse, Plus, Search, UserRoundX, Users, X } from "lucide-react";
+import { CircleCheck, Download, Ellipsis, Gift, HeartPulse, Plus, Search, UserRoundX, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   blankGuest,
@@ -19,6 +19,7 @@ import {
   type Guest,
   type RsvpStatus,
 } from "@/lib/guests";
+import { thankYouDue } from "@/lib/registry";
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 const AVATAR_COLORS = [
@@ -42,10 +43,11 @@ function guestTags(g: Guest): string[] {
   if (g.accessibility.trim()) tags.push(trim(g.accessibility.trim()));
   if (g.accommodation_needed) tags.push("Accommodation");
   if (g.transportation_needed) tags.push("Transport");
+  if (thankYouDue(g)) tags.push("Thank-you due");
   return tags;
 }
 
-export default function Guests({ initialGuests, guestTarget }: { initialGuests: Guest[]; guestTarget: number }) {
+export default function Guests({ initialGuests, guestTarget, registryNames = [] }: { initialGuests: Guest[]; guestTarget: number; registryNames?: string[] }) {
   const confirm = useConfirm();
   const [guests, setGuests] = useState(initialGuests);
   const [target, setTarget] = useState(guestTarget);
@@ -56,6 +58,7 @@ export default function Guests({ initialGuests, guestTarget }: { initialGuests: 
   const [rsvpFilter, setRsvpFilter] = useState<"all" | RsvpStatus>("all");
   const [childrenFilter, setChildrenFilter] = useState<"any" | "with" | "none">("any");
   const [needsOnly, setNeedsOnly] = useState(false);
+  const [thanksOnly, setThanksOnly] = useState(useSearchParams().get("thanks") === "1");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   const [moreOpenId, setMoreOpenId] = useState<string | null>(null);
@@ -81,9 +84,10 @@ export default function Guests({ initialGuests, guestTarget }: { initialGuests: 
       if (childrenFilter === "with" && g.kids_count === 0) return false;
       if (childrenFilter === "none" && g.kids_count > 0) return false;
       if (needsOnly && guestNeeds(g).length === 0) return false;
+      if (thanksOnly && !thankYouDue(g)) return false;
       return true;
     });
-  }, [guests, search, groupFilter, rsvpFilter, childrenFilter, needsOnly]);
+  }, [guests, search, groupFilter, rsvpFilter, childrenFilter, needsOnly, thanksOnly]);
 
   const grouped = groupByCategory(filtered);
 
@@ -334,6 +338,17 @@ export default function Guests({ initialGuests, guestTarget }: { initialGuests: 
           >
             <HeartPulse className="h-4 w-4" strokeWidth={1.5} aria-hidden />
             Needs &amp; care
+          </button>
+
+          <button
+            onClick={() => setThanksOnly((v) => !v)}
+            aria-pressed={thanksOnly}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold ${
+              thanksOnly ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep hover:text-ink"
+            }`}
+          >
+            <Gift className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+            Thank-yous to send{guests.some(thankYouDue) ? ` ${guests.filter(thankYouDue).length}` : ""}
           </button>
 
           <button
@@ -647,8 +662,6 @@ export default function Guests({ initialGuests, guestTarget }: { initialGuests: 
                   ["accommodation_needed", "Accommodation needed"],
                   ["transportation_needed", "Transportation needed"],
                   ["invitation_sent", "Invitation sent"],
-                  ["gift_received", "Gift received"],
-                  ["thank_you_sent", "Thank-you sent"],
                 ] as const).map(([key, label]) => (
                   <label key={key} className="flex items-center gap-2 text-sm">
                     <input
@@ -661,6 +674,94 @@ export default function Guests({ initialGuests, guestTarget }: { initialGuests: 
                   </label>
                 ))}
               </div>
+
+              <fieldset className="mt-5 rounded-xl border border-line p-3">
+                <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Gift &amp; thank-you</legend>
+                <label className="flex min-h-11 items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={open.gift_received}
+                    onChange={(e) => saveNow(open.id, { gift_received: e.target.checked })}
+                    className="h-4 w-4 accent-sage-deep"
+                  />
+                  Gift received
+                </label>
+                {open.gift_received && (
+                  <div className="mt-2">
+                    <label htmlFor="guests-gift-desc" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">What they gave</label>
+                    <input id="guests-gift-desc"
+                      defaultValue={open.gift_description ?? ""}
+                      onChange={(e) => scheduleSave(open.id, { gift_description: e.target.value })}
+                      placeholder="Stand mixer, cash gift…"
+                      className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
+                    />
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="guests-gift-source" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">From which registry</label>
+                        <input id="guests-gift-source"
+                          list="guests-gift-sources"
+                          defaultValue={open.gift_source ?? ""}
+                          onChange={(e) => scheduleSave(open.id, { gift_source: e.target.value })}
+                          placeholder="Or in person"
+                          className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
+                        />
+                        <datalist id="guests-gift-sources">
+                          {[...registryNames, "In person"].map((n) => <option key={n} value={n} />)}
+                        </datalist>
+                      </div>
+                      <div>
+                        <label htmlFor="guests-gift-date" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Date received</label>
+                        <input id="guests-gift-date"
+                          type="date"
+                          defaultValue={open.gift_date ?? ""}
+                          onChange={(e) => scheduleSave(open.id, { gift_date: e.target.value || null })}
+                          className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <label className="mt-2 flex min-h-11 items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={open.thank_you_required !== false}
+                        onChange={(e) => saveNow(open.id, { thank_you_required: e.target.checked })}
+                        className="h-4 w-4 accent-sage-deep"
+                      />
+                      Thank-you required
+                    </label>
+                    {open.thank_you_required !== false && (
+                      <>
+                        <label className="flex min-h-11 items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={open.thank_you_sent}
+                            onChange={(e) => saveNow(open.id, { thank_you_sent: e.target.checked, thank_you_date: e.target.checked ? open.thank_you_date || new Date().toISOString().slice(0, 10) : null })}
+                            className="h-4 w-4 accent-sage-deep"
+                          />
+                          Thank-you sent
+                        </label>
+                        {open.thank_you_sent && (
+                          <div>
+                            <label htmlFor="guests-thanks-date" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Sent on</label>
+                            <input id="guests-thanks-date"
+                              type="date"
+                              defaultValue={open.thank_you_date ?? new Date().toISOString().slice(0, 10)}
+                              onChange={(e) => scheduleSave(open.id, { thank_you_date: e.target.value || null })}
+                              className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <label htmlFor="guests-gift-notes" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Gift notes</label>
+                    <textarea id="guests-gift-notes"
+                      defaultValue={open.gift_notes ?? ""}
+                      onChange={(e) => scheduleSave(open.id, { gift_notes: e.target.value })}
+                      rows={2}
+                      className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
+                    />
+                  </div>
+                )}
+              </fieldset>
 
               <label htmlFor="guests-f13" className="mt-4 block text-xs font-semibold uppercase tracking-wide text-ink-2">Private planning notes</label>
               <textarea id="guests-f13"

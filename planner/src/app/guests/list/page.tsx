@@ -6,10 +6,11 @@ export const dynamic = "force-dynamic";
 
 export default async function GuestListPage() {
   const supabase = await createClient();
-  const [{ data: guests }, { data: settings }] = await Promise.all([
+  const [{ data: guests }, { data: settings }, { data: registries }] = await Promise.all([
     supabase.from("guests").select("*").order("sort_order", { ascending: true }),
     supabase.from("budget_settings").select("*").eq("id", true).maybeSingle(),
+    supabase.from("registries").select("store_name").order("sort_order", { ascending: true }),
   ]);
 
-  return <Guests initialGuests={guests ?? []} guestTarget={settings?.guest_target ?? DEFAULT_GUEST_TARGET} />;
+  return <Guests initialGuests={guests ?? []} guestTarget={settings?.guest_target ?? DEFAULT_GUEST_TARGET} registryNames={(registries ?? []).map((r) => r.store_name)} />;
 }

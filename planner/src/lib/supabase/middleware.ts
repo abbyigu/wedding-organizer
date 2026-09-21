@@ -30,7 +30,9 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/auth");
-  if (!user && !isAuthRoute) {
+  // The guest-facing registry page (/<couple-slug>/registry) is the one public page.
+  const isPublicRegistry = /^\/[^/]+\/registry\/?$/.test(request.nextUrl.pathname);
+  if (!user && !isAuthRoute && !isPublicRegistry) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
