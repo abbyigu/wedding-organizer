@@ -3,9 +3,10 @@
 import { useDialog } from "@/lib/use-dialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState } from "react";
-import { CalendarDays, CalendarRange, CircleCheck, CircleHelp, Clock, Ellipsis, Hourglass, Leaf, Lightbulb, LayoutGrid, List as ListIcon, Plus, Search, Users, X } from "lucide-react";
+import { CalendarDays, CalendarRange, CircleCheck, CircleHelp, Clock, Ellipsis, Hourglass, Leaf, Lightbulb, GanttChart, LayoutGrid, List as ListIcon, Plus, Search, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
+import Timeline from "@/components/Timeline";
 import DashboardTopBar, { type Notice, type SearchItem } from "@/components/DashboardTopBar";
 import {
   blankTask,
@@ -69,7 +70,7 @@ export default function Board({ initialTasks, userName, daysToGo }: { initialTas
   const confirm = useConfirm();
   const [tasks, setTasks] = useState(initialTasks);
   const [error, setError] = useState("");
-  const [view, setView] = useState<"board" | "list">("board");
+  const [view, setView] = useState<"board" | "timeline" | "list">("board");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState<"all" | Assignee>("all");
@@ -148,13 +149,13 @@ export default function Board({ initialTasks, userName, daysToGo }: { initialTas
     setDragOver(null);
   }
 
-  async function addTask(status: TaskStatus) {
+  async function addTask(status: TaskStatus, category = "Other") {
     setError("");
     const supabase = createClient();
     const count = tasks.filter((t) => t.status === status).length;
     const { data, error } = await supabase
       .from("planning_tasks")
-      .insert(blankTask(status, { assigned_to: "together", sort_order: count }))
+      .insert(blankTask(status, { assigned_to: "together", sort_order: count, category }))
       .select()
       .single();
     if (error) setError(error.message);
@@ -400,6 +401,8 @@ export default function Board({ initialTasks, userName, daysToGo }: { initialTas
         </dl>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
+          {view !== "timeline" && (
+            <>
           <label className="relative min-w-[200px] flex-1 lg:max-w-sm">
             <span className="sr-only">Search tasks</span>
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-2" strokeWidth={1.5} aria-hidden />
@@ -428,9 +431,11 @@ export default function Board({ initialTasks, userName, daysToGo }: { initialTas
             ))}
           </select>
 
+            </>
+          )}
           <div className="ml-auto flex items-center gap-3">
             <div role="group" aria-label="View" className="flex items-center gap-1 rounded-full border border-line bg-paper p-1">
-              {([["board", "Board", LayoutGrid], ["list", "List", ListIcon]] as const).map(([key, label, Icon]) => (
+              {([["board", "Board", LayoutGrid], ["timeline", "Timeline", GanttChart], ["list", "List", ListIcon]] as const).map(([key, label, Icon]) => (
                 <button
                   key={key}
                   onClick={() => setView(key)}
@@ -505,6 +510,8 @@ export default function Board({ initialTasks, userName, daysToGo }: { initialTas
               );
             })}
           </div>
+        ) : view === "timeline" ? (
+          <Timeline tasks={tasks} daysToGo={daysToGo} onOpenTask={setOpenId} onAddTask={(c) => addTask("todo", c)} />
         ) : (
           <div className="mt-6 flex flex-col divide-y divide-line rounded-2xl border border-line bg-paper shadow-sm">
             {listSorted.length === 0 && <p className="p-5 text-sm text-ink-2">No tasks match these filters.</p>}
