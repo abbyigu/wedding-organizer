@@ -27,11 +27,16 @@ export default function DashboardTopBar({
   partner,
   items,
   notices,
+  placeholder = "Search venues, tasks, ideas, pages…",
+  onSelect,
 }: {
   userName: string;
   partner: string;
   items: SearchItem[];
   notices: Notice[];
+  placeholder?: string;
+  // When given, results call this (with the item's href as a key) instead of navigating, and pages are left out.
+  onSelect?: (item: SearchItem) => void;
 }) {
   const [query, setQuery] = useState("");
   const [bellOpen, setBellOpen] = useState(false);
@@ -40,7 +45,7 @@ export default function DashboardTopBar({
 
   const q = query.trim().toLowerCase();
   const results = q
-    ? [...PAGES, ...items].filter((i) => i.label.toLowerCase().includes(q) || i.hint.toLowerCase().includes(q)).slice(0, 8)
+    ? (onSelect ? items : [...PAGES, ...items]).filter((i) => i.label.toLowerCase().includes(q) || i.hint.toLowerCase().includes(q)).slice(0, 8)
     : [];
 
   useEffect(() => {
@@ -76,8 +81,8 @@ export default function DashboardTopBar({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search venues, tasks, ideas, pages…"
-            aria-label="Search venues, tasks, ideas and pages"
+            placeholder={placeholder}
+            aria-label={placeholder.replace("…", "")}
             className="w-full min-w-0 bg-transparent text-sm text-ink outline-none placeholder:text-ink-2"
           />
         </label>
@@ -88,6 +93,18 @@ export default function DashboardTopBar({
             ) : (
               results.map((r) => (
                 <li key={`${r.hint}-${r.href}-${r.label}`}>
+                  {onSelect ? (
+                    <button
+                      onClick={() => {
+                        onSelect(r);
+                        setQuery("");
+                      }}
+                      className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm hover:bg-bg ${FOCUS_RING}`}
+                    >
+                      <span className="truncate font-semibold text-ink">{r.label}</span>
+                      <span className="shrink-0 text-xs uppercase tracking-[0.12em] text-ink-2">{r.hint}</span>
+                    </button>
+                  ) : (
                   <Link
                     href={r.href}
                     onClick={() => setQuery("")}
@@ -96,6 +113,7 @@ export default function DashboardTopBar({
                     <span className="truncate font-semibold text-ink">{r.label}</span>
                     <span className="shrink-0 text-xs uppercase tracking-[0.12em] text-ink-2">{r.hint}</span>
                   </Link>
+                  )}
                 </li>
               ))
             )}

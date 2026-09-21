@@ -9,7 +9,8 @@ export type IdeaPin = {
   note: string;
   price: number | null;
   visibility: IdeaVisibility;
-  is_favourite: boolean;
+  is_favourite: boolean; // shown as a heart: "shortlisted for the wedding"
+  on_mood_board?: boolean; // absent until migration 032 has been run
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -89,4 +90,21 @@ export function normalizeUrl(url: string): string {
 export function collectionTabs(ideas: Pick<IdeaPin, "category">[]): string[] {
   const extra = [...new Set(ideas.map((i) => i.category).filter((c) => !IDEA_CATEGORIES.includes(c)))].sort();
   return [...IDEA_CATEGORIES, ...extra];
+}
+
+// Inspiration collections that share a name with a Planning Board category keep it;
+// the rest map to the closest one.
+const PLANNING_CATEGORY: Record<string, string> = {
+  "Little Details": "Other",
+  Décor: "Décor",
+  Attire: "Attire",
+  Flowers: "Décor",
+  "Food & drinks": "Food",
+  DIY: "DIY",
+  Cake: "Food",
+  Colors: "Décor",
+  "Wedding dress": "Attire",
+};
+export function planningCategoryFor(collection: string): string {
+  return PLANNING_CATEGORY[collection] ?? "Other";
 }
