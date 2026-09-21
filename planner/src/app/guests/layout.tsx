@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import NavBar from "@/components/NavBar";
-import GuestsTabs from "@/components/GuestsTabs";
+import GuestsHeader from "@/components/GuestsHeader";
 import { displayName } from "@/lib/auth-names";
+import { partnerName } from "@/lib/ideas";
 
 export default async function GuestsLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -9,20 +10,17 @@ export default async function GuestsLayout({ children }: { children: React.React
     data: { user },
   } = await supabase.auth.getUser();
   const userName = displayName(user?.email);
+  const { data: guests } = await supabase.from("guests").select("id, name, plus_one, category");
 
   return (
     <div className="min-h-screen pb-20 lg:pl-56">
       <NavBar userName={userName} />
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <div className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden">
-          <div>
-            <h1 className="font-serif text-3xl font-medium sm:text-4xl">Guests</h1>
-            <p className="mt-2 text-ink-2">From building the list to welcoming everyone.</p>
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
-        </div>
-        <GuestsTabs />
+      <div className="mx-auto max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8">
+        <GuestsHeader
+          userName={userName}
+          partner={partnerName(userName || "Ariel")}
+          items={(guests ?? []).map((g) => ({ label: g.name, hint: g.category || "Household", href: `/guests/list?q=${encodeURIComponent(g.name)}` }))}
+        />
         <div className="mt-6">{children}</div>
       </div>
     </div>

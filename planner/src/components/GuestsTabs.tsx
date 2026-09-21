@@ -26,12 +26,12 @@ export default function GuestsTabs() {
   const moreActive = MORE_TABS.some((t) => isActive(t.href));
 
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-5 border-b border-line">
+    <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-1 border-b border-line">
       {PRIMARY_TABS.map((t) => (
         <Link
           key={t.href}
           href={t.href}
-          className={`whitespace-nowrap border-b-2 pb-2.5 text-sm font-semibold ${isActive(t.href) ? "border-green text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
+          className={`whitespace-nowrap border-b-2 pb-3 text-lg ${isActive(t.href) ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
         >
           {t.label}
         </Link>
@@ -40,7 +40,7 @@ export default function GuestsTabs() {
         <button
           onClick={() => setMoreOpen((v) => !v)}
           aria-expanded={moreOpen}
-          className={`flex items-center gap-1 whitespace-nowrap border-b-2 pb-2.5 text-sm font-semibold ${moreActive ? "border-green text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
+          className={`flex items-center gap-1 whitespace-nowrap border-b-2 pb-3 text-lg ${moreActive ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
         >
           More
           <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useDialog } from "@/lib/use-dialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState } from "react";
@@ -49,7 +50,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
   const [guests, setGuests] = useState(initialGuests);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(useSearchParams().get("q") ?? "");
   const [groupFilter, setGroupFilter] = useState("all");
   const [rsvpFilter, setRsvpFilter] = useState<"all" | RsvpStatus>("all");
   const [childrenFilter, setChildrenFilter] = useState<"any" | "with" | "none">("any");
