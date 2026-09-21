@@ -148,9 +148,8 @@ export default function IdeaBoard({
     const { error } = await supabase.from("diy_projects").insert({
       ...blankDiyProject("idea", 0),
       title: idea.title,
-      reference_image: idea.image_url,
       notes: idea.note,
-      cost_estimate: idea.price,
+      cost_estimate: idea.price, // the picture stays on the idea; the project points at it via idea_pin_id
       idea_pin_id: idea.id,
     });
     if (error) setError(error.message);

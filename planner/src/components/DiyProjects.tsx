@@ -1,355 +1,355 @@
 "use client";
 
-import { useConfirm } from "@/components/ConfirmProvider";
-import { useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ExternalLink, Plus, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Check, CircleCheck, Heart, Lightbulb, List, Plus, Search, ShoppingCart, SquareKanban, Wrench } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import { normalizeUrl } from "@/lib/ideas";
-import { CATEGORIES } from "@/lib/planning-tasks";
 import {
   blankDiyProject,
   DIY_OWNER_LABELS,
-  DIY_OWNER_ORDER,
   DIY_STATUS_LABELS,
   DIY_STATUS_ORDER,
-  type ChecklistItem,
-  type DiyOwner,
+  hoursOf,
+  MATERIAL_STATUS_LABEL,
+  materialTotal,
+  progressOf,
+  projectCost,
+  type DiyMaterial,
   type DiyProject,
   type DiyStatus,
 } from "@/lib/diy-projects";
 import { fmt } from "@/lib/venues";
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
-const FIELD = "w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm outline-none focus:border-line focus:bg-bg";
+const STAGE: Record<DiyStatus, { Icon: typeof Lightbulb; tint: string; empty: string }> = {
+  idea: { Icon: Lightbulb, tint: "color-mix(in srgb, var(--surface-blush) 12%, var(--paper))", empty: "Ideas you want to try land here." },
+  materials_needed: { Icon: ShoppingCart, tint: "color-mix(in srgb, var(--gold) 12%, var(--paper))", empty: "Nothing to shop for yet." },
+  making: { Icon: Wrench, tint: "color-mix(in srgb, var(--sage) 16%, var(--paper))", empty: "Ready when you are." },
+  finished: { Icon: CircleCheck, tint: "color-mix(in srgb, var(--surface-olive) 10%, var(--paper))", empty: "Your finished creations will live here ♡" },
+};
+const SORTS = [
+  ["custom", "Custom"],
+  ["due", "Due date"],
+  ["cost", "Cost"],
+  ["progress", "Progress"],
+  ["updated", "Recently updated"],
+] as const;
+type Sort = (typeof SORTS)[number][0];
+type View = "board" | "list" | "shopping";
 
-export default function DiyProjects({ initialProjects, userName }: { initialProjects: DiyProject[]; userName: string }) {
-  const confirm = useConfirm();
-  const [projects, setProjects] = useState(initialProjects);
-  const [error, setError] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
-  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+const shortDate = (iso: string) => new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${iso.slice(0, 10)}T12:00:00Z`));
+
+export default function DiyProjects({
+  initialProjects,
+  initialMaterials,
+  materialsMissing,
+  ideas,
+  userName,
+}: {
+  initialProjects: DiyProject[];
+  initialMaterials: DiyMaterial[];
+  materialsMissing: boolean;
+  ideas: { id: string; title: string; image_url: string }[];
+  userName: string;
+}) {
+  const router = useRouter();
   const supabase = createClient();
+  const [projects, setProjects] = useState(initialProjects);
+  const [materials, setMaterials] = useState(initialMaterials);
+  const [view, setView] = useState<View>("board");
+  const [filter, setFilter] = useState<"all" | DiyStatus>("all");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<Sort>("custom");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overCol, setOverCol] = useState<DiyStatus | null>(null);
+  const [error, setError] = useState("");
 
-  function scheduleSave(id: string, patch: Partial<DiyProject>) {
-    setProjects((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    const key = id + Object.keys(patch)[0];
-    clearTimeout(timers.current[key]);
-    timers.current[key] = setTimeout(async () => {
-      const { error } = await supabase.from("diy_projects").update(patch).eq("id", id);
-      if (error) setError(error.message);
-    }, 700);
-  }
+  const matsOf = (id: string) => materials.filter((m) => m.project_id === id);
+  const costOf = (p: DiyProject) => projectCost(p, matsOf(p.id));
+  const imageOf = (p: DiyProject) => {
+    const own = p.status === "finished" ? p.progress_photos[p.progress_photos.length - 1] : "";
+    return normalizeUrl(own || ideas.find((i) => i.id === p.idea_pin_id)?.image_url || p.reference_image || "");
+  };
+
+  const q = query.trim().toLowerCase();
+  const visible = projects.filter((p) => (filter === "all" || p.status === filter) && (!q || `${p.title} ${p.related_area} ${p.category} ${p.notes}`.toLowerCase().includes(q)));
+  const ordered = (list: DiyProject[]) => {
+    const l = [...list];
+    if (sort === "due") l.sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999"));
+    if (sort === "cost") l.sort((a, b) => costOf(b).estimated - costOf(a).estimated);
+    if (sort === "progress") l.sort((a, b) => progressOf(b) - progressOf(a));
+    if (sort === "updated") l.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    return l;
+  };
+
+  const totals = projects.reduce(
+    (t, p) => {
+      const c = costOf(p);
+      return { estimated: t.estimated + c.estimated, spent: t.spent + c.spent, hours: t.hours + (p.status === "finished" ? 0 : hoursOf(p) * (1 - progressOf(p))) };
+    },
+    { estimated: 0, spent: 0, hours: 0 },
+  );
 
   async function addProject(status: DiyStatus) {
     setError("");
     const count = projects.filter((p) => p.status === status).length;
     const { data, error } = await supabase.from("diy_projects").insert(blankDiyProject(status, count)).select().single();
+    if (error) return setError(error.message);
+    router.push(`/diy/${(data as DiyProject).id}`);
+  }
+
+  async function moveTo(id: string, status: DiyStatus) {
+    const cur = projects.find((p) => p.id === id);
+    if (!cur || cur.status === status) return;
+    const patch = { status, finished_at: status === "finished" ? new Date().toISOString() : null };
+    setProjects((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    const { error } = await supabase.from("diy_projects").update(patch).eq("id", id);
     if (error) setError(error.message);
-    else if (data) {
-      setProjects((ps) => [...ps, data as DiyProject]);
-      setOpenId((data as DiyProject).id);
-    }
   }
 
-  async function removeProject(id: string) {
-    if (!(await confirm("Remove this project? Its Planning Board card will be removed too."))) return;
-    setProjects((ps) => ps.filter((p) => p.id !== id));
-    if (openId === id) setOpenId(null);
-    await supabase.from("diy_projects").delete().eq("id", id);
+  async function toggleFavourite(p: DiyProject) {
+    setProjects((ps) => ps.map((x) => (x.id === p.id ? { ...x, is_favourite: !p.is_favourite } : x)));
+    const { error } = await supabase.from("diy_projects").update({ is_favourite: !p.is_favourite }).eq("id", p.id);
+    if (error) setError(error.message);
   }
 
-  function toggleChecklist(p: DiyProject, index: number) {
-    const next = p.materials_checklist.map((item, i) => (i === index ? { ...item, done: !item.done } : item));
-    scheduleSave(p.id, { materials_checklist: next });
+  async function buy(m: DiyMaterial) {
+    setMaterials((ms) => ms.map((x) => (x.id === m.id ? { ...x, status: "purchased" } : x)));
+    const { error } = await supabase.from("diy_materials").update({ status: "purchased" }).eq("id", m.id);
+    if (error) setError(error.message);
   }
 
-  function addChecklistItem(p: DiyProject, text: string) {
-    if (!text.trim()) return;
-    scheduleSave(p.id, { materials_checklist: [...p.materials_checklist, { text: text.trim(), done: false }] });
+  function card(p: DiyProject) {
+    const c = costOf(p);
+    const prog = progressOf(p);
+    const img = imageOf(p);
+    const steps = p.materials_checklist;
+    const tags = [...new Set([p.related_area, p.category].filter((t) => t && t !== "Other" && t !== "DIY"))];
+    const done = p.status === "finished";
+    return (
+      <li
+        key={p.id}
+        draggable
+        onDragStart={() => setDragId(p.id)}
+        onDragEnd={() => {
+          setDragId(null);
+          setOverCol(null);
+        }}
+        className={`group relative overflow-hidden rounded-xl border border-line bg-paper shadow-sm ${dragId === p.id ? "opacity-50" : ""}`}
+      >
+        {img && (
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={img} alt="" loading="lazy" draggable={false} className={`w-full object-cover ${done ? "h-40" : "h-32"}`} />
+          </div>
+        )}
+        <button
+          onClick={() => toggleFavourite(p)}
+          aria-label={p.is_favourite ? `Remove ${p.title} from favourites` : `Favourite ${p.title}`}
+          aria-pressed={!!p.is_favourite}
+          className={`absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-paper/90 shadow-sm ${FOCUS_RING}`}
+        >
+          <Heart className={`h-4 w-4 ${p.is_favourite ? "fill-wine text-wine" : "text-ink-2"}`} strokeWidth={1.5} aria-hidden />
+        </button>
+        <div className="p-3.5">
+          <h3 className="font-serif text-lg font-medium leading-snug">
+            <Link href={`/diy/${p.id}`} className={`after:absolute after:inset-0 ${FOCUS_RING}`}>{p.title}</Link>
+            {done && <span className="ml-1 text-sage-deep" aria-label="finished">✓</span>}
+          </h3>
+          {tags.length > 0 && (
+            <ul className="mt-1.5 flex flex-wrap gap-1.5">{tags.map((t) => <li key={t} className="rounded-full bg-bg px-2.5 py-0.5 text-xs text-ink-2">{t}</li>)}</ul>
+          )}
+          {p.description && !done && <p className="mt-2 line-clamp-2 text-sm text-ink-2">{p.description}</p>}
+
+          {p.quantity ? (
+            <p className="mt-3 text-sm font-semibold">{done ? p.quantity : p.qty_done ?? 0} / {p.quantity} made</p>
+          ) : null}
+          {(p.quantity || steps.length > 0) && !done && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <div role="progressbar" aria-label="Progress" aria-valuenow={Math.round(prog * 100)} aria-valuemin={0} aria-valuemax={100} className="h-1.5 flex-1 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-surface-sage-deep" style={{ width: `${prog * 100}%` }} /></div>
+              <span className="text-xs text-ink-2">{Math.round(prog * 100)}%</span>
+            </div>
+          )}
+
+          {done ? (
+            <div className="mt-2 text-sm">
+              {p.finished_at && <p className="inline-flex items-center gap-1.5 rounded-full bg-bg px-3 py-1 text-xs font-semibold text-sage-deep"><Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />Finished {shortDate(p.finished_at)}</p>}
+              {c.spent > 0 && (
+                <p className="mt-2 text-ink-2">
+                  {fmt(c.spent)} spent
+                  {c.estimated > 0 && c.estimated !== c.spent && <span className={c.spent <= c.estimated ? " text-sage-deep" : " text-wine"}> · {fmt(Math.abs(c.estimated - c.spent))} {c.spent <= c.estimated ? "under" : "over"} estimate</span>}
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              {c.estimated > 0 && <p className="mt-2 text-sm text-ink-2">{fmt(c.spent)} spent / {fmt(c.estimated)} estimated</p>}
+              {p.deadline && <p className="mt-0.5 text-sm text-ink-2">Due {shortDate(p.deadline)}</p>}
+              {steps.length > 0 && (
+                <ul className="mt-3 flex flex-col gap-1">
+                  {steps.slice(0, 3).map((s, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <span aria-hidden className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${s.done ? "border-transparent bg-surface-olive text-white" : "border-ink-2"}`}>{s.done && <Check className="h-3 w-3" strokeWidth={3} />}</span>
+                      <span className={`truncate ${s.done ? "text-ink-2 line-through" : ""}`}>{s.text}<span className="sr-only">{s.done ? " (done)" : ""}</span></span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+          <p className="mt-3 flex items-center justify-between text-xs text-ink-2">
+            <span className="rounded-full border border-line px-2.5 py-0.5 font-semibold">{DIY_OWNER_LABELS[p.owner]}</span>
+            {matsOf(p.id).length > 0 && <span>{matsOf(p.id).length} material{matsOf(p.id).length === 1 ? "" : "s"}</span>}
+          </p>
+        </div>
+      </li>
+    );
   }
 
-  function removeChecklistItem(p: DiyProject, index: number) {
-    scheduleSave(p.id, { materials_checklist: p.materials_checklist.filter((_, i) => i !== index) });
-  }
-
-  function addPhoto(p: DiyProject, url: string) {
-    if (!url.trim()) return;
-    scheduleSave(p.id, { progress_photos: [...p.progress_photos, url.trim()] });
-  }
-
-  function removePhoto(p: DiyProject, index: number) {
-    scheduleSave(p.id, { progress_photos: p.progress_photos.filter((_, i) => i !== index) });
-  }
+  const columns = DIY_STATUS_ORDER.filter((s) => filter === "all" || s === filter);
+  const toBuy = materials.filter((m) => m.status === "need" && projects.some((p) => p.id === m.project_id && p.status !== "finished"));
 
   return (
     <div className="min-h-screen pb-20 lg:pl-56">
       <NavBar userName={userName} />
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <div className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden">
-          <div>
-            <h1 className="font-serif text-3xl font-medium sm:text-4xl">DIY Projects</h1>
-            <p className="mt-2 text-ink-2">Where ideas become real — cost, materials, and progress for everything you&apos;re making.</p>
-          </div>
+      <div className="mx-auto max-w-[1320px] px-4 py-6 sm:px-6 lg:px-8">
+        <header className="relative flex flex-wrap items-start justify-between gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-12 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
-        </div>
-        {error && <p className="mt-3 text-sm text-wine">{error}</p>}
-        <p className="mt-2 text-xs text-ink-2">Every project also shows up on the Planning Board under the DIY category.</p>
+          <img src="/botanical-accent.webp" alt="" aria-hidden className="pointer-events-none absolute -left-3 top-0 hidden h-20 w-auto -rotate-12 -scale-x-100 opacity-50 sm:block" />
+          <div className="sm:pl-16">
+            <h1 className="font-serif text-4xl font-medium tracking-[-0.01em] sm:text-5xl">DIY Projects</h1>
+            <p className="mt-2 max-w-xl text-lg text-ink-2">Where ideas become real — cost, materials, and progress for everything you&apos;re making.</p>
+            <p className="mt-1 text-sm text-ink-2">Every project also shows up on the Planning Board under the DIY category.</p>
+          </div>
+          <p aria-hidden className="pointer-events-none hidden -rotate-6 font-script text-3xl leading-tight text-ink-2 xl:block">Small details<br />make a big day ♡</p>
+          <button onClick={() => addProject("idea")} className={`flex items-center gap-2 rounded-full bg-surface-green px-5 py-3 text-sm font-semibold text-white ${FOCUS_RING}`}><Plus className="h-4 w-4" aria-hidden />New DIY Project</button>
+        </header>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {DIY_STATUS_ORDER.map((status) => {
-            const items = projects.filter((p) => p.status === status);
-            return (
-              <div key={status} className="flex flex-col gap-3 rounded-2xl border border-line bg-bg p-3">
-                <div className="flex items-center justify-between px-1">
-                  <h2 className="font-serif text-base font-medium">{DIY_STATUS_LABELS[status]}</h2>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-ink-2">{items.length}</span>
-                    <button
-                      onClick={() => addProject(status)}
-                      aria-label={`Add a project to ${DIY_STATUS_LABELS[status]}`}
-                      className={`flex h-5 w-5 items-center justify-center rounded-full text-ink-2 hover:bg-paper hover:text-ink ${FOCUS_RING}`}
-                    >
-                      <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                    </button>
+        <p className="mt-5 text-sm text-ink-2" aria-label="Summary">
+          <b className="font-semibold text-ink">{projects.length}</b> project{projects.length === 1 ? "" : "s"} · <b className="font-semibold text-ink">{fmt(totals.estimated)}</b> estimated · <b className="font-semibold text-ink">{fmt(totals.spent)}</b> spent
+          {totals.hours > 0 && <> · about <b className="font-semibold text-ink">{Math.round(totals.hours)}</b> hours of making left</>}
+        </p>
+        {error && <p role="alert" className="mt-2 text-sm text-wine">{error}</p>}
+        {materialsMissing && <p className="mt-2 text-sm text-ink-2">Materials, quantities and hours need one small database update (migration 043).</p>}
+
+        <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-3">
+          <div role="group" aria-label="Filter by stage" className="flex flex-wrap gap-2">
+            {(["all", ...DIY_STATUS_ORDER] as const).map((s) => {
+              const n = s === "all" ? projects.length : projects.filter((p) => p.status === s).length;
+              return (
+                <button key={s} aria-pressed={filter === s} onClick={() => setFilter(s)} className={`rounded-full border px-4 py-2.5 text-sm font-semibold ${filter === s ? "border-surface-green bg-surface-green text-white" : "border-line bg-paper hover:bg-bg"} ${FOCUS_RING}`}>
+                  {s === "all" ? "All" : DIY_STATUS_LABELS[s]} ({n})
+                </button>
+              );
+            })}
+          </div>
+          <div className="ml-auto flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-2.5 text-sm focus-within:ring-2 focus-within:ring-sage-deep">
+              <Search className="h-4 w-4 text-ink-2" aria-hidden />
+              <input aria-label="Search projects" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects…" className="w-36 bg-transparent outline-none placeholder:text-ink-2" />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-ink-2">Sort by:
+              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="rounded-full border border-line bg-paper px-3 py-2.5 text-sm font-semibold text-ink">{SORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+            </label>
+            <div role="group" aria-label="View" className="flex rounded-full border border-line bg-paper p-1">
+              {([["board", SquareKanban, "Board"], ["list", List, "List"], ["shopping", ShoppingCart, "Shopping list"]] as const).map(([k, Icon, label]) => (
+                <button key={k} aria-pressed={view === k} aria-label={label} title={label} onClick={() => setView(k)} className={`flex h-10 w-10 items-center justify-center rounded-full ${view === k ? "bg-surface-green text-white" : "text-ink-2 hover:text-ink"} ${FOCUS_RING}`}><Icon className="h-4 w-4" aria-hidden /></button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {view === "board" && (
+          <div className={`mt-6 grid gap-4 ${columns.length === 1 ? "" : "sm:grid-cols-2 xl:grid-cols-4"}`}>
+            {columns.map((status) => {
+              const { Icon, tint, empty } = STAGE[status];
+              const items = ordered(visible.filter((p) => p.status === status));
+              return (
+                <section
+                  key={status}
+                  aria-label={DIY_STATUS_LABELS[status]}
+                  onDragOver={(e) => {
+                    if (dragId) {
+                      e.preventDefault();
+                      setOverCol(status);
+                    }
+                  }}
+                  onDrop={() => {
+                    if (dragId) void moveTo(dragId, status);
+                    setDragId(null);
+                    setOverCol(null);
+                  }}
+                  className={`flex flex-col gap-3 rounded-2xl border p-3 ${overCol === status ? "border-wine" : "border-line"}`}
+                  style={{ backgroundColor: tint }}
+                >
+                  <div className="flex items-center justify-between px-1">
+                    <h2 className="flex items-center gap-2 font-serif text-lg font-medium"><Icon className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-hidden />{DIY_STATUS_LABELS[status]}</h2>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-semibold text-ink-2">{items.length}</span>
+                      <button onClick={() => addProject(status)} aria-label={`Add a project to ${DIY_STATUS_LABELS[status]}`} className={`flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-paper hover:text-ink ${FOCUS_RING}`}><Plus className="h-4 w-4" aria-hidden /></button>
+                    </div>
                   </div>
+                  {items.length === 0 ? (
+                    <p className="px-2 py-8 text-center font-script text-2xl leading-tight text-ink-2">{empty}</p>
+                  ) : (
+                    <ul className="flex flex-col gap-3">{items.map(card)}</ul>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        )}
+
+        {view === "list" && (
+          <ul className="mt-6 divide-y divide-line rounded-2xl border border-line bg-paper">
+            {ordered(visible).length === 0 && <li className="p-6 text-center text-sm text-ink-2">No projects match.</li>}
+            {ordered(visible).map((p) => {
+              const c = costOf(p);
+              return (
+                <li key={p.id} className="relative flex flex-wrap items-center gap-x-5 gap-y-1 px-4 py-3 sm:px-5">
+                  <div className="min-w-[10rem] flex-1">
+                    <Link href={`/diy/${p.id}`} className={`font-serif text-lg font-medium after:absolute after:inset-0 ${FOCUS_RING}`}>{p.title}</Link>
+                    <p className="text-sm text-ink-2">{DIY_STATUS_LABELS[p.status]} · {DIY_OWNER_LABELS[p.owner]}{p.deadline ? ` · due ${shortDate(p.deadline)}` : ""}</p>
+                  </div>
+                  <span className="w-14 text-sm text-ink-2">{Math.round(progressOf(p) * 100)}%</span>
+                  <span className="w-40 text-right text-sm">{c.estimated > 0 ? `${fmt(c.spent)} / ${fmt(c.estimated)}` : "—"}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {view === "shopping" && (
+          <section className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm sm:p-6" aria-label="DIY shopping list">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div><h2 className="font-serif text-2xl font-medium">DIY Shopping List</h2><p className="text-sm text-ink-2">Everything still to buy, across all your projects.</p></div>
+              {toBuy.length > 0 && <p className="text-sm text-ink-2">About <b className="font-semibold text-ink">{fmt(toBuy.reduce((t, m) => t + materialTotal(m), 0))}</b> to spend</p>}
+            </div>
+            {toBuy.length === 0 ? (
+              <p className="mt-6 py-6 text-center font-script text-2xl text-ink-2">Nothing to shop for yet.</p>
+            ) : (
+              projects.filter((p) => toBuy.some((m) => m.project_id === p.id)).map((p) => (
+                <div key={p.id} className="mt-5">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-2"><Link href={`/diy/${p.id}?tab=materials`} className="hover:text-wine">{p.title}</Link></h3>
+                  <ul className="mt-1 divide-y divide-line">
+                    {toBuy.filter((m) => m.project_id === p.id).map((m) => (
+                      <li key={m.id} className="flex items-center gap-3 py-1.5 text-sm">
+                        <button role="checkbox" aria-checked={false} aria-label={`Mark ${m.name} as purchased`} onClick={() => buy(m)} className="-m-1 flex h-10 w-10 shrink-0 items-center justify-center"><span className="h-5 w-5 rounded border border-ink-2" /></button>
+                        <span className="min-w-0 flex-1">{m.name}<span className="text-ink-2"> · {m.qty}{m.unit ? ` ${m.unit}` : ""}{m.source ? ` · ${m.source}` : ""}</span></span>
+                        <span className="shrink-0 font-semibold">{fmt(materialTotal(m))}</span>
+                        <span className="sr-only">{MATERIAL_STATUS_LABEL[m.status]}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div className="flex flex-col gap-2">
-                  {items.length === 0 && <p className="px-1 text-xs italic text-ink-2">Nothing here</p>}
-                  {items.map((p) => {
-                    const isOpen = openId === p.id;
-                    const checklistDone = p.materials_checklist.filter((i) => i.done).length;
-                    return (
-                      <div key={p.id} className="overflow-hidden rounded-xl border border-line bg-paper shadow-sm">
-                        {p.reference_image && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={normalizeUrl(p.reference_image)} alt="" loading="lazy" className="h-28 w-full object-cover" />
-                        )}
-                        <div className="p-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <button onClick={() => setOpenId(isOpen ? null : p.id)} className={`flex min-w-0 flex-1 items-start gap-1 rounded text-left ${FOCUS_RING}`}>
-                              {isOpen ? <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-2" aria-hidden /> : <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-2" aria-hidden />}
-                              <span className="truncate font-semibold">{p.title}</span>
-                            </button>
-                            <button onClick={() => removeProject(p.id)} aria-label={`Remove ${p.title}`} className={`shrink-0 rounded-full p-2.5 text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}>
-                              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                            </button>
-                          </div>
-
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-ink-2">
-                            <span className="rounded-full border border-line px-2 py-0.5">{DIY_OWNER_LABELS[p.owner]}</span>
-                            {p.materials_checklist.length > 0 && (
-                              <span className="rounded-full border border-line px-2 py-0.5">
-                                {checklistDone}/{p.materials_checklist.length} materials
-                              </span>
-                            )}
-                            {p.deadline && <span className="rounded-full border border-line px-2 py-0.5">Due {p.deadline}</span>}
-                          </div>
-
-                          <div className="mt-1.5 flex items-center gap-2">
-                            <select
-                              value={p.status}
-                              onChange={(e) => scheduleSave(p.id, { status: e.target.value as DiyStatus })}
-                              className="rounded-full border border-line bg-bg px-2 py-0.5 text-xs font-semibold"
-                            >
-                              {DIY_STATUS_ORDER.map((s) => (
-                                <option key={s} value={s}>{DIY_STATUS_LABELS[s]}</option>
-                              ))}
-                            </select>
-                            {(p.cost_actual ?? p.cost_estimate) != null && (
-                              <span className="text-xs font-semibold text-ink-2">
-                                {fmt((p.cost_actual ?? p.cost_estimate)!)}
-                                {p.cost_actual == null && p.cost_estimate != null && " est."}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {isOpen && (
-                          <div className="border-t border-line bg-bg p-3">
-                            <div className="grid grid-cols-2 gap-2">
-                              <label className="col-span-2 text-xs font-semibold text-ink-2">
-                                Reference image URL
-                                <input
-                                  defaultValue={p.reference_image}
-                                  onChange={(e) => scheduleSave(p.id, { reference_image: e.target.value })}
-                                  placeholder="https://…"
-                                  className={FIELD}
-                                />
-                              </label>
-                              <label className="text-xs font-semibold text-ink-2">
-                                Owner
-                                <select
-                                  value={p.owner}
-                                  onChange={(e) => scheduleSave(p.id, { owner: e.target.value as DiyOwner })}
-                                  className={FIELD}
-                                >
-                                  {DIY_OWNER_ORDER.map((o) => (
-                                    <option key={o} value={o}>{DIY_OWNER_LABELS[o]}</option>
-                                  ))}
-                                </select>
-                              </label>
-                              <label className="text-xs font-semibold text-ink-2">
-                                Quantity
-                                <input
-                                  type="number"
-                                  min={0}
-                                  defaultValue={p.quantity ?? ""}
-                                  onChange={(e) => scheduleSave(p.id, { quantity: e.target.value === "" ? null : Number(e.target.value) })}
-                                  className={FIELD}
-                                />
-                              </label>
-                              <label className="text-xs font-semibold text-ink-2">
-                                Est. cost
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step="0.01"
-                                  defaultValue={p.cost_estimate ?? ""}
-                                  onChange={(e) => scheduleSave(p.id, { cost_estimate: e.target.value === "" ? null : Number(e.target.value) })}
-                                  className={FIELD}
-                                />
-                              </label>
-                              <label className="text-xs font-semibold text-ink-2">
-                                Actual cost
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step="0.01"
-                                  defaultValue={p.cost_actual ?? ""}
-                                  onChange={(e) => scheduleSave(p.id, { cost_actual: e.target.value === "" ? null : Number(e.target.value) })}
-                                  className={FIELD}
-                                />
-                              </label>
-                              <label className="text-xs font-semibold text-ink-2">
-                                Time estimate
-                                <input
-                                  defaultValue={p.time_estimate}
-                                  onChange={(e) => scheduleSave(p.id, { time_estimate: e.target.value })}
-                                  placeholder="e.g. 2 hrs"
-                                  className={FIELD}
-                                />
-                              </label>
-                              <label className="text-xs font-semibold text-ink-2">
-                                Deadline
-                                <input
-                                  type="date"
-                                  defaultValue={p.deadline ?? ""}
-                                  onChange={(e) => scheduleSave(p.id, { deadline: e.target.value || null })}
-                                  className={FIELD}
-                                />
-                              </label>
-                              <label className="text-xs font-semibold text-ink-2">
-                                Related wedding area
-                                <select
-                                  value={p.related_area}
-                                  onChange={(e) => scheduleSave(p.id, { related_area: e.target.value })}
-                                  className={FIELD}
-                                >
-                                  {CATEGORIES.filter((c) => c !== "DIY").map((c) => (
-                                    <option key={c} value={c}>{c}</option>
-                                  ))}
-                                </select>
-                              </label>
-                              <label className="col-span-2 text-xs font-semibold text-ink-2">
-                                Instructions / link
-                                <input
-                                  defaultValue={p.instructions_url}
-                                  onChange={(e) => scheduleSave(p.id, { instructions_url: e.target.value })}
-                                  placeholder="https://… or where the tutorial lives"
-                                  className={FIELD}
-                                />
-                              </label>
-                              {p.instructions_url && (
-                                <a href={normalizeUrl(p.instructions_url)} target="_blank" rel="noreferrer" className="col-span-2 -mt-1 flex items-center gap-1 text-xs font-semibold text-sage-deep underline underline-offset-2">
-                                  <ExternalLink className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-                                  Open instructions
-                                </a>
-                              )}
-                              <label className="col-span-2 text-xs font-semibold text-ink-2">
-                                Notes
-                                <textarea
-                                  defaultValue={p.notes}
-                                  onChange={(e) => scheduleSave(p.id, { notes: e.target.value })}
-                                  rows={2}
-                                  className={FIELD}
-                                />
-                              </label>
-                            </div>
-
-                            <div className="mt-3">
-                              <p className="text-xs font-semibold text-ink-2">Materials checklist</p>
-                              <div className="mt-1 flex flex-col gap-1">
-                                {p.materials_checklist.map((item, i) => (
-                                  <ChecklistRow key={i} item={item} onToggle={() => toggleChecklist(p, i)} onRemove={() => removeChecklistItem(p, i)} />
-                                ))}
-                              </div>
-                              <AddInline placeholder="Add a material…" onAdd={(v) => addChecklistItem(p, v)} />
-                            </div>
-
-                            <div className="mt-3">
-                              <p className="text-xs font-semibold text-ink-2">Progress photos</p>
-                              {p.progress_photos.length > 0 && (
-                                <div className="mt-1 flex flex-wrap gap-2">
-                                  {p.progress_photos.map((url, i) => (
-                                    <div key={i} className="group relative h-16 w-16 overflow-hidden rounded-lg border border-line">
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={normalizeUrl(url)} alt="" loading="lazy" className="h-full w-full object-cover" />
-                                      <button
-                                        onClick={() => removePhoto(p, i)}
-                                        aria-label="Remove photo"
-                                        className="absolute right-0.5 top-0.5 rounded-full bg-bg/90 p-0.5 text-ink-2 opacity-0 pointer-coarse:opacity-100 group-hover:opacity-100 hover:text-wine"
-                                      >
-                                        <X className="h-3 w-3" strokeWidth={2} aria-hidden />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <AddInline placeholder="Paste a photo URL…" onAdd={(v) => addPhoto(p, v)} />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              ))
+            )}
+          </section>
+        )}
       </div>
     </div>
-  );
-}
-
-function ChecklistRow({ item, onToggle, onRemove }: { item: ChecklistItem; onToggle: () => void; onRemove: () => void }) {
-  return (
-    <div className="flex items-center gap-2 rounded border border-transparent px-1 py-0.5 hover:border-line hover:bg-paper">
-      <input type="checkbox" checked={item.done} onChange={onToggle} className="h-3.5 w-3.5 shrink-0" />
-      <span className={`min-w-0 flex-1 truncate text-sm ${item.done ? "text-ink-2 line-through" : "text-ink"}`}>{item.text}</span>
-      <button onClick={onRemove} aria-label={`Remove ${item.text}`} className="shrink-0 text-ink-2 hover:text-wine">
-        <X className="h-3 w-3" strokeWidth={2} aria-hidden />
-      </button>
-    </div>
-  );
-}
-
-function AddInline({ placeholder, onAdd }: { placeholder: string; onAdd: (value: string) => void }) {
-  const [value, setValue] = useState("");
-  return (
-    <input
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && value.trim()) {
-          onAdd(value.trim());
-          setValue("");
-        }
-      }}
-      placeholder={placeholder}
-      className="mt-1 w-full rounded border border-dashed border-line bg-transparent px-1.5 py-1 text-sm text-ink-2 outline-none focus:border-sage-deep focus:text-ink"
-    />
   );
 }
