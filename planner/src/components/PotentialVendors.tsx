@@ -2,10 +2,12 @@
 
 import { useDialog } from "@/lib/use-dialog";
 import { useConfirm } from "@/components/ConfirmProvider";
-import { useMemo, useRef, useState, type ReactNode } from "react";
-import { Camera, MapPin, Plus, Search, X } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Camera, Check, Heart, MapPin, Plus, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { normalizeUrl } from "@/lib/ideas";
+import { isFavourite, isOurFavourite, STAGE_LABEL, STAGE_TINT, stageOf } from "@/lib/vendor-status";
 import { blankVendor as blankBookedVendor, type Vendor } from "@/lib/vendors";
 import {
   AVAILABILITY_LABELS,
@@ -60,34 +62,78 @@ const QUICK_FILTERS = [
 ] as const;
 type QuickFilter = (typeof QUICK_FILTERS)[number]["key"] | "none";
 
-export default function PotentialVendors({ initialVendors }: { initialVendors: PotentialVendor[] }) {
+export default function PotentialVendors({ initialVendors, userName, bookedCategories }: { initialVendors: PotentialVendor[]; userName: string; bookedCategories: string[] }) {
+  const router = useRouter();
+  const params = useSearchParams();
   const confirm = useConfirm();
   const [vendors, setVendors] = useState(initialVendors);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [catState, setCatState] = useState<{ value: string; key: string | null } | null>(null);
+  const [sortBy, setSortBy] = useState<"recent" | "name" | "price_low" | "price_high">("recent");
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("none");
   const [compareIds, setCompareIds] = useState<string[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openState, setOpenState] = useState<{ id: string | null; key: string } | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
 
+  // A vendor or category picked in the top-bar search arrives as ?open= / ?category=; anything you click
+  // afterwards wins until a new search changes the URL again.
+  const openKey = `${params.get("open")}|${params.get("t")}`;
+  const catKey = params.get("category");
+  const categoryFilter = catState && catState.key === catKey ? catState.value : catKey ?? "All";
+  const openId = openState && openState.key === openKey ? openState.id : params.get("open");
+  const setOpenId = (id: string | null) => setOpenState({ id, key: openKey });
+  const setCategoryFilter = (value: string) => setCatState({ value, key: catKey });
   const open = vendors.find((v) => v.id === openId) ?? null;
-  const dialogRef = useDialog(Boolean(open), () => setOpenId(null));
+  function closeOpen() {
+    setOpenId(null);
+    if (params.get("open")) router.replace("/vendors", { scroll: false });
+  }
+  const dialogRef = useDialog(Boolean(open), closeOpen);
+  const me: "ariel" | "fred" = userName.trim().toLowerCase() === "fred" ? "fred" : "ariel";
 
-  const filtered = useMemo(() => {
+  const filtered = (() => {
     const q = search.trim().toLowerCase();
     return vendors.filter((v) => {
       if (q && !`${v.name} ${v.city} ${v.notes}`.toLowerCase().includes(q)) return false;
       if (categoryFilter !== "All" && v.category !== categoryFilter) return false;
-      if (quickFilter === "favourite" && v.ariel_reaction !== "love" && v.fred_reaction !== "love") return false;
+      if (quickFilter === "favourite" && !isFavourite(v)) return false;
       if (quickFilter === "available" && v.availability !== "available") return false;
       if (quickFilter === "quote_received" && v.communication_status !== "quote_received") return false;
       if (quickFilter === "follow_up_needed" && v.communication_status !== "follow_up_needed") return false;
       return true;
     });
-  }, [vendors, search, categoryFilter, quickFilter]);
+  })();
+
+  const price = (v: PotentialVendor) => v.price_low ?? v.price_high ?? Infinity;
+  const sorted = (() => {
+    const list = [...filtered];
+    if (sortBy === "name") list.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortBy === "price_low") list.sort((a, b) => price(a) - price(b));
+    if (sortBy === "price_high") list.sort((a, b) => (price(b) === Infinity ? -1 : price(b)) - (price(a) === Infinity ? -1 : price(a)));
+    if (sortBy === "recent") list.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return list;
+  })();
+  const favourites = [...filtered].filter(isFavourite).sort((a, b) => Number(isOurFavourite(b)) - Number(isOurFavourite(a))).slice(0, 3);
+
+  const stateOf = (c: string): "booked" | "favourite" | "candidates" | "none" => {
+    if (bookedCategories.includes(c)) return "booked";
+    const inCat = vendors.filter((v) => v.category === c);
+    return inCat.some(isFavourite) ? "favourite" : inCat.length ? "candidates" : "none";
+  };
+  const bookedCount = POTENTIAL_VENDOR_CATEGORIES.filter((c) => bookedCategories.includes(c)).length;
+
+  async function setReaction(v: PotentialVendor, who: "ariel" | "fred" | "both") {
+    const next = (r: Reaction | null): Reaction | null => (r === "love" ? null : "love");
+    if (who === "both") {
+      const value = isOurFavourite(v) ? null : "love";
+      await saveNow(v.id, { ariel_reaction: value, fred_reaction: value });
+    } else {
+      await saveNow(v.id, { [`${who}_reaction`]: next(v[`${who}_reaction`]) } as Partial<PotentialVendor>);
+    }
+  }
 
   function flash(msg: string) {
     setNotice(msg);
@@ -163,53 +209,73 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
     setCompareIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : ids.length >= 4 ? ids : [...ids, id]));
   }
 
+  const pill = (on: boolean) => `rounded-full border px-4 py-1.5 text-sm ${FOCUS_RING} ${on ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-paper text-ink hover:border-sage-deep"}`;
+  const cover = (v: PotentialVendor, className: string) =>
+    v.cover_photo ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={normalizeUrl(v.cover_photo)} alt="" loading="lazy" className={`${className} object-cover`} />
+    ) : (
+      <div className={`${className} flex items-center justify-center bg-[radial-gradient(circle_at_30%_30%,color-mix(in_srgb,var(--gold)_30%,var(--paper)),color-mix(in_srgb,var(--surface-blush)_25%,var(--paper)))] text-ink-2`}>
+        <Camera className="h-8 w-8" strokeWidth={1.25} aria-hidden />
+      </div>
+    );
+  const heartRow = (v: PotentialVendor) => (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink">
+      {([["ariel", "Ariel", v.ariel_reaction === "love"], ["fred", "Fred", v.fred_reaction === "love"], ["both", "Our favourite", isOurFavourite(v)]] as const).map(([who, label, on]) => (
+        <button key={who} onClick={() => setReaction(v, who)} aria-pressed={on} aria-label={`${label}${who === "both" ? "" : "'s favourite"}: ${v.name}`} className={`flex items-center gap-1.5 rounded ${FOCUS_RING}`}>
+          {label}
+          <Heart className={`h-[18px] w-[18px] ${on ? "fill-wine text-wine" : "text-ink-2"}`} strokeWidth={1.5} aria-hidden />
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-2">Dump someone interesting in, then fill in details as you research.</p>
-        <button onClick={addVendor} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
-          <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
-          Add vendor
-        </button>
-      </div>
-      {error && <p className="mt-2 text-sm text-wine">{error}</p>}
-      {notice && <p className="mt-2 text-sm text-sage-deep">{notice}</p>}
-
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {["All", ...POTENTIAL_VENDOR_CATEGORIES].map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoryFilter(c)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-              categoryFilter === c ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep"
-            }`}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-2" strokeWidth={1.5} aria-hidden />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search vendors…"
-            className="w-full rounded-full border border-line bg-paper py-2 pl-9 pr-3 text-sm outline-none focus:border-sage-deep"
-          />
+      <section aria-labelledby="vendor-categories">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h2 id="vendor-categories" className="font-serif text-2xl font-light">Categories</h2>
+          <p className="text-sm text-ink-2">{bookedCount} of {POTENTIAL_VENDOR_CATEGORIES.length} booked</p>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+          {["All", ...POTENTIAL_VENDOR_CATEGORIES].map((c) => {
+            const st = c === "All" ? "none" : stateOf(c);
+            return (
+              <button key={c} onClick={() => setCategoryFilter(c)} aria-pressed={categoryFilter === c} className={`${pill(categoryFilter === c)} flex items-center gap-1.5`}>
+                {st === "booked" && <Check className="h-3.5 w-3.5 text-sage-deep" strokeWidth={2.5} aria-label="booked" />}
+                {st === "favourite" && <Heart className="h-3.5 w-3.5 fill-wine text-wine" strokeWidth={1.5} aria-label="has a favourite" />}
+                {c}
+                {st === "candidates" && <span className="text-xs text-ink-2">{vendors.filter((v) => v.category === c).length}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {error && <p className="mt-3 text-sm text-wine">{error}</p>}
+      {notice && <p className="mt-3 text-sm text-sage-deep">{notice}</p>}
+
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <label className="relative min-w-[200px] flex-1">
+          <span className="sr-only">Search vendors</span>
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-2" strokeWidth={1.5} aria-hidden />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search vendors…" className={`w-full rounded-full border border-line bg-paper py-2.5 pl-10 pr-4 text-sm placeholder:text-ink-2 ${FOCUS_RING}`} />
+        </label>
         {QUICK_FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setQuickFilter((v) => (v === f.key ? "none" : f.key))}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-              quickFilter === f.key ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep"
-            }`}
-          >
+          <button key={f.key} onClick={() => setQuickFilter((v) => (v === f.key ? "none" : f.key))} aria-pressed={quickFilter === f.key} className={pill(quickFilter === f.key)}>
             {f.label}
           </button>
         ))}
+        <select aria-label="Sort vendors" value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className={`rounded-full border border-line bg-paper px-4 py-2.5 text-sm text-ink ${FOCUS_RING}`}>
+          <option value="recent">Most recent</option>
+          <option value="name">Name</option>
+          <option value="price_low">Price: low to high</option>
+          <option value="price_high">Price: high to low</option>
+        </select>
+        <button onClick={addVendor} className={`flex shrink-0 items-center gap-2 rounded-full bg-surface-olive px-6 py-2.5 text-sm font-medium text-white ${FOCUS_RING}`}>
+          <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
+          Add a vendor
+        </button>
       </div>
 
       {compareIds.length > 0 && (
@@ -222,74 +288,94 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.length === 0 && <p className="col-span-full text-sm italic text-ink-2">No potential vendors yet — add the first one you find.</p>}
-        {filtered.map((v) => {
-          const range = priceRange(v);
-          return (
-            <div key={v.id} className="flex flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-sm">
-              <button onClick={() => setOpenId(v.id)} className={`block text-left ${FOCUS_RING}`}>
-                {v.cover_photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={normalizeUrl(v.cover_photo)} alt="" loading="lazy" className="h-40 w-full object-cover" />
-                ) : (
-                  <div className="flex h-40 w-full items-center justify-center bg-bg text-ink-2">
-                    <Camera className="h-8 w-8" strokeWidth={1.25} aria-hidden />
-                  </div>
-                )}
-              </button>
-              <div className="flex flex-1 flex-col gap-1.5 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <button onClick={() => setOpenId(v.id)} className={`text-left font-serif text-lg font-medium ${FOCUS_RING}`}>
-                    {v.name}
-                  </button>
-                  <label className="flex shrink-0 items-center gap-1 text-xs font-semibold text-ink-2">
-                    <input type="checkbox" checked={compareIds.includes(v.id)} onChange={() => toggleCompare(v.id)} className="h-3.5 w-3.5" />
-                    Compare
-                  </label>
-                </div>
-                <p className="text-sm text-ink-2">
-                  {v.category}
-                  {v.city && ` · ${v.city}`}
-                </p>
-                {range && <p className="text-sm font-semibold">{range}</p>}
-
-                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-                  {v.availability !== "unknown" && (
-                    <span className="rounded-full border border-line px-2 py-0.5 font-semibold text-ink-2">{AVAILABILITY_LABELS[v.availability]}</span>
-                  )}
-                  {v.communication_status !== "not_contacted" && (
-                    <span className="rounded-full border border-line px-2 py-0.5 font-semibold text-ink-2">{COMMUNICATION_LABELS[v.communication_status]}</span>
-                  )}
-                  {v.distance_km != null && (
-                    <span className="flex items-center gap-0.5 rounded-full border border-line px-2 py-0.5 font-semibold text-ink-2">
-                      <MapPin className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-                      {v.distance_km} km
+      <section className="mt-6 rounded-3xl bg-[color-mix(in_srgb,var(--surface-blush)_10%,var(--paper))] p-5 sm:p-6" aria-labelledby="vendor-favourites">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 id="vendor-favourites" className="font-serif text-3xl font-light">Our favourites</h2>
+            <p className="mt-1 text-ink-2">The ones that feel the most like us.</p>
+          </div>
+          <p aria-hidden className="-rotate-3 font-script text-3xl text-wine">Top picks ♡</p>
+        </div>
+        {favourites.length === 0 ? (
+          <p className="mt-5 rounded-2xl bg-paper px-5 py-8 text-center text-sm text-ink-2">Tap a heart under Ariel or Fred on any vendor and they&apos;ll appear here as a large card.</p>
+        ) : (
+          <div className={`mt-5 grid gap-5 md:grid-cols-2 ${favourites.length === 3 ? "xl:grid-cols-3" : ""}`}>
+            {favourites.map((v) => {
+              const range = priceRange(v);
+              const badge = isOurFavourite(v) ? "Our favourite" : v.ariel_reaction === "love" ? "Ariel's favourite" : "Fred's favourite";
+              return (
+                <div key={v.id} className="flex flex-col overflow-hidden rounded-2xl bg-paper shadow-sm">
+                  <div className="relative">
+                    <button onClick={() => setOpenId(v.id)} aria-label={`Open ${v.name}`} className={`block w-full ${FOCUS_RING}`}>
+                      {cover(v, "aspect-[4/3] w-full")}
+                    </button>
+                    <span className="pointer-events-none absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] px-3.5 py-1.5 text-sm text-ink shadow-sm">
+                      <Heart className="h-3.5 w-3.5 fill-wine text-wine" strokeWidth={1.5} aria-hidden /> {badge}
                     </span>
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1.5 p-5">
+                    <button onClick={() => setOpenId(v.id)} className={`w-fit rounded text-left font-serif text-2xl leading-tight ${FOCUS_RING}`}>{v.name}</button>
+                    <p className="text-sm text-ink-2">{v.category}{v.city && ` · ${v.city}`}</p>
+                    {range && <p className="font-medium">{range}</p>}
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-3">
+                      {heartRow(v)}
+                      <button onClick={() => setOpenId(v.id)} className={`rounded-full border border-line px-4 py-1.5 text-sm hover:border-sage-deep ${FOCUS_RING}`}>View details →</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="vendor-all">
+        <h2 id="vendor-all" className="font-serif text-3xl font-light">All vendors</h2>
+        <p className="mt-1 text-ink-2">Keep exploring, compare options, and find the perfect fit.</p>
+        <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {sorted.length === 0 && <p className="col-span-full text-sm italic text-ink-2">{vendors.length === 0 ? "No potential vendors yet — add the first one you find." : "No vendors match these filters."}</p>}
+          {sorted.map((v) => {
+            const range = priceRange(v);
+            const stage = stageOf(v);
+            return (
+              <div key={v.id} className="flex flex-col overflow-hidden rounded-2xl border border-line shadow-sm" style={{ background: STAGE_TINT[stage] }}>
+                <div className="relative">
+                  <button onClick={() => setOpenId(v.id)} aria-label={`Open ${v.name}`} className={`block w-full ${FOCUS_RING}`}>
+                    {cover(v, "aspect-[16/10] w-full")}
+                  </button>
+                  <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] px-3 py-1 text-xs font-medium text-ink shadow-sm">{STAGE_LABEL[stage]}</span>
+                </div>
+                <div className="flex flex-1 flex-col gap-1 p-4">
+                  <button onClick={() => setOpenId(v.id)} className={`w-fit rounded text-left font-serif text-lg leading-snug ${FOCUS_RING}`}>{v.name}</button>
+                  <p className="text-sm text-ink-2">{v.category}{v.city && ` · ${v.city}`}</p>
+                  <p className="text-sm font-medium text-ink">{range || "—"}</p>
+                  {v.distance_km != null && (
+                    <p className="flex items-center gap-1 text-xs text-ink-2"><MapPin className="h-3 w-3" strokeWidth={1.5} aria-hidden />{v.distance_km} km</p>
                   )}
+                  <div className="mt-auto flex items-center justify-between border-t border-line pt-3">
+                    <label className="flex items-center gap-2 text-sm text-ink">
+                      <input type="checkbox" checked={compareIds.includes(v.id)} onChange={() => toggleCompare(v.id)} className={`h-4 w-4 accent-sage-deep ${FOCUS_RING}`} />
+                      Compare
+                    </label>
+                    <button
+                      onClick={() => saveNow(v.id, { [`${me}_reaction`]: v[`${me}_reaction`] === "love" ? null : "love" } as Partial<PotentialVendor>)}
+                      aria-pressed={v[`${me}_reaction`] === "love"}
+                      aria-label={v[`${me}_reaction`] === "love" ? `Remove ${v.name} from your favourites` : `Add ${v.name} to your favourites`}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full hover:bg-paper ${FOCUS_RING}`}
+                    >
+                      <Heart className={`h-[18px] w-[18px] ${v[`${me}_reaction`] === "love" ? "fill-wine text-wine" : "text-ink-2"}`} strokeWidth={1.5} aria-hidden />
+                    </button>
+                  </div>
                 </div>
-
-                <div className="mt-1.5 flex items-center gap-3 text-sm">
-                  <span>
-                    Ariel {v.ariel_reaction ? REACTION_EMOJI[v.ariel_reaction] : "—"}
-                  </span>
-                  <span>
-                    Fred {v.fred_reaction ? REACTION_EMOJI[v.fred_reaction] : "—"}
-                  </span>
-                </div>
-
-                <button onClick={() => setOpenId(v.id)} className={`mt-2 text-left text-xs font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>
-                  View details →
-                </button>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      </section>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <button aria-label="Close" tabIndex={-1} onClick={() => setOpenId(null)} className="absolute inset-0" />
+          <button aria-label="Close" tabIndex={-1} onClick={closeOpen} className="absolute inset-0" />
           <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Edit potential vendor" tabIndex={-1} className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-paper shadow-lg">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <input
@@ -297,7 +383,7 @@ export default function PotentialVendors({ initialVendors }: { initialVendors: P
                 onChange={(e) => scheduleSave(open.id, { name: e.target.value })}
                 className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 font-serif text-xl font-medium outline-none focus:border-line focus:bg-bg"
               />
-              <button onClick={() => setOpenId(null)} aria-label="Close" className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink hover:bg-bg">
+              <button onClick={closeOpen} aria-label="Close" className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink hover:bg-bg">
                 <X className="h-4 w-4" strokeWidth={1.5} aria-hidden />
               </button>
             </div>
