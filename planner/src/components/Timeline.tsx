@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, type ComponentType } from "react";
+import { type ComponentType } from "react";
 import {
   Camera,
   Cake,
   Check,
-  ChevronDown,
   Flower2,
   Gem,
   Gift,
@@ -133,7 +132,6 @@ export default function Timeline({
   onOpenTask: (id: string) => void;
   onAddTask: (category: string) => void;
 }) {
-  const [expanded, setExpanded] = useState<number | null>(null);
   const current = currentMilestoneMonths(daysToGo);
   const pos = axisPosition(daysToGo);
 
@@ -193,9 +191,7 @@ export default function Timeline({
             daysToGo,
             current ?? -1,
           );
-          const isOpen = expanded === m.months;
           const photo = PHOTOS[m.months];
-          const panelId = `milestone-${m.months}`;
           return (
             <li
               key={m.months}
@@ -218,17 +214,7 @@ export default function Timeline({
                 <div className="flex flex-col md:flex-row">
                   <div className="flex-1">
                     <div className="flex items-start gap-3 p-5">
-                      <button
-                        onClick={() =>
-                          m.categories.length &&
-                          setExpanded(isOpen ? null : m.months)
-                        }
-                        aria-expanded={m.categories.length ? isOpen : undefined}
-                        aria-controls={
-                          m.categories.length ? panelId : undefined
-                        }
-                        className={`flex min-w-0 flex-1 flex-wrap items-start justify-between gap-3 rounded text-left ${FOCUS_RING} ${m.categories.length ? "cursor-pointer" : "cursor-default"}`}
-                      >
+                      <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-ink-2">
                             {m.title}
@@ -265,15 +251,8 @@ export default function Timeline({
                             open={open.length}
                             opensIn={opensIn}
                           />
-                          {m.categories.length > 0 && (
-                            <ChevronDown
-                              className={`h-4 w-4 text-ink-2 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                              strokeWidth={1.75}
-                              aria-hidden
-                            />
-                          )}
                         </span>
-                      </button>
+                      </div>
                       <button
                         onClick={() => onAddTask(m.categories[0] ?? "Other")}
                         aria-label={`Add a ${m.categories[0] ?? "new"} task to ${m.title}`}
@@ -282,17 +261,9 @@ export default function Timeline({
                         <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
                       </button>
                     </div>
-                    {isOpen && (
-                      <div
-                        id={panelId}
-                        className="border-t border-line/70 px-5 pb-5 pt-4"
-                      >
-                        {related.length === 0 ? (
-                          <p className="text-sm text-ink-2">
-                            No {m.categories.join(" / ")} tasks on your board
-                            yet.
-                          </p>
-                        ) : (
+                    {related.length > 0 && (
+                      <div className="border-t border-line/70 px-5 pb-5 pt-4">
+                        {
                           <ul className="flex flex-col gap-1.5">
                             {related.map((t) => (
                               <li key={t.id}>
@@ -327,7 +298,7 @@ export default function Timeline({
                               </li>
                             ))}
                           </ul>
-                        )}
+                        }
                       </div>
                     )}
                   </div>
