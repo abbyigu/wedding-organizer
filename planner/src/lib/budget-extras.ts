@@ -8,9 +8,16 @@ export const BUDGET_GROUPS = [
   "Flowers & décor",
   "Attire & beauty",
   "Travel & accommodation",
+  "DIY projects",
+  "Events & party",
   "Other",
 ] as const;
 export type BudgetGroup = (typeof BUDGET_GROUPS)[number];
+
+// Costs entered on other pages (DIY, Events, Wedding Party). Budget only reads them, so each
+// number lives in exactly one place; href sends you back to where it's edited.
+export type LinkedCost = { group: BudgetGroup; label: string; amount: number; href: string; source: string };
+export const LINKED_GROUPS: readonly BudgetGroup[] = ["DIY projects", "Events & party"];
 
 // SHARED_LINES is a fixed list (see lib/venues.ts) — this maps each label to
 // the display group it belongs in. New custom expenses just pick a group
@@ -142,7 +149,7 @@ export function venueLineTotal(rate: number, unit: BudgetLine[2], adults: number
   return rate * qty * svc * taxMul;
 }
 
-export type BreakdownItem = { label: string; total: number; note?: string; editable: "venue-line" | "shared-line" | "expense" | "fixed"; ref?: number | string };
+export type BreakdownItem = { label: string; total: number; note?: string; editable: "venue-line" | "shared-line" | "expense" | "fixed" | "linked"; ref?: number | string; href?: string; source?: string };
 export type BreakdownGroup = { name: BudgetGroup; total: number; pct: number; items: BreakdownItem[] };
 export type Breakdown = {
   groups: BreakdownGroup[];
@@ -159,7 +166,7 @@ export type Breakdown = {
 // the Overview and the Builder. Contingency is applied on top of all three
 // sources combined (calcVenue's own contingency math only knows about the
 // venue + shared lines, since it predates custom expenses).
-export function computeBreakdown(venue: Venue, as: Assumptions, sharedVals: number[], expenses: BudgetExpense[]): Breakdown {
+export function computeBreakdown(venue: Venue, as: Assumptions, sharedVals: number[], expenses: BudgetExpense[], linked: LinkedCost[] = []): Breakdown {
   const calc = calcVenue(venue, as, sharedVals);
   const byGroup = new Map<BudgetGroup, BreakdownItem[]>(BUDGET_GROUPS.map((g) => [g, []]));
 
@@ -183,7 +190,13 @@ export function computeBreakdown(venue: Venue, as: Assumptions, sharedVals: numb
     byGroup.get(group)!.push({ label: e.label, total, note: e.notes, editable: "expense", ref: e.id });
   });
 
-  const rawTotal = calc.venueEffective + calc.st + expensesTotal;
+  let linkedTotal = 0;
+  for (const l of linked) {
+    linkedTotal += l.amount;
+    byGroup.get(l.group)!.push({ label: l.label, total: l.amount, editable: "linked", href: l.href, source: l.source });
+  }
+
+  const rawTotal = calc.venueEffective + calc.st + expensesTotal + linkedTotal;
   const contingency = rawTotal * (as.contPct / 100);
   const grand = rawTotal + contingency;
   const guestCount = as.adults + as.kids;

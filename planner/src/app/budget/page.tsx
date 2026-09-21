@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import BudgetOverview from "@/components/BudgetOverview";
+import { getLinkedCosts } from "@/lib/budget-linked";
 import { getBudgetContext } from "@/lib/budget-context";
 import type { BudgetNote } from "@/components/BudgetNotes";
 import type { BudgetExpense, Payment } from "@/lib/budget-extras";
@@ -10,6 +11,7 @@ export default async function BudgetOverviewPage() {
   const supabase = await createClient();
   const { data: venues } = await supabase.from("venues").select("*").order("sort_order", { ascending: true });
   const { settings, guestSummary } = await getBudgetContext(supabase);
+  const { items: linked } = await getLinkedCosts(supabase);
   const [{ data: expenses }, { data: payments }, { data: notes, error: notesError }] = await Promise.all([
     supabase.from("budget_expenses").select("*").order("sort_order", { ascending: true }),
     supabase.from("payments").select("*"),
@@ -25,6 +27,7 @@ export default async function BudgetOverviewPage() {
       payments={(payments ?? []) as Payment[]}
       notes={(notes ?? []) as BudgetNote[]}
       notesMissing={!!notesError}
+      linked={linked}
     />
   );
 }

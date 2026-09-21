@@ -14,6 +14,7 @@ export type WeddingPartyMember = {
   attire_hex?: string;
   flowers?: string;
   accessories?: string;
+  cost?: number | null;
   sort_order: number;
   created_at: string;
   updated_at: string;

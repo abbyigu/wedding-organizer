@@ -10,7 +10,10 @@ import {
   Copy,
   Download,
   Flower2,
+  GitCompareArrows,
+  Hammer,
   MoreHorizontal,
+  PartyPopper,
   Pencil,
   Plane,
   Plus,
@@ -18,16 +21,23 @@ import {
   Shirt,
   Trash2,
   UtensilsCrossed,
+  Check,
+  CircleCheck,
 } from "lucide-react";
+import ScenarioCompare from "@/components/ScenarioCompare";
+import { LINE_STATE_LABEL, scenarioOf } from "@/lib/budget-scenarios";
 import { createClient } from "@/lib/supabase/client";
 import {
   BUDGET_CEILING,
   BUDGET_TARGET,
+  GENERIC_LINES,
   SHARED_LINES,
   fmt,
   resolveAssumptions,
   type BudgetSettings,
+  type BudgetLine,
   type GuestScenario,
+  type LineState,
   type Venue,
 } from "@/lib/venues";
 import {
@@ -37,6 +47,8 @@ import {
   type BudgetExpense,
   type BudgetGroup,
   type ExpenseUnit,
+  type LinkedCost,
+  LINKED_GROUPS,
 } from "@/lib/budget-extras";
 
 const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
@@ -45,6 +57,8 @@ const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
   "Flowers & décor": Flower2,
   "Attire & beauty": Shirt,
   "Travel & accommodation": Plane,
+  "DIY projects": Hammer,
+  "Events & party": PartyPopper,
   Other: MoreHorizontal,
 };
 
@@ -66,12 +80,16 @@ export default function BudgetBuilder({
   guestSummary,
   initialExpenses,
   initialVenueId,
+  linked,
+  initialCompare = false,
 }: {
   initialVenues: Venue[];
   initialSettings: BudgetSettings;
   guestSummary: { adults: number; kids: number; confirmedAdults: number; confirmedKids: number };
   initialExpenses: BudgetExpense[];
   initialVenueId?: string | null;
+  linked: { items: LinkedCost[]; diyCount: number; diyEstimated: number; diySpent: number };
+  initialCompare?: boolean;
 }) {
   const confirm = useConfirm();
   const [venues, setVenues] = useState(initialVenues);
@@ -90,6 +108,8 @@ export default function BudgetBuilder({
   const [categoryFilter, setCategoryFilter] = useState<"all" | BudgetGroup>("all");
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [compare, setCompare] = useState(initialCompare);
+  const [notice, setNotice] = useState("");
   const lineTimer = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
 
@@ -97,8 +117,8 @@ export default function BudgetBuilder({
   const as = resolveAssumptions(settings, guestSummary);
 
   const breakdown = useMemo(
-    () => (cur ? computeBreakdown(cur, as, settings.shared_line_amounts, expenses) : null),
-    [cur, as, settings.shared_line_amounts, expenses],
+    () => (cur ? computeBreakdown(cur, as, settings.shared_line_amounts, expenses, linked.items) : null),
+    [cur, as, settings.shared_line_amounts, expenses, linked.items],
   );
 
   function updateSettings(patch: Partial<BudgetSettings>) {
@@ -111,16 +131,54 @@ export default function BudgetBuilder({
     }, 600);
   }
 
-  function updateVenueLine(i: number, value: number) {
+  // A venue with no saved lines shows GENERIC_LINES, so the first edit saves a copy of those.
+  const lines: BudgetLine[] = cur ? (cur.budget_lines.length ? cur.budget_lines : GENERIC_LINES) : [];
+
+  function saveLines(next: BudgetLine[]) {
     if (!cur) return;
-    const lines = cur.budget_lines.map((l, j) => (j === i ? ([l[0], value, l[2], l[3]] as typeof l) : l));
-    setVenues((vs) => vs.map((v) => (v.id === cur.id ? { ...v, budget_lines: lines } : v)));
-    const key = `venue-${i}`;
+    setVenues((vs) => vs.map((v) => (v.id === cur.id ? { ...v, budget_lines: next } : v)));
+    const key = "venue-lines";
     clearTimeout(lineTimer.current[key]);
     lineTimer.current[key] = setTimeout(async () => {
-      const { error } = await supabase.from("venues").update({ budget_lines: lines }).eq("id", cur.id);
+      const { error } = await supabase.from("venues").update({ budget_lines: next }).eq("id", cur.id);
       if (error) setError(error.message);
-    }, 800);
+    }, 700);
+  }
+
+  function patchVenueLine(i: number, patch: { label?: string; rate?: number; state?: LineState | "priced" }) {
+    saveLines(
+      lines.map((l, j) => {
+        if (j !== i) return l;
+        const state = patch.state === undefined ? l[4] : patch.state === "priced" ? undefined : patch.state;
+        const next: BudgetLine = [patch.label ?? l[0], patch.rate ?? l[1], l[2], l[3] ?? null];
+        if (state) next.push(state);
+        return next;
+      }),
+    );
+  }
+
+  function addVenueLine() {
+    saveLines([...lines, ["New cost", 0, "flat", null, "unknown"]]);
+    setEditingExpenseId(`line-${lines.length}`);
+    setOpenGroups((s) => new Set(s).add("Venue & catering"));
+  }
+
+  function removeVenueLine(i: number) {
+    saveLines(lines.filter((_, j) => j !== i));
+  }
+
+  async function makeActive() {
+    if (!cur) return;
+    const ok = await confirm(
+      `Make ${cur.name} your wedding budget? The Budget overview and Dashboard will use this scenario. Your other venue scenarios stay saved for reference.`,
+    );
+    if (!ok) return;
+    setError("");
+    const a = await supabase.from("venues").update({ is_final: false, final_reason: "" }).eq("is_final", true).neq("id", cur.id);
+    const b = await supabase.from("venues").update({ is_final: true }).eq("id", cur.id);
+    if (a.error || b.error) return setError((a.error ?? b.error)!.message);
+    setVenues((vs) => vs.map((v) => (v.id === cur.id ? { ...v, is_final: true } : v.is_final ? { ...v, is_final: false, final_reason: "" } : v)));
+    setNotice(`${cur.name} is now your active wedding budget.`);
   }
 
   function updateSharedLine(i: number, value: number) {
@@ -210,6 +268,7 @@ export default function BudgetBuilder({
       ? "Under the preferred ceiling, but the surprise money is gone."
       : "Over the preferred ceiling.";
   const ceilingPct = Math.min(100, Math.round((breakdown.grand / BUDGET_CEILING) * 100));
+  const scenario = scenarioOf(cur, as, settings.shared_line_amounts, expenses, linked.items.reduce((t, l) => t + l.amount, 0));
 
   const visibleGroups = breakdown.groups.filter((g) => {
     if (categoryFilter !== "all" && g.name !== categoryFilter) return false;
@@ -219,44 +278,106 @@ export default function BudgetBuilder({
 
   return (
     <div>
-      <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
-          <div>
-            <p><b className="font-serif text-2xl">{fmt(breakdown.grand)}</b> <span className="text-sm text-ink-2">estimated</span></p>
-            <p className="text-sm text-ink-2">{fmt(breakdown.perGuest)} per guest</p>
+      <section aria-label="Venue scenario" className="rounded-2xl border border-line bg-paper p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="font-serif text-2xl font-medium">Based on</h2>
+            <p className="text-sm text-ink-2">Each venue is its own scenario: the likely total wedding cost if you choose it.</p>
           </div>
-          <div>
-            <p><b className="font-serif text-2xl">{fmt(BUDGET_CEILING)}</b> <span className="text-sm text-ink-2">preferred ceiling</span></p>
-            <p className="text-sm text-ink-2">{ceilingPct}% used</p>
-          </div>
-          <div>
-            <p><b className="font-serif text-2xl">{fmt(Math.max(0, BUDGET_CEILING - breakdown.grand))}</b> <span className="text-sm text-ink-2">remaining</span></p>
-            <p className="text-sm text-ink-2">{verdict}</p>
-          </div>
-          <div className="ml-auto flex flex-col items-start gap-1">
-            <label className="flex items-center gap-2 text-sm text-ink-2">
-              Based on:
-              <select value={curId || cur.id} onChange={(e) => setCurId(e.target.value)} className="rounded-full border border-line bg-bg px-3 py-1.5 text-sm font-semibold text-ink">
-                {venues.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
-              </select>
-            </label>
-            <p className="flex items-center gap-1.5 text-xs text-ink-2">
-              <span className={`h-2 w-2 rounded-full ${breakdown.grand <= BUDGET_CEILING ? "bg-sage-deep" : "bg-wine"}`} />
-              {breakdown.grand <= BUDGET_CEILING ? "You're within your preferred budget." : "You're over your preferred budget."}
-            </p>
-          </div>
+          <button
+            onClick={() => setCompare((c) => !c)}
+            aria-pressed={compare}
+            className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold ${compare ? "border border-ink/25 bg-paper text-ink hover:bg-bg" : "bg-surface-wine text-white"} ${FOCUS_RING}`}
+          >
+            <GitCompareArrows className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            {compare ? "Back to scenario" : "Compare scenarios"}
+          </button>
         </div>
-        <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-line">
-          <div className={`h-full rounded-full ${breakdown.grand <= BUDGET_CEILING ? "bg-sage-deep" : "bg-wine"}`} style={{ width: `${ceilingPct}%` }} />
-        </div>
-        <div className="mt-1 flex justify-between text-xs text-ink-2">
-          <span>$0</span>
-          <span>{fmt(BUDGET_CEILING)}</span>
-        </div>
-      </div>
 
+        <div role="radiogroup" aria-label="Venue scenario" className="mt-4 flex gap-2 overflow-x-auto pb-1">
+          {venues.map((v) => {
+            const sc = scenarioOf(v, as, settings.shared_line_amounts, expenses, linked.items.reduce((t, l) => t + l.amount, 0));
+            const on = v.id === cur.id;
+            return (
+              <button
+                key={v.id}
+                role="radio"
+                aria-checked={on}
+                onClick={() => {
+                  setCurId(v.id);
+                  setCompare(false);
+                }}
+                className={`shrink-0 rounded-2xl border px-4 py-3 text-left ${on ? "border-surface-green bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))]" : "border-line hover:border-sage-deep"} ${FOCUS_RING}`}
+              >
+                <span className="flex items-center gap-1.5 text-sm font-semibold">
+                  {v.name}
+                  {v.is_final && <CircleCheck className="h-4 w-4 text-sage-deep" strokeWidth={1.75} aria-label="Active wedding budget" />}
+                </span>
+                <span className="block font-serif text-lg">{sc.unknownCount > 0 ? "≥ " : ""}{fmt(sc.grand)}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {!compare && (
+          <>
+            <div className="mt-5 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3">
+              <div className="bg-paper p-4">
+                <p className="font-serif text-3xl font-medium">{fmt(breakdown.grand)}</p>
+                <p className="text-ink-2">estimated total</p>
+                <p className="text-sm text-ink-2">{fmt(breakdown.perGuest)} per guest</p>
+              </div>
+              <div className="bg-paper p-4">
+                <p className="font-serif text-3xl font-medium">{fmt(BUDGET_CEILING)}</p>
+                <p className="text-ink-2">preferred ceiling</p>
+                <p className="text-sm text-ink-2">{ceilingPct}% used</p>
+              </div>
+              <div className="bg-paper p-4">
+                <p className={`font-serif text-3xl font-medium ${breakdown.grand > BUDGET_CEILING ? "text-wine" : ""}`}>{fmt(Math.abs(BUDGET_CEILING - breakdown.grand))}</p>
+                <p className="text-ink-2">{breakdown.grand > BUDGET_CEILING ? "over ceiling" : "remaining"}</p>
+                <p className="text-sm text-ink-2">{verdict}</p>
+              </div>
+            </div>
+            <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-line">
+              <div className={`h-full rounded-full ${breakdown.grand <= BUDGET_CEILING ? "bg-surface-green" : "bg-surface-wine"}`} style={{ width: `${ceilingPct}%` }} />
+            </div>
+            {scenario.unknownCount > 0 && (
+              <p className="mt-3 text-sm text-wine">{scenario.unknownCount} cost{scenario.unknownCount === 1 ? " is" : "s are"} still unknown for this venue, so the total is a minimum.</p>
+            )}
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4">
+              {cur.is_final ? (
+                <p className="flex items-center gap-2 text-sm font-semibold text-sage-deep">
+                  <Check className="h-4 w-4" strokeWidth={2} aria-hidden /> This is your active wedding budget.
+                </p>
+              ) : (
+                <button onClick={makeActive} className={`rounded-full border border-ink/25 px-5 py-2.5 text-sm font-semibold hover:bg-bg ${FOCUS_RING}`}>
+                  Make this the active budget
+                </button>
+              )}
+              <p className="text-sm text-ink-2">Other venue scenarios stay saved for reference.</p>
+              <Link href="/decide/venue" className={`rounded text-sm font-semibold text-green underline underline-offset-2 ${FOCUS_RING}`}>Choose the venue in Decide Together →</Link>
+            </div>
+            {notice && <p role="status" className="mt-2 text-sm font-semibold text-sage-deep">{notice}</p>}
+          </>
+        )}
+      </section>
+
+      {compare ? (
+        <div className="mt-6">
+          <ScenarioCompare
+            venues={venues}
+            settings={settings}
+            guestSummary={guestSummary}
+            expenses={expenses}
+            linkedTotal={linked.items.reduce((t, l) => t + l.amount, 0)}
+            onOpen={(id) => {
+              setCurId(id);
+              setCompare(false);
+            }}
+          />
+        </div>
+      ) : (
+      <>
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr]">
         <div className="flex flex-col gap-4 rounded-2xl border border-line bg-paper p-5 shadow-sm">
           <h2 className="font-serif text-xl font-medium">Budget settings</h2>
@@ -404,6 +525,7 @@ export default function BudgetBuilder({
                     {open ? <ChevronDown className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden /> : <ChevronRight className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />}
                     <Icon className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
                     <span className="font-serif text-base font-medium">{g.name}</span>
+                    <span className="hidden rounded-full bg-bg px-2.5 py-0.5 text-xs text-ink-2 md:inline">{g.name === "Venue & catering" ? "Changes by venue" : LINKED_GROUPS.includes(g.name) ? "From other pages" : "Same for every venue"}</span>
                     <div className="mx-2 hidden h-1.5 flex-1 overflow-hidden rounded-full bg-line sm:block">
                       <div className="h-full rounded-full bg-sage-deep" style={{ width: `${g.pct}%` }} />
                     </div>
@@ -425,7 +547,9 @@ export default function BudgetBuilder({
                           {items.map((it) => {
                             const isExpense = it.editable === "expense";
                             const expense = isExpense ? expenses.find((e) => e.id === it.ref) : null;
-                            const editingThis = isExpense && editingExpenseId === it.ref;
+                            const isLine = it.editable === "venue-line";
+                            const line = isLine ? lines[it.ref as number] : undefined;
+                            const editingThis = (isExpense && editingExpenseId === it.ref) || (isLine && editingExpenseId === `line-${it.ref}`);
                             return (
                               <tr key={`${it.editable}-${it.ref ?? it.label}`} className="border-t border-line">
                                 <td className="px-4 py-2 align-top">
@@ -433,6 +557,13 @@ export default function BudgetBuilder({
                                     <input
                                       defaultValue={expense.label}
                                       onChange={(e) => scheduleExpenseSave(expense.id, { label: e.target.value })}
+                                      className="w-full rounded border border-line bg-bg px-2 py-1"
+                                    />
+                                  ) : editingThis && line ? (
+                                    <input
+                                      aria-label="Cost name"
+                                      defaultValue={line[0]}
+                                      onChange={(e) => patchVenueLine(it.ref as number, { label: e.target.value })}
                                       className="w-full rounded border border-line bg-bg px-2 py-1"
                                     />
                                   ) : (
@@ -443,17 +574,33 @@ export default function BudgetBuilder({
                                   )}
                                 </td>
                                 <td className="px-4 py-2 align-top">
-                                  {it.editable === "venue-line" && cur.budget_lines[it.ref as number] ? (
-                                    <div className="flex items-center gap-1.5">
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        step={5}
-                                        value={cur.budget_lines[it.ref as number][1]}
-                                        onChange={(e) => updateVenueLine(it.ref as number, +e.target.value || 0)}
-                                        className="w-20 rounded border border-line bg-bg px-2 py-1"
-                                      />
-                                      <span className="text-xs text-ink-2">{unitLabel(cur.budget_lines[it.ref as number][2])}</span>
+                                  {line ? (
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <select
+                                        aria-label={`${line[0]} status`}
+                                        value={line[4] ?? "priced"}
+                                        onChange={(e) => patchVenueLine(it.ref as number, { state: e.target.value as LineState | "priced" })}
+                                        className="rounded border border-line bg-bg px-1.5 py-1 text-xs"
+                                      >
+                                        <option value="priced">Priced</option>
+                                        {(Object.keys(LINE_STATE_LABEL) as LineState[]).map((k) => (
+                                          <option key={k} value={k}>{LINE_STATE_LABEL[k]}</option>
+                                        ))}
+                                      </select>
+                                      {!line[4] && (
+                                        <>
+                                          <input
+                                            type="number"
+                                            min={0}
+                                            step={5}
+                                            aria-label={`${line[0]} rate`}
+                                            value={line[1]}
+                                            onChange={(e) => patchVenueLine(it.ref as number, { rate: +e.target.value || 0 })}
+                                            className="w-20 rounded border border-line bg-bg px-2 py-1"
+                                          />
+                                          <span className="text-xs text-ink-2">{unitLabel(line[2])}</span>
+                                        </>
+                                      )}
                                     </div>
                                   ) : it.editable === "shared-line" ? (
                                     <div className="flex items-center gap-1.5">
@@ -503,12 +650,36 @@ export default function BudgetBuilder({
                                     <span className="text-xs text-ink-2">
                                       {expense.unit === "hour" ? `${fmt(expense.rate)}/hr × ${expense.qty}h` : unitLabel(expense.unit)}
                                     </span>
+                                  ) : it.editable === "linked" ? (
+                                    <Link href={it.href ?? "/"} className={`rounded text-xs font-semibold text-green underline underline-offset-2 ${FOCUS_RING}`}>
+                                      Edit in {it.source} →
+                                    </Link>
                                   ) : (
                                     <span className="text-xs text-ink-2">included</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-2 text-right align-top font-serif">{fmt(it.total)}</td>
+                                <td className="px-4 py-2 text-right align-top font-serif">
+                                  {line?.[4] ? <span className={`text-sm ${line[4] === "unknown" ? "text-wine" : "text-ink-2"}`}>{LINE_STATE_LABEL[line[4]]}</span> : fmt(it.total)}
+                                </td>
                                 <td className="px-4 py-2 text-right align-top">
+                                  {line && (
+                                    <div className="flex items-center justify-end gap-1">
+                                      <button
+                                        onClick={() => setEditingExpenseId(editingThis ? null : `line-${it.ref}`)}
+                                        aria-label={editingThis ? "Done editing" : `Edit ${line[0]}`}
+                                        className={`flex h-6 w-6 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-ink ${FOCUS_RING}`}
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                                      </button>
+                                      <button
+                                        onClick={() => removeVenueLine(it.ref as number)}
+                                        aria-label={`Remove ${line[0]}`}
+                                        className={`flex h-6 w-6 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-wine ${FOCUS_RING}`}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                                      </button>
+                                    </div>
+                                  )}
                                   {isExpense && expense && (
                                     <div className="flex items-center justify-end gap-1">
                                       <button
@@ -540,13 +711,24 @@ export default function BudgetBuilder({
                           })}
                         </tbody>
                       </table>
-                      <button
-                        onClick={() => addExpense(g.name)}
-                        className={`flex w-full items-center gap-1.5 border-t border-line px-4 py-2.5 text-left text-sm font-semibold text-sage-deep hover:bg-bg ${FOCUS_RING}`}
-                      >
-                        <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                        Add expense to {g.name}
-                      </button>
+                      {g.name === "Venue & catering" && breakdown.venueSource === "estimated" && (
+                        <button
+                          onClick={addVenueLine}
+                          className={`flex w-full items-center gap-1.5 border-t border-line px-4 py-2.5 text-left text-sm font-semibold text-sage-deep hover:bg-bg ${FOCUS_RING}`}
+                        >
+                          <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                          Add a cost to {cur.name}
+                        </button>
+                      )}
+                      {!LINKED_GROUPS.includes(g.name) && (
+                        <button
+                          onClick={() => addExpense(g.name)}
+                          className={`flex w-full items-center gap-1.5 border-t border-line px-4 py-2.5 text-left text-sm font-semibold text-sage-deep hover:bg-bg ${FOCUS_RING}`}
+                        >
+                          <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                          Add expense to {g.name}{g.name === "Venue & catering" ? " (this venue)" : " (all venues)"}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -555,6 +737,36 @@ export default function BudgetBuilder({
           </div>
         </div>
       </div>
+
+      <section aria-label="Beyond the venue" className="mt-8">
+        <h2 className="font-serif text-2xl font-medium">Beyond the venue</h2>
+        <p className="text-sm text-ink-2">Costs entered on other pages count toward every scenario. Enter each one once, where it lives.</p>
+        <ul className="mt-4 grid gap-4 sm:grid-cols-3">
+          {[
+            { Icon: Hammer, title: "DIY projects", source: "DIY Projects", href: "/diy", link: `View ${linked.diyCount} project${linked.diyCount === 1 ? "" : "s"}`, extra: linked.diySpent > 0 ? `${fmt(linked.diySpent)} spent so far` : "Nothing spent yet" },
+            { Icon: PartyPopper, title: "Events", source: "Events", href: "/guests/events", link: "View events", extra: "Welcome party, rehearsal dinner, brunch…" },
+            { Icon: Shirt, title: "Wedding party", source: "Wedding Party", href: "/wedding-party", link: "View the party", extra: "Attire, bouquets, gifts you're covering" },
+          ].map(({ Icon, title, source, href, link, extra }) => {
+            const total = linked.items.filter((l) => l.source === source).reduce((t, l) => t + l.amount, 0);
+            return (
+              <li key={title} className="rounded-2xl bg-[color-mix(in_srgb,var(--sage)_16%,var(--paper))] p-5">
+                <Icon className="h-7 w-7 text-sage-deep" strokeWidth={1.25} aria-hidden />
+                <p className="mt-3 font-serif text-lg font-medium">{title}</p>
+                <p className="font-serif text-3xl font-medium">{total > 0 ? fmt(total) : "—"}</p>
+                <p className="text-sm text-ink-2">{total > 0 ? extra : "Nothing added yet"}</p>
+                <Link href={href} className={`mt-3 inline-flex items-center gap-1 rounded text-sm font-semibold text-green ${FOCUS_RING}`}>{link} →</Link>
+              </li>
+            );
+          })}
+        </ul>
+        {(settings.shared_line_amounts[7] ?? SHARED_LINES[7][1]) > 0 && (
+          <p className="mt-3 text-sm text-ink-2">
+            Heads up: “Décor, café lights, signage (DIY)” under Shared costs is a {fmt(settings.shared_line_amounts[7] ?? SHARED_LINES[7][1])} placeholder. If your DIY projects now cover it, set it to $0 so it isn&apos;t counted twice.
+          </p>
+        )}
+      </section>
+      </>
+      )}
     </div>
   );
 }

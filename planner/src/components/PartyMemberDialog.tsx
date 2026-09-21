@@ -9,10 +9,10 @@ const FIELD = "mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm
 const LABEL = "block text-xs font-semibold uppercase tracking-wide text-ink-2";
 
 export type MemberForm = Pick<WeddingPartyMember, "name" | "role" | "side" | "email" | "phone" | "attire" | "notes"> &
-  Required<Pick<WeddingPartyMember, "photo_url" | "attire_colour" | "attire_hex" | "flowers" | "accessories">>;
+  Required<Pick<WeddingPartyMember, "photo_url" | "attire_colour" | "attire_hex" | "flowers" | "accessories" | "cost">>;
 
 const blank = (side: Side): MemberForm => ({
-  name: "", role: "", side, email: "", phone: "", attire: "", notes: "", photo_url: "", attire_colour: "", attire_hex: "", flowers: "", accessories: "",
+  name: "", role: "", side, email: "", phone: "", attire: "", notes: "", photo_url: "", attire_colour: "", attire_hex: "", flowers: "", accessories: "", cost: null,
 });
 
 export default function PartyMemberDialog({
@@ -33,7 +33,7 @@ export default function PartyMemberDialog({
     member
       ? {
           name: member.name, role: member.role, side: member.side, email: member.email, phone: member.phone, attire: member.attire, notes: member.notes,
-          photo_url: member.photo_url ?? "", attire_colour: member.attire_colour ?? "", attire_hex: member.attire_hex ?? "", flowers: member.flowers ?? "", accessories: member.accessories ?? "",
+          photo_url: member.photo_url ?? "", attire_colour: member.attire_colour ?? "", attire_hex: member.attire_hex ?? "", flowers: member.flowers ?? "", accessories: member.accessories ?? "", cost: member.cost ?? null,
         }
       : blank(defaultSide),
   );
@@ -118,6 +118,9 @@ export default function PartyMemberDialog({
               <input id="pm-attire" value={f.attire} onChange={(e) => set("attire", e.target.value)} placeholder="Floor-length, size M…" className={FIELD} />
             </div>
           </div>
+
+          <label htmlFor="pm-cost" className={`${LABEL} mt-4`}>What we&apos;re covering ($)</label>
+          <input id="pm-cost" type="number" min={0} value={f.cost ?? ""} onChange={(e) => set("cost", e.target.value === "" ? null : Number(e.target.value))} placeholder="Attire, bouquet, gift… counts toward the budget" className={FIELD} />
 
           <label htmlFor="pm-notes" className={`${LABEL} mt-4`}>Notes</label>
           <textarea id="pm-notes" rows={2} value={f.notes} onChange={(e) => set("notes", e.target.value)} className={FIELD} />

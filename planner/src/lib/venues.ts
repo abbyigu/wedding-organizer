@@ -1,4 +1,7 @@
-export type BudgetLine = [label: string, rate: number, unit: "flat" | "adult" | "kid" | "adult+kid", noServiceCharge?: 0];
+// A line with no state is priced (even at $0, a confirmed zero). The other three are not costs
+// yet: covered by another line/the quote, not needed for this venue, or simply not known.
+export type LineState = "included" | "na" | "unknown";
+export type BudgetLine = [label: string, rate: number, unit: "flat" | "adult" | "kid" | "adult+kid", noServiceCharge?: 0 | null, state?: LineState];
 
 export type Photo = { path: string; caption: string; addedAt: string };
 
@@ -296,11 +299,11 @@ export function calcVenue(
   const cont = as.contPct / 100;
   const tax = as.tax ? TAX_RATE : 1;
   let vt = 0;
-  const rows = (v.budget_lines.length ? v.budget_lines : GENERIC_LINES).map(([label, rate, unit, noSvc]) => {
+  const rows = (v.budget_lines.length ? v.budget_lines : GENERIC_LINES).map(([label, rate, unit, noSvc, state]) => {
     const qty = unit === "adult" ? as.adults : unit === "kid" ? as.kids : unit === "adult+kid" ? as.adults + as.kids : 1;
-    const total = rate * qty * (noSvc === 0 ? 1 : svc) * tax;
+    const total = state ? 0 : rate * qty * (noSvc === 0 ? 1 : svc) * tax;
     vt += total;
-    return { label, unit, noSvc: noSvc === 0, total };
+    return { label, unit, noSvc: noSvc === 0, state, total };
   });
   let st = 0;
   SHARED_LINES.forEach((l, i) => {

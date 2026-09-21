@@ -15,11 +15,13 @@ import {
   Users,
   UtensilsCrossed,
   PieChart,
+  Hammer,
+  PartyPopper,
 } from "lucide-react";
 import BudgetActions from "@/components/BudgetActions";
 import BudgetNotes, { type BudgetNote } from "@/components/BudgetNotes";
 import { BUDGET_CEILING, fmt, resolveAssumptions, type BudgetSettings, type Venue } from "@/lib/venues";
-import { computeBreakdown, formatDueDate, paymentStatus, type BudgetExpense, type BudgetGroup, type Payment } from "@/lib/budget-extras";
+import { computeBreakdown, formatDueDate, paymentStatus, type BudgetExpense, type BudgetGroup, type LinkedCost, type Payment } from "@/lib/budget-extras";
 
 const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
   "Venue & catering": UtensilsCrossed,
@@ -27,6 +29,8 @@ const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
   "Flowers & décor": Flower2,
   "Attire & beauty": Shirt,
   "Travel & accommodation": Plane,
+  "DIY projects": Hammer,
+  "Events & party": PartyPopper,
   Other: MoreHorizontal,
 };
 
@@ -40,6 +44,7 @@ export default function BudgetOverview({
   payments,
   notes,
   notesMissing,
+  linked,
 }: {
   venues: Venue[];
   settings: BudgetSettings;
@@ -48,6 +53,7 @@ export default function BudgetOverview({
   payments: Payment[];
   notes: BudgetNote[];
   notesMissing: boolean;
+  linked: LinkedCost[];
 }) {
   if (venues.length === 0) {
     return <p className="text-ink-2">No venues yet — add some from the venue shortlist first.</p>;
@@ -55,7 +61,7 @@ export default function BudgetOverview({
 
   const as = resolveAssumptions(settings, guestSummary);
   const cur = venues.find((v) => v.is_final) ?? venues.filter((v) => v.status !== "out")[0] ?? venues[0];
-  const breakdown = computeBreakdown(cur, as, settings.shared_line_amounts, expenses);
+  const breakdown = computeBreakdown(cur, as, settings.shared_line_amounts, expenses, linked);
   const ceilingPct = Math.min(100, Math.round((breakdown.grand / BUDGET_CEILING) * 100));
   const remaining = BUDGET_CEILING - breakdown.grand;
 
@@ -70,7 +76,7 @@ export default function BudgetOverview({
   const leader = [...breakdown.groups].sort((a, b) => b.total - a.total)[0];
 
   const risks: string[] = [];
-  if (!cur.is_final) risks.push("No venue marked as final yet — this overview is based on the cheapest active option.");
+  if (!cur.is_final) risks.push(`No venue chosen yet — this overview is based on ${cur.name}. Pick one in the budget builder or Decide Together.`);
   if (cur.is_final && !cur.quote_received) risks.push(`${cur.name} hasn't sent a complete quote yet — the total below is still an estimate.`);
   if (breakdown.grand > BUDGET_CEILING) risks.push(`Estimated total is ${fmt(breakdown.grand - BUDGET_CEILING)} over your preferred ceiling.`);
   if (overdueCount > 0) risks.push(`${overdueCount} payment${overdueCount === 1 ? "" : "s"} overdue.`);
