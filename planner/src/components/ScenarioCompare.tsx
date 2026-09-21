@@ -104,7 +104,7 @@ export default function ScenarioCompare({
                 {cols.map(({ v, s }) => (
                   <td key={v.id} className="px-4 py-4">
                     <p className={`font-serif text-3xl font-medium ${lowest === s.grand ? "text-sage-deep" : ""}`}>{s.unknownCount > 0 ? "≥ " : ""}{fmt(s.grand)}</p>
-                    {lowest === s.grand && <p className="text-xs font-semibold text-sage-deep">Lowest total</p>}
+                    {lowest === s.grand && <p className="text-xs font-semibold text-sage-deep">{s.unknownCount > 0 ? "Lowest so far — not complete" : "Lowest total"}</p>}
                     {s.unknownCount > 0 && <p className="text-xs text-wine">{s.unknownCount} cost{s.unknownCount === 1 ? "" : "s"} still unknown</p>}
                   </td>
                 ))}
