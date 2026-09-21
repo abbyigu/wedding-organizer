@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import WeddingParty from "@/components/WeddingParty";
 import { displayName } from "@/lib/auth-names";
-import type { WeddingPartyMember } from "@/lib/wedding-party";
+import type { PartyTask, WeddingPartyMember } from "@/lib/wedding-party";
 
 export const dynamic = "force-dynamic";
 
@@ -12,5 +12,14 @@ export default async function WeddingPartyPage() {
   } = await supabase.auth.getUser();
   const { data: members } = await supabase.from("wedding_party").select("*").order("sort_order", { ascending: true });
 
-  return <WeddingParty initialMembers={(members ?? []) as WeddingPartyMember[]} userName={displayName(user?.email)} />;
+  const { data: tasks, error: tasksError } = await supabase.from("wedding_party_tasks").select("*").order("sort_order", { ascending: true });
+
+  return (
+    <WeddingParty
+      initialMembers={(members ?? []) as WeddingPartyMember[]}
+      initialTasks={(tasks ?? []) as PartyTask[]}
+      tasksMissing={!!tasksError}
+      userName={displayName(user?.email)}
+    />
+  );
 }
