@@ -92,7 +92,7 @@ export function isDueSoon(dueDate: string | null): boolean {
   return days >= 0 && days <= 7;
 }
 
-export function formatDueDate(dateStr: string): string {
+export function formatDueDate(dateStr: string, withYear = false): string {
   const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(withYear && { year: "numeric" }) });
 }

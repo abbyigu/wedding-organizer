@@ -3,9 +3,10 @@
 import { useDialog } from "@/lib/use-dialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState } from "react";
-import { CalendarDays, Clock, Ellipsis, LayoutGrid, List as ListIcon, Plus, Search, X } from "lucide-react";
+import { CalendarDays, CalendarRange, CircleCheck, CircleHelp, Clock, Ellipsis, Hourglass, Leaf, Lightbulb, LayoutGrid, List as ListIcon, Plus, Search, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
+import DashboardTopBar, { type Notice, type SearchItem } from "@/components/DashboardTopBar";
 import {
   blankTask,
   CATEGORIES,
@@ -24,18 +25,38 @@ import {
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 const ASSIGNEE_LABELS: Record<Assignee, string> = { ariel: "Ariel", fred: "Fred", together: "Together" };
 
+// Each column gets its own very pale identity, so an empty board still reads as designed.
+const COLUMN: Record<TaskStatus, { tint: string; script: string; sub?: string }> = {
+  ideas: { tint: "var(--gold)", script: "Dream it up here", sub: "All ideas welcome" },
+  todo: { tint: "var(--surface-blush)", script: "Small steps, big moments" },
+  in_progress: { tint: "var(--gold)", script: "Making progress" },
+  waiting: { tint: "var(--surface-rose)", script: "Good things take time" },
+  decision_needed: { tint: "var(--wine)", script: "Let's decide together" },
+  done: { tint: "var(--sage)", script: "One step closer" },
+};
+
+const DATE_FILTERS = [
+  ["all", "All dates"],
+  ["week", "Due this week"],
+  ["overdue", "Overdue"],
+  ["none", "No date"],
+] as const;
+type DateFilter = (typeof DATE_FILTERS)[number][0];
+
+const TOOLBAR_SELECT = `rounded-full border border-line bg-paper px-4 py-2.5 text-sm text-ink ${FOCUS_RING}`;
+
 function Avatars({ value }: { value: Assignee }) {
   const dot = (letter: string, key: string) => (
     <span
       key={key}
-      className="flex h-5 w-5 items-center justify-center rounded-full border border-paper bg-surface-sage-deep text-[10px] font-semibold text-white"
+      className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-surface-sage-deep text-xs font-semibold text-white"
     >
       {letter}
     </span>
   );
   if (value === "together") {
     return (
-      <span className="flex -space-x-1.5">
+      <span className="flex -space-x-2">
         {dot("A", "a")}
         {dot("F", "f")}
       </span>
@@ -44,7 +65,7 @@ function Avatars({ value }: { value: Assignee }) {
   return dot(value === "ariel" ? "A" : "F", value);
 }
 
-export default function Board({ initialTasks, userName }: { initialTasks: PlanningTask[]; userName: string }) {
+export default function Board({ initialTasks, userName, daysToGo, heroImage }: { initialTasks: PlanningTask[]; userName: string; daysToGo: number; heroImage: string | null }) {
   const confirm = useConfirm();
   const [tasks, setTasks] = useState(initialTasks);
   const [error, setError] = useState("");
@@ -52,7 +73,7 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState<"all" | Assignee>("all");
-  const [quickFilter, setQuickFilter] = useState<"none" | "mine" | "partner" | "together" | "due_soon">("none");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [doneCollapsed, setDoneCollapsed] = useState(true);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<{ status: TaskStatus; index: number } | null>(null);
@@ -62,8 +83,8 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
   const [moveSubmenu, setMoveSubmenu] = useState(false);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const me = userName.trim().toLowerCase() as Assignee;
   const partner = partnerOf(userName);
+  const today = new Date().toLocaleDateString("en-CA");
   const open = tasks.find((t) => t.id === openId) ?? null;
   const dialogRef = useDialog(Boolean(open), () => setOpenId(null));
 
@@ -73,13 +94,12 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
       if (q && !`${t.title} ${t.notes}`.toLowerCase().includes(q)) return false;
       if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
       if (assigneeFilter !== "all" && t.assigned_to !== assigneeFilter) return false;
-      if (quickFilter === "mine" && t.assigned_to !== me) return false;
-      if (quickFilter === "partner" && t.assigned_to !== partner) return false;
-      if (quickFilter === "together" && t.assigned_to !== "together") return false;
-      if (quickFilter === "due_soon" && !isDueSoon(t.due_date)) return false;
+      if (dateFilter === "week" && !isDueSoon(t.due_date)) return false;
+      if (dateFilter === "overdue" && !(t.due_date && t.due_date < today && t.status !== "done")) return false;
+      if (dateFilter === "none" && t.due_date) return false;
       return true;
     });
-  }, [tasks, search, categoryFilter, assigneeFilter, quickFilter, me, partner]);
+  }, [tasks, search, categoryFilter, assigneeFilter, dateFilter, today]);
 
   function columnItems(status: TaskStatus) {
     return filtered.filter((t) => t.status === status).sort((a, b) => a.sort_order - b.sort_order);
@@ -188,6 +208,7 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
 
   function taskCard(t: PlanningTask) {
     const dragging = draggingId === t.id;
+    const done = t.status === "done";
     return (
       <div
         key={t.id}
@@ -198,47 +219,60 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
           setDraggingId(null);
           setDragOver(null);
         }}
-        className={`rounded-xl border border-line bg-paper p-3 shadow-sm transition-[opacity,box-shadow] ${
+        className={`rounded-xl border border-line bg-paper p-4 shadow-sm transition-[opacity,box-shadow] ${
           dragging ? "opacity-40" : "hover:shadow-md"
-        }`}
+        } ${done ? "bg-[color-mix(in_srgb,var(--sage)_14%,var(--paper))]" : ""}`}
       >
         <div className="flex items-start justify-between gap-2">
-          <span
-            className="rounded-full px-2 py-0.5 text-xs font-semibold text-ink"
-            style={{ background: `color-mix(in srgb, ${categoryColor(t.category)} 28%, var(--paper))` }}
-          >
-            {t.category}
-          </span>
+          <div className="flex min-w-0 items-start gap-2.5">
+            {done && <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-sage-deep" strokeWidth={1.75} aria-hidden />}
+            <button
+              onClick={() => setOpenId(t.id)}
+              className={`block min-w-0 rounded text-left text-[15px] font-medium leading-snug ${FOCUS_RING} ${done ? "text-ink-2 line-through decoration-ink-2/50" : "text-ink"}`}
+            >
+              {t.title}
+            </button>
+          </div>
           <button
             onClick={(e) => openMenu(e, t.id)}
             aria-label="Task actions"
             aria-expanded={moreOpenId === t.id}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-ink"
+            className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-ink pointer-coarse:h-11 pointer-coarse:w-11"
           >
             <Ellipsis className="h-4 w-4" strokeWidth={1.5} aria-hidden />
           </button>
         </div>
 
-        <button onClick={() => setOpenId(t.id)} className={`mt-2 block w-full rounded text-left font-semibold text-ink ${FOCUS_RING}`}>
-          {t.title}
-        </button>
-        {t.notes && <p className="mt-1 line-clamp-2 text-sm text-ink-2">{t.notes}</p>}
-        {t.priority === "high" && <p className="mt-1.5 text-xs font-semibold text-wine">! High priority</p>}
+        {t.due_date ? (
+          <p className={`mt-1.5 text-sm ${done ? "pl-[30px] text-ink-2" : "text-ink-2"}`}>{formatDueDate(t.due_date, true)}</p>
+        ) : t.effort ? (
+          <p className="mt-1.5 flex items-center gap-1.5 text-sm text-ink-2">
+            <Clock className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+            {t.effort}
+          </p>
+        ) : null}
+        {t.notes && !done && <p className="mt-1 line-clamp-2 text-sm text-ink-2">{t.notes}</p>}
 
-        <div className="mt-2.5 flex items-center justify-between border-t border-line pt-2">
-          <Avatars value={t.assigned_to} />
-          {t.due_date ? (
-            <span className="flex items-center gap-1 text-xs font-semibold text-ink-2">
-              <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-              {formatDueDate(t.due_date)}
+        {!done && (
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <span
+              className="rounded-md px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.1em] text-ink"
+              style={{ background: `color-mix(in srgb, ${categoryColor(t.category)} 24%, var(--paper))` }}
+            >
+              {t.category}
             </span>
-          ) : t.effort ? (
-            <span className="flex items-center gap-1 text-xs font-semibold text-ink-2">
-              <Clock className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-              {t.effort}
+            <span className="flex items-center gap-2">
+              {t.priority === "high" && <span className="text-xs font-semibold text-wine">High priority</span>}
+              {t.status === "ideas" ? (
+                <Lightbulb className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-label="Idea" />
+              ) : t.status === "waiting" ? (
+                <Hourglass className="h-5 w-5 text-ink-2" strokeWidth={1.5} aria-label="Waiting" />
+              ) : (
+                <Avatars value={t.assigned_to} />
+              )}
             </span>
-          ) : null}
-        </div>
+          </div>
+        )}
 
         {moreOpenId === t.id && moreOpenPos && (
           <>
@@ -306,85 +340,117 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
     return a.created_at.localeCompare(b.created_at);
   });
 
+  const count = (st: TaskStatus) => tasks.filter((t) => t.status === st).length;
+  const stats = [
+    { n: count("done"), label: "Completed", Icon: Leaf, tint: "var(--sage)" },
+    { n: count("todo"), label: "To do", Icon: CircleCheck, tint: "var(--surface-blush)" },
+    { n: count("in_progress"), label: "In progress", Icon: Clock, tint: "var(--gold)" },
+    { n: count("waiting"), label: "Waiting", Icon: Users, tint: "var(--surface-rose)" },
+    { n: count("decision_needed"), label: "Decision needed", Icon: CircleHelp, tint: "var(--wine)" },
+    { n: daysToGo, label: "Days to go", Icon: CalendarRange, tint: "var(--gold)" },
+  ];
+
+  const searchItems: SearchItem[] = tasks.map((t) => ({ label: t.title, hint: "Task", href: "/board" }));
+  const notices: Notice[] = [
+    ...(count("decision_needed") ? [{ label: `${count("decision_needed")} task${count("decision_needed") === 1 ? " needs" : "s need"} a decision`, href: "/board" }] : []),
+    ...(tasks.filter((t) => t.status !== "done" && isDueSoon(t.due_date)).length
+      ? [{ label: `${tasks.filter((t) => t.status !== "done" && isDueSoon(t.due_date)).length} due this week`, href: "/board" }]
+      : []),
+  ];
+
   return (
-    <div className="min-h-screen lg:pl-56">
+    <div className="min-h-screen pb-16 lg:pl-56">
       <NavBar userName={userName} />
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="relative flex flex-wrap items-start justify-between gap-4 overflow-hidden">
-          <div>
-            <h1 className="font-serif text-3xl font-medium sm:text-4xl">Planning Board</h1>
-            <p className="mt-2 max-w-2xl text-ink-2">Everything we need to do, from first ideas to wedding day.</p>
+      <div className="mx-auto max-w-[1520px] px-4 py-5 sm:px-6 lg:px-8">
+        <DashboardTopBar userName={userName} partner={ASSIGNEE_LABELS[partner]} items={searchItems} notices={notices} />
+
+        <section className="mt-8 grid items-stretch gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+          <div className="flex flex-col justify-center">
+            <h1 className="font-serif text-5xl font-light tracking-[-0.02em] sm:text-6xl xl:text-[4.5rem]">Planning Board</h1>
+            <p className="mt-3 text-lg text-ink-2">Everything we need to do, from first ideas to wedding day.</p>
+            <p aria-hidden className="mt-5 -rotate-3 font-script text-3xl leading-[1.1] text-sage-deep">
+              Big plans,
+              <br />
+              beautiful details ♡
+            </p>
           </div>
-          <button onClick={() => addTask("todo")} className={`flex shrink-0 items-center gap-1.5 rounded-full bg-surface-sage-deep px-4 py-2.5 text-sm font-semibold text-white ${FOCUS_RING}`}>
-            <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
-            Add task
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-10 hidden h-40 w-auto rotate-[8deg] opacity-30 sm:block" />
-        </div>
+          <div className="relative min-h-[13rem] overflow-hidden rounded-2xl bg-[color-mix(in_srgb,var(--sage)_30%,var(--paper))]">
+            {heroImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,color-mix(in_srgb,var(--gold)_35%,var(--paper)),color-mix(in_srgb,var(--surface-blush)_25%,var(--paper)))]" />
+            )}
+            <p className="absolute bottom-5 right-4 -rotate-2 bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] px-5 py-3 text-center text-[11px] font-medium uppercase leading-[1.8] tracking-[0.24em] text-ink shadow-sm sm:right-6">
+              Good things
+              <br />
+              take planning
+            </p>
+          </div>
+        </section>
 
-        <div className="mt-6 flex items-center gap-1 rounded-full border border-line bg-paper p-1" style={{ width: "fit-content" }}>
-          <button
-            onClick={() => setView("board")}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${view === "board" ? "bg-surface-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"}`}
-          >
-            <LayoutGrid className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-            Board
-          </button>
-          <button
-            onClick={() => setView("list")}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${view === "list" ? "bg-surface-green text-white" : "text-ink-2 hover:bg-bg hover:text-ink"}`}
-          >
-            <ListIcon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-            List
-          </button>
-        </div>
+        <dl className="mt-7 grid grid-cols-2 gap-y-5 border-b border-line pb-7 sm:grid-cols-3 lg:grid-cols-6 lg:divide-x lg:divide-line">
+          {stats.map(({ n, label, Icon, tint }) => (
+            <div key={label} className="flex items-center gap-3 lg:px-6 lg:first:pl-2">
+              <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink" style={{ background: `color-mix(in srgb, ${tint} 30%, var(--paper))` }}>
+                <Icon className="h-5 w-5" strokeWidth={1.5} />
+              </span>
+              <div>
+                <dd className="font-serif text-3xl font-light leading-none">{n}</dd>
+                <dt className="mt-1 text-sm text-ink-2">{label}</dt>
+              </div>
+            </div>
+          ))}
+        </dl>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-2" strokeWidth={1.5} aria-hidden />
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <label className="relative min-w-[200px] flex-1 lg:max-w-sm">
+            <span className="sr-only">Search tasks</span>
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-2" strokeWidth={1.5} aria-hidden />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search tasks…"
-              className="w-full rounded-full border border-line bg-paper py-2 pl-9 pr-3 text-sm outline-none focus:border-sage-deep"
+              className={`w-full rounded-full border border-line bg-paper py-2.5 pl-10 pr-4 text-sm text-ink placeholder:text-ink-2 ${FOCUS_RING}`}
             />
-          </div>
-          <label className="flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-2 text-sm font-semibold text-ink-2">
-            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="bg-transparent text-ink outline-none">
-              <option value="all">All categories</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+          </label>
+          <select aria-label="Filter by category" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className={TOOLBAR_SELECT}>
+            <option value="all">All categories</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <select aria-label="Filter by person" value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value as "all" | Assignee)} className={TOOLBAR_SELECT}>
+            <option value="all">Everyone</option>
+            <option value="ariel">Ariel</option>
+            <option value="fred">Fred</option>
+            <option value="together">Together</option>
+          </select>
+          <select aria-label="Filter by date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value as DateFilter)} className={TOOLBAR_SELECT}>
+            {DATE_FILTERS.map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
+
+          <div className="ml-auto flex items-center gap-3">
+            <div role="group" aria-label="View" className="flex items-center gap-1 rounded-full border border-line bg-paper p-1">
+              {([["board", "Board", LayoutGrid], ["list", "List", ListIcon]] as const).map(([key, label, Icon]) => (
+                <button
+                  key={key}
+                  onClick={() => setView(key)}
+                  aria-pressed={view === key}
+                  className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm ${FOCUS_RING} ${view === key ? "bg-surface-green text-white" : "text-ink hover:bg-bg"}`}
+                >
+                  <Icon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  {label}
+                </button>
               ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-2 text-sm font-semibold text-ink-2">
-            <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value as "all" | Assignee)} className="bg-transparent text-ink outline-none">
-              <option value="all">Everyone</option>
-              <option value="ariel">Ariel</option>
-              <option value="fred">Fred</option>
-              <option value="together">Together</option>
-            </select>
-          </label>
-
-          <div className="hidden h-6 w-px bg-line sm:block" />
-
-          {([
-            ["mine", `${userName}'s`],
-            ["partner", `${ASSIGNEE_LABELS[partner]}'s`],
-            ["together", "Together"],
-            ["due_soon", "Due soon"],
-          ] as const).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setQuickFilter((v) => (v === key ? "none" : key))}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                quickFilter === key ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line bg-paper text-ink-2 hover:border-sage-deep"
-              }`}
-            >
-              {label}
+            </div>
+            <button onClick={() => addTask("todo")} className={`flex items-center gap-2 rounded-full bg-surface-wine px-6 py-2.5 text-sm font-medium text-white ${FOCUS_RING}`}>
+              <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
+              Add task
             </button>
-          ))}
+          </div>
         </div>
         {error && <p className="mt-2 text-sm text-wine">{error}</p>}
 
@@ -393,47 +459,51 @@ export default function Board({ initialTasks, userName }: { initialTasks: Planni
             {STATUS_ORDER.map((status) => {
               const items = columnItems(status);
               const isDone = status === "done";
-              const showCollapsed = isDone && doneCollapsed && items.length > 0;
+              const shown = isDone && doneCollapsed ? items.slice(0, 3) : items;
+              const { tint, script, sub } = COLUMN[status];
               return (
-                <div key={status} className="flex flex-col gap-3 rounded-2xl border border-line bg-bg p-3">
-                  <div className="flex items-center justify-between px-1">
-                    <h2 className="font-serif text-base font-medium">{STATUS_LABELS[status]}</h2>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold text-ink-2">{items.length}</span>
-                      {isDone && items.length > 0 && (
-                        <button onClick={() => setDoneCollapsed((v) => !v)} className="text-xs font-semibold text-ink-2 underline hover:text-ink">
-                          {showCollapsed ? "Show" : "Hide"}
-                        </button>
-                      )}
+                <div
+                  key={status}
+                  className="flex min-h-[34rem] flex-col rounded-2xl p-3"
+                  style={{ background: `linear-gradient(to bottom, color-mix(in srgb, ${tint} 20%, var(--paper)), color-mix(in srgb, ${tint} 6%, var(--paper)))` }}
+                >
+                  <div className="flex items-center justify-between px-1.5 pb-3 pt-1">
+                    <h2 className="font-serif text-lg">{STATUS_LABELS[status]}</h2>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-ink-2">{items.length}</span>
                       <button
                         onClick={() => addTask(status)}
                         aria-label={`Add a task to ${STATUS_LABELS[status]}`}
-                        className="flex h-5 w-5 items-center justify-center rounded-full text-sm font-semibold text-ink-2 hover:bg-paper hover:text-ink"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-ink hover:bg-paper pointer-coarse:h-11 pointer-coarse:w-11"
                       >
-                        ＋
+                        <Plus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       </button>
                     </div>
                   </div>
                   <div
-                    onDragOver={(e) => !showCollapsed && handleDragOver(e, status, items)}
+                    onDragOver={(e) => handleDragOver(e, status, shown)}
                     onDragLeave={() => setDragOver((d) => (d?.status === status ? null : d))}
                     onDrop={() => handleDrop(status)}
-                    className="flex min-h-[40px] flex-col gap-2"
+                    className="flex flex-1 flex-col gap-3"
                   >
-                    {showCollapsed ? (
-                      <p className="px-1 text-xs italic text-ink-2">{items.length} done — hidden</p>
-                    ) : (
-                      <>
-                        {items.map((t, i) => (
-                          <div key={t.id}>
-                            {dragOver?.status === status && dragOver.index === i && draggingId && <div className="h-1 rounded-full bg-sage-deep" />}
-                            {taskCard(t)}
-                          </div>
-                        ))}
-                        {dragOver?.status === status && dragOver.index === items.length && draggingId && <div className="h-1 rounded-full bg-sage-deep" />}
-                        {items.length === 0 && <p className="px-1 text-xs italic text-ink-2">Nothing here</p>}
-                      </>
+                    {shown.map((t, i) => (
+                      <div key={t.id}>
+                        {dragOver?.status === status && dragOver.index === i && draggingId && <div className="mb-2 h-1 rounded-full bg-sage-deep" />}
+                        {taskCard(t)}
+                      </div>
+                    ))}
+                    {dragOver?.status === status && dragOver.index === shown.length && draggingId && <div className="h-1 rounded-full bg-sage-deep" />}
+                    {isDone && items.length > 3 && (
+                      <button onClick={() => setDoneCollapsed((v) => !v)} className={`w-fit rounded px-1 text-sm text-ink-2 underline hover:text-ink ${FOCUS_RING}`}>
+                        {doneCollapsed ? `Show all ${items.length}` : "Show fewer"}
+                      </button>
                     )}
+                    <div aria-hidden className="mt-auto flex flex-col items-center px-2 pb-3 pt-10 text-center">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/botanical-accent.webp" width={350} height={420} loading="lazy" decoding="async" alt="" className={`h-16 w-auto opacity-40 ${status === "waiting" || status === "todo" ? "-scale-x-100" : ""}`} />
+                      <p className="mt-2 -rotate-3 font-script text-2xl leading-tight text-ink-2">{script}</p>
+                      {sub && <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-ink-2">{sub}</p>}
+                    </div>
                   </div>
                 </div>
               );
