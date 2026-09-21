@@ -14,7 +14,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ ke
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: event } = await supabase.from("wedding_events").select("*").eq("key", key).maybeSingle();
+  const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key);
+  const { data: event } = await supabase.from("wedding_events").select("*").eq(isId ? "id" : "key", key).maybeSingle();
   if (!event) notFound();
 
   const [{ data: eventGuests }, { data: guests }, { data: vendors }] = await Promise.all([

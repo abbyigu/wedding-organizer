@@ -2,12 +2,14 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { CalendarDays, Check, ChevronRight, CircleDollarSign, CloudSun, MapPin, Shirt, Sparkles, Store, Users, Utensils } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import type { Guest } from "@/lib/guests";
 import type { Vendor } from "@/lib/vendors";
-import { EVENT_GUEST_STATUS_LABELS, EVENT_GUEST_STATUS_ORDER, EVENT_INVITE_CATEGORIES, type EventGuest, type EventGuestStatus, type WeddingEvent } from "@/lib/wedding-events";
+import { TAG_SUGGESTIONS, EVENT_GUEST_STATUS_LABELS, EVENT_GUEST_STATUS_ORDER, EVENT_INVITE_CATEGORIES, type EventGuest, type EventGuestStatus, type WeddingEvent } from "@/lib/wedding-events";
 import { fmt } from "@/lib/venues";
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
@@ -20,6 +22,8 @@ function prettyDate(value: string | null) {
 }
 
 export default function EventDetail({ initialEvent, initialEventGuests, guests, vendors, userName }: { initialEvent: WeddingEvent; initialEventGuests: EventGuest[]; guests: Guest[]; vendors: Vendor[]; userName: string }) {
+  const router = useRouter();
+  const confirm = useConfirm();
   const [event, setEvent] = useState(initialEvent);
   const [eventGuests, setEventGuests] = useState(initialEventGuests);
   const [error, setError] = useState("");
@@ -33,6 +37,13 @@ export default function EventDetail({ initialEvent, initialEventGuests, guests, 
       const { error } = await supabase.from("wedding_events").update(patch).eq("id", event.id);
       if (error) setError(error.message);
     }, 700);
+  }
+
+  async function removeEvent() {
+    if (!(await confirm(`Remove ${event.title}? Its guest replies go with it.`))) return;
+    const { error } = await supabase.from("wedding_events").delete().eq("id", event.id);
+    if (error) setError(error.message);
+    else router.push("/guests/events");
   }
 
   async function setGuestStatus(guestId: string, status: EventGuestStatus) {
@@ -78,7 +89,7 @@ export default function EventDetail({ initialEvent, initialEventGuests, guests, 
           <div className="relative max-w-3xl">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">Wedding weekend</p>
             <input aria-label="Event title" value={event.title} onChange={(e) => scheduleSave({ title: e.target.value })} className="w-full rounded-lg border border-transparent bg-transparent px-0 font-serif text-4xl font-medium text-white outline-none placeholder:text-white/50 focus:border-white/25 focus:bg-black/10 sm:text-6xl" />
-            <p className="mt-3 max-w-2xl font-serif text-lg text-white/85 sm:text-xl">{event.notes.trim() || "A thoughtful gathering for the people sharing this weekend with you."}</p>
+            <p className="mt-3 max-w-2xl font-serif text-lg text-white/85 sm:text-xl">{event.description?.trim() || event.notes.trim() || "A thoughtful gathering for the people sharing this weekend with you."}</p>
             <div className="mt-7 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-white/90">
               <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-gold" aria-hidden />{prettyDate(event.event_date)}{event.time ? ` · ${event.time}` : ""}</span>
               <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-gold" aria-hidden />{event.location || "Location to be decided"}</span>
@@ -112,6 +123,9 @@ export default function EventDetail({ initialEvent, initialEventGuests, guests, 
                 <label><span className={LABEL}>Time</span><input value={event.time} onChange={(e) => scheduleSave({ time: e.target.value })} placeholder="6:30 PM" className={FIELD} /></label>
                 <label><span className={LABEL}>Location</span><input value={event.location} onChange={(e) => scheduleSave({ location: e.target.value })} placeholder="Venue or neighbourhood" className={FIELD} /></label>
                 <label><span className={LABEL}>Dress code</span><input value={event.dress_code} onChange={(e) => scheduleSave({ dress_code: e.target.value })} placeholder="Relaxed garden party" className={FIELD} /></label>
+                <label className="sm:col-span-2"><span className={LABEL}>One line for the overview</span><input value={event.description ?? ""} onChange={(e) => scheduleSave({ description: e.target.value })} placeholder="Kick off the weekend with good food, drinks and great company." className={FIELD} /></label>
+                <label><span className={LABEL}>Feel</span><input list="event-tags" value={event.tag ?? ""} onChange={(e) => scheduleSave({ tag: e.target.value })} placeholder="Informal, Semi-formal…" className={FIELD} /><datalist id="event-tags">{TAG_SUGGESTIONS.map((t) => <option key={t} value={t} />)}</datalist></label>
+                <label><span className={LABEL}>Photo link</span><input type="url" value={event.photo_url ?? ""} onChange={(e) => scheduleSave({ photo_url: e.target.value })} placeholder="https://…" className={FIELD} /></label>
                 <label><span className={LABEL}>Capacity</span><input type="number" value={event.capacity ?? ""} onChange={(e) => scheduleSave({ capacity: e.target.value === "" ? null : +e.target.value })} placeholder="Number of guests" className={FIELD} /></label>
                 <label><span className={LABEL}>Vendor</span><select value={event.vendor_id ?? ""} onChange={(e) => scheduleSave({ vendor_id: e.target.value || null })} className={FIELD}><option value="">No vendor linked</option>{vendors.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.category}</option>)}</select></label>
               </div>
@@ -134,6 +148,8 @@ export default function EventDetail({ initialEvent, initialEventGuests, guests, 
               <div className="mb-3 flex items-center gap-2"><Sparkles className="h-4 w-4 text-wine" aria-hidden /><h2 className="font-serif text-2xl">Notes & atmosphere</h2></div>
               <textarea value={event.notes} onChange={(e) => scheduleSave({ notes: e.target.value })} rows={5} placeholder="The feeling, plan, reminders, and details you do not want to lose…" className={FIELD} />
             </section>
+
+            <button onClick={removeEvent} className={`rounded-full px-4 py-2.5 text-sm font-semibold text-wine hover:bg-paper ${FOCUS_RING}`}>Remove this event</button>
           </div>
 
           <aside className="space-y-7 lg:border-l lg:border-line lg:pl-8">
