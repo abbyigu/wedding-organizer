@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Dashboard, { type SearchItem } from "@/components/Dashboard";
 import { displayName } from "@/lib/auth-names";
 import { getBudgetContext } from "@/lib/budget-context";
-import { DEFAULT_BUDGET_SETTINGS, GUEST_CAPACITY } from "@/lib/venues";
+import { DEFAULT_BUDGET_SETTINGS, DEFAULT_GUEST_TARGET } from "@/lib/venues";
 import { computeActionItems, computeJourney, computeRoadmap, daysUntil, decisionsWaiting } from "@/lib/dashboard";
 import { guestSummary } from "@/lib/guests";
 import type { Rating } from "@/lib/decisions";
@@ -33,7 +33,8 @@ export default async function DashboardPage() {
   }
 
   const { assumptions, sharedVals, settings, guests } = await getBudgetContext(supabase);
-  const capacitySummary = guestSummary(guests, GUEST_CAPACITY);
+  const guestTarget = settings.guest_target ?? DEFAULT_GUEST_TARGET;
+  const capacitySummary = guestSummary(guests, guestTarget);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const [
@@ -67,7 +68,8 @@ export default async function DashboardPage() {
   const roadmap = computeRoadmap({ venues: venues ?? [], guests, assumptions, sharedVals });
   const actionItems = computeActionItems({
     venues: venues ?? [],
-    totalGuests: capacitySummary.totalWithKids,
+    adults: capacitySummary.adults,
+    guestTarget,
     userName,
     myUnratedVenueName: dw.venueName,
     assumptions,

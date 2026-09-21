@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Armchair, Bus, CalendarClock, Check, FileCheck, House, MessageSquareText, Mail, PartyPopper, Plane, Users, Utensils, Accessibility } from "lucide-react";
 import { guestNeeds, guestSummary, type Guest } from "@/lib/guests";
-import { GUEST_CAPACITY } from "@/lib/venues";
+import GuestTargetInput from "@/components/GuestTargetInput";
 import { formatDueDate, type HotelBlock } from "@/lib/travel";
 import { people, regionCounts, tablesFrom } from "@/lib/guest-overview";
 
@@ -59,8 +59,8 @@ function TableDot({ seated, label }: { seated: number; label?: string }) {
   );
 }
 
-export default function GuestsOverview({ guests, hotelBlocks, deadlines, daysToGo }: { guests: Guest[]; hotelBlocks: HotelBlock[]; deadlines: Deadline[]; daysToGo: number }) {
-  const summary = guestSummary(guests, GUEST_CAPACITY);
+export default function GuestsOverview({ guests, hotelBlocks, deadlines, daysToGo, guestTarget }: { guests: Guest[]; hotelBlocks: HotelBlock[]; deadlines: Deadline[]; daysToGo: number; guestTarget: number }) {
+  const summary = guestSummary(guests, guestTarget);
   const total = summary.totalWithKids;
   const attendingP = guests.filter((g) => g.rsvp_status === "yes").reduce((n, g) => n + people(g), 0);
   const declinedP = guests.filter((g) => g.rsvp_status === "no").reduce((n, g) => n + people(g), 0);
@@ -105,9 +105,10 @@ export default function GuestsOverview({ guests, hotelBlocks, deadlines, daysToG
             <span><b className="font-serif text-2xl font-normal">{summary.kids}</b> children</span>
             <span><b className="font-serif text-2xl font-normal">{summary.households}</b> households</span>
           </p>
+          <GuestTargetInput value={guestTarget} className="mt-4" />
           {(summary.overBy > 0 || plusOnesUnassigned > 0) && (
-            <p className="mt-3 text-sm text-ink-2">
-              {summary.overBy > 0 && <span className="font-semibold text-wine">{summary.overBy} over the {GUEST_CAPACITY}-guest target. </span>}
+            <p className="mt-2 text-sm text-ink-2">
+              {summary.overBy > 0 && <span className="font-semibold text-wine">{summary.overBy} adult{summary.overBy === 1 ? "" : "s"} over target. </span>}
               {plusOnesUnassigned > 0 && <span>{plusOnesUnassigned} plus-one{plusOnesUnassigned === 1 ? "" : "s"} not yet named. </span>}
               <Link href="/guests/list" className={`rounded font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>Review the list →</Link>
             </p>

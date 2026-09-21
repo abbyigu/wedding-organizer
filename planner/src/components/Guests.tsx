@@ -1,5 +1,6 @@
 "use client";
 
+import GuestTargetInput from "@/components/GuestTargetInput";
 import { useSearchParams } from "next/navigation";
 import { useDialog } from "@/lib/use-dialog";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -19,7 +20,6 @@ import {
   type RsvpStatus,
 } from "@/lib/guests";
 
-const GUEST_TARGET = 80;
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 const AVATAR_COLORS = [
   "color-mix(in srgb, var(--wine) 25%, var(--paper))",
@@ -45,9 +45,10 @@ function guestTags(g: Guest): string[] {
   return tags;
 }
 
-export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
+export default function Guests({ initialGuests, guestTarget }: { initialGuests: Guest[]; guestTarget: number }) {
   const confirm = useConfirm();
   const [guests, setGuests] = useState(initialGuests);
+  const [target, setTarget] = useState(guestTarget);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState(useSearchParams().get("q") ?? "");
@@ -62,8 +63,8 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
 
-  const summary = guestSummary(guests, GUEST_TARGET);
-  const capacityPct = GUEST_TARGET > 0 ? Math.round((summary.adults / GUEST_TARGET) * 100) : 0;
+  const summary = guestSummary(guests, target);
+  const capacityPct = target > 0 ? Math.round((summary.adults / target) * 100) : 0;
   const overTarget = summary.overBy > 0;
   const barMax = Math.max(capacityPct, 100);
   const sageWidthPct = barMax > 0 ? (Math.min(capacityPct, 100) / barMax) * 100 : 0;
@@ -224,7 +225,7 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
                       ? `${-summary.overBy} under target`
                       : "At target"}
                 </p>
-                <p className="text-sm text-ink-2">target: {GUEST_TARGET} adults</p>
+                <GuestTargetInput value={target} onChange={setTarget} />
               </div>
             </div>
 
@@ -252,9 +253,9 @@ export default function Guests({ initialGuests }: { initialGuests: Guest[] }) {
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-ink-2">
                 {overTarget ? (
-                  <>Your working list currently includes <b className="text-ink">{summary.adults} adults</b> for an {GUEST_TARGET}-adult target.</>
+                  <>Your working list currently includes <b className="text-ink">{summary.adults} adults</b> for an {target}-adult target.</>
                 ) : (
-                  `${summary.adults} of ${GUEST_TARGET} adult places filled.`
+                  `${summary.adults} of ${target} adult places filled.`
                 )}
               </p>
               {overTarget && (

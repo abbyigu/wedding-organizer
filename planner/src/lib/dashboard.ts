@@ -1,4 +1,4 @@
-import { BUDGET_CEILING, calcVenue, GUEST_CAPACITY, type Assumptions, type Venue } from "@/lib/venues";
+import { BUDGET_CEILING, calcVenue, type Assumptions, type Venue } from "@/lib/venues";
 import type { Guest } from "@/lib/guests";
 import type { Rating } from "@/lib/decisions";
 
@@ -130,7 +130,8 @@ export function blankCustomTask(userName: string): Partial<CustomTask> {
 
 export function computeActionItems(ctx: {
   venues: Venue[];
-  totalGuests: number;
+  adults: number;
+  guestTarget: number;
   userName: string;
   myUnratedVenueName: string | null;
   assumptions: Assumptions;
@@ -151,10 +152,10 @@ export function computeActionItems(ctx: {
     });
   }
 
-  const over = ctx.totalGuests - GUEST_CAPACITY;
+  const over = ctx.adults - ctx.guestTarget;
   if (over > 0) {
     items.push({
-      title: `Review ${over} guest${over === 1 ? "" : "s"} over capacity`,
+      title: `Review ${over} adult${over === 1 ? "" : "s"} over your guest target`,
       description: "Move optional invitations into a second-tier list.",
       person: ctx.userName,
       effort: "10 min",

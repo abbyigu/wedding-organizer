@@ -12,7 +12,7 @@ export async function getBudgetContext(supabase: SupabaseClient) {
   ]);
 
   const settings: BudgetSettings = settingsRow ?? DEFAULT_BUDGET_SETTINGS;
-  const gs = guestSummary(guests ?? [], 80);
+  const gs = guestSummary(guests ?? [], settings.guest_target ?? DEFAULT_BUDGET_SETTINGS.guest_target ?? 80);
   const assumptions = resolveAssumptions(settings, gs);
   const sharedVals = settings.shared_line_amounts?.length
     ? settings.shared_line_amounts

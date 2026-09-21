@@ -3,7 +3,7 @@ import GuestsOverview, { type Deadline } from "@/components/GuestsOverview";
 import type { HotelBlock } from "@/lib/travel";
 import { daysUntil } from "@/lib/dashboard";
 import { effectiveDate, todayISO } from "@/lib/planning-timeline";
-import { DEFAULT_BUDGET_SETTINGS } from "@/lib/venues";
+import { DEFAULT_BUDGET_SETTINGS, DEFAULT_GUEST_TARGET } from "@/lib/venues";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export default async function GuestsOverviewPage() {
   const [{ data: guests }, { data: hotelBlocks }, { data: settings }, { data: tasks }] = await Promise.all([
     supabase.from("guests").select("*").order("sort_order", { ascending: true }),
     supabase.from("hotel_blocks").select("*"),
-    supabase.from("budget_settings").select("wedding_date").eq("id", true).maybeSingle(),
+    supabase.from("budget_settings").select("*").eq("id", true).maybeSingle(),
     supabase.from("planning_tasks").select("title, category, status, due_date, period").in("category", GUEST_TASK_CATEGORIES),
   ]);
 
@@ -32,5 +32,5 @@ export default async function GuestsOverviewPage() {
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 5);
 
-  return <GuestsOverview guests={guests ?? []} hotelBlocks={(hotelBlocks ?? []) as HotelBlock[]} deadlines={deadlines} daysToGo={daysUntil(weddingDate)} />;
+  return <GuestsOverview guests={guests ?? []} hotelBlocks={(hotelBlocks ?? []) as HotelBlock[]} deadlines={deadlines} daysToGo={daysUntil(weddingDate)} guestTarget={settings?.guest_target ?? DEFAULT_GUEST_TARGET} />;
 }
