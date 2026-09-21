@@ -7,6 +7,7 @@ import { ArrowRight, CalendarDays, Coins, FileText, GitCompareArrows, Heart, Lis
 import { createClient } from "@/lib/supabase/client";
 import dynamic from "next/dynamic";
 import NavBar from "@/components/NavBar";
+import { geocodeVenue } from "@/lib/geocode";
 import DashboardTopBar, { type SearchItem } from "@/components/DashboardTopBar";
 import {
   STARTERS,
@@ -229,6 +230,35 @@ export default function VenueShortlist({
 
   const mapped = venues.filter((v): v is Venue & { lat: number; lng: number } => v.lat != null && v.lng != null);
   const unmapped = venues.filter((v) => v.lat == null || v.lng == null);
+
+  const [pinning, setPinning] = useState("");
+  // Fills in every missing pin from the venue's location text, one lookup per second.
+  async function pinAll() {
+    const supabase = createClient();
+    let found = 0;
+    const todo = unmapped.filter((v) => v.location.trim() || v.name.trim());
+    for (let i = 0; i < todo.length; i++) {
+      const v = todo[i];
+      setPinning(`Finding ${v.name} (${i + 1} of ${todo.length})…`);
+      try {
+        const hit = await geocodeVenue(v.name, v.location);
+        if (hit) {
+          const { error } = await supabase.from("venues").update({ lat: hit.lat, lng: hit.lng }).eq("id", v.id);
+          if (error) {
+            setError(error.message);
+            break;
+          }
+          setVenues((vs) => vs.map((x) => (x.id === v.id ? { ...x, lat: hit.lat, lng: hit.lng } : x)));
+          found++;
+        }
+      } catch {
+        setError("Couldn't reach the map lookup — try again in a moment.");
+        break;
+      }
+      if (i < todo.length - 1) await new Promise((r) => setTimeout(r, 1100));
+    }
+    setPinning(`Pinned ${found} of ${todo.length}. Any missed places can be pinned from their details page.`);
+  }
 
   const compared = compareIds.map((id) => venues.find((v) => v.id === id)).filter((v): v is Venue => Boolean(v));
 
@@ -626,6 +656,15 @@ export default function VenueShortlist({
           </>
         ) : tab === "map" ? (
           <div className="mt-6">
+            {unmapped.length > 0 && (
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <button onClick={pinAll} disabled={Boolean(pinning) && pinning.startsWith("Finding")} className={`rounded-full bg-surface-olive px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60 ${FOCUS_RING}`}>
+                  Find {unmapped.length} place{unmapped.length === 1 ? "" : "s"} from their addresses
+                </button>
+                {pinning && <span role="status" className="text-sm text-ink-2">{pinning}</span>}
+                {error && <span className="text-sm text-wine">{error}</span>}
+              </div>
+            )}
             {mapped.length === 0 ? (
               <div className="rounded-2xl border border-line bg-paper p-8 text-center shadow-sm">
                 <h2 className="font-serif text-2xl">No places on the map yet</h2>

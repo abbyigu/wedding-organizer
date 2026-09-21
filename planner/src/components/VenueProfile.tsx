@@ -6,6 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
+import { geocodeVenue } from "@/lib/geocode";
 import { calcVenue, checklistPercent, CHECKLIST_ITEMS, fmt, STATUSES, type Assumptions, type Photo, type Venue } from "@/lib/venues";
 
 const TURNKEY_OPTIONS = ["", "Full turnkey", "Full turnkey plus", "Semi-turnkey", "DIY-heavy", "Full DIY"];
@@ -28,6 +29,7 @@ export default function VenueProfile({
   const [v, setV] = useState(venue);
   const [urls, setUrls] = useState(signedUrls);
   const [saved, setSaved] = useState("");
+  const [geo, setGeo] = useState("");
   const [coords, setCoords] = useState({ lat: venue.lat != null ? String(venue.lat) : "", lng: venue.lng != null ? String(venue.lng) : "" });
   const [uploading, setUploading] = useState(false);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -118,6 +120,28 @@ export default function VenueProfile({
     timers.current["coords"] = setTimeout(() => save({ lat, lng }), 800);
   }
 
+  // Same lookup the trip planner uses: OpenStreetMap's Nominatim turns the address into a pin.
+  async function findLocation() {
+    if (!v.location.trim() && !v.name.trim()) {
+      setGeo("Add an address or town above first.");
+      return;
+    }
+    setGeo("Looking up location…");
+    try {
+      const hit = await geocodeVenue(v.name, v.location);
+      if (!hit) {
+        setGeo("Couldn't find that address — try a town or street, or paste the coordinates.");
+        return;
+      }
+      setCoords({ lat: String(hit.lat), lng: String(hit.lng) });
+      setV((p) => ({ ...p, lat: hit.lat, lng: hit.lng }));
+      save({ lat: hit.lat, lng: hit.lng });
+      setGeo(`Pinned to ${hit.label}`);
+    } catch {
+      setGeo("Couldn't reach the map lookup (offline?). You can paste the coordinates instead.");
+    }
+  }
+
   async function removeVenue() {
     if (!(await confirm(`Remove ${v.name}? Its notes and photos will be deleted.`))) return;
     await Promise.all((v.photos ?? []).map((p) => supabase.storage.from("venue-photos").remove([p.path])));
@@ -171,7 +195,7 @@ export default function VenueProfile({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex-1 min-w-64">
             <input {...field("name")} className="w-full border-b border-transparent bg-transparent font-serif text-3xl font-medium outline-none focus:border-gold" aria-label="Venue name" />
-            <input {...field("location")} placeholder="Where is it?" className="mt-1 w-full border-b border-transparent bg-transparent text-ink-2 outline-none focus:border-gold" aria-label="Location" />
+            <input {...field("location")} onBlur={(e) => { handleBlur(e); if (e.target.value.trim() && !coords.lat && !coords.lng) findLocation(); }} placeholder="Address or town, e.g. 120 Chemin Royal, Île d'Orléans" className="mt-1 w-full border-b border-transparent bg-transparent text-ink-2 outline-none focus:border-gold" aria-label="Location" />
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -256,7 +280,13 @@ export default function VenueProfile({
                     <input value={coords.lat} onChange={(e) => updateCoords("lat", e.target.value)} inputMode="decimal" placeholder="Latitude, e.g. 46.8523" aria-label="Latitude" className="w-full rounded-lg border border-line bg-bg px-3 py-2 outline-none focus:border-sage-deep" />
                     <input value={coords.lng} onChange={(e) => updateCoords("lng", e.target.value)} inputMode="decimal" placeholder="Longitude, e.g. -71.2075" aria-label="Longitude" className="w-full rounded-lg border border-line bg-bg px-3 py-2 outline-none focus:border-sage-deep" />
                   </div>
-                  <p className="mt-1 text-xs text-ink-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={findLocation} className="rounded-full border border-line px-3.5 py-1.5 text-sm font-semibold text-ink hover:border-sage-deep">
+                      Find from address
+                    </button>
+                    {geo && <span role="status" className="text-xs text-ink-2">{geo}</span>}
+                  </div>
+                  <p className="mt-2 text-xs text-ink-2">
                     In Google Maps, right-click the place and click the numbers to copy — you can paste both into either box.{" "}
                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${v.name} ${v.location}`.trim())}`} target="_blank" rel="noreferrer" className="font-semibold text-sage-deep underline underline-offset-2">
                       Find it on Google Maps ↗
