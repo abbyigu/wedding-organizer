@@ -43,7 +43,7 @@ export type MilestoneState = "upcoming" | "due" | "behind" | "done" | "empty" | 
 
 export const monthsLeft = (daysToGo: number) => daysToGo / 30.44;
 
-export function milestoneState(m: TimelineMilestone, tasks: PlanningTask[], daysToGo: number, currentMonths: number) {
+export function milestoneState<T extends Pick<PlanningTask, "category" | "status">>(m: TimelineMilestone, tasks: T[], daysToGo: number, currentMonths: number) {
   const related = tasks.filter((t) => m.categories.includes(t.category));
   const open = related.filter((t) => t.status !== "done");
   const isOpen = monthsLeft(daysToGo) <= (m.months === 0 ? 1 : m.months);

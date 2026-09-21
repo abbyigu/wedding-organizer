@@ -66,11 +66,11 @@ function Avatars({ value }: { value: Assignee }) {
   return dot(value === "ariel" ? "A" : "F", value);
 }
 
-export default function Board({ initialTasks, userName, daysToGo }: { initialTasks: PlanningTask[]; userName: string; daysToGo: number }) {
+export default function Board({ initialTasks, userName, daysToGo, initialView = "board" }: { initialTasks: PlanningTask[]; userName: string; daysToGo: number; initialView?: "board" | "timeline" | "list" }) {
   const confirm = useConfirm();
   const [tasks, setTasks] = useState(initialTasks);
   const [error, setError] = useState("");
-  const [view, setView] = useState<"board" | "timeline" | "list">("board");
+  const [view, setView] = useState<"board" | "timeline" | "list">(initialView);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState<"all" | Assignee>("all");

@@ -42,12 +42,14 @@ export default async function DashboardPage() {
     { data: customTasks },
     { data: upcomingEvents },
     { data: vendors },
+    { data: planningTasks },
   ] = await Promise.all([
     user ? supabase.from("venue_ratings").select("*").eq("rater_id", user.id) : Promise.resolve({ data: [] as Rating[] }),
     supabase.from("idea_pins").select("id, title, image_url, category").eq("visibility", "shared").order("sort_order", { ascending: true }),
     supabase.from("custom_tasks").select("*").eq("done", false).order("created_at", { ascending: true }),
     supabase.from("upcoming_events").select("*").gte("event_date", todayStr).order("event_date", { ascending: true }).limit(5),
     supabase.from("vendors").select("id, status"),
+    supabase.from("planning_tasks").select("category, status"),
   ]);
 
   const ideas = sharedIdeas ?? [];
@@ -106,6 +108,7 @@ export default async function DashboardPage() {
       decisionsWaitingCount={dw.count}
       decisionsWaitingVenue={dw.venueName}
       journey={journey}
+      planningTasks={planningTasks ?? []}
       actionItems={actionItems}
       initialCustomTasks={customTasks ?? []}
       initialEvents={upcomingEvents ?? []}

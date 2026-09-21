@@ -6,6 +6,8 @@ import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Gift, Heart, MapPin, PieChart, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
+import DashboardTimeline from "@/components/DashboardTimeline";
+import type { PlanningTask } from "@/lib/planning-tasks";
 import DashboardTopBar, { type Notice, type SearchItem } from "@/components/DashboardTopBar";
 import { BUDGET_CEILING, STATUSES, calcVenue, fmt, type Assumptions, type Venue } from "@/lib/venues";
 import { blankCustomTask, type ActionItem, type CustomTask, type JourneyStage } from "@/lib/dashboard";
@@ -110,6 +112,7 @@ export default function Dashboard({
   decisionsWaitingCount,
   decisionsWaitingVenue,
   journey,
+  planningTasks,
   actionItems,
   initialCustomTasks,
   initialEvents,
@@ -130,6 +133,7 @@ export default function Dashboard({
   decisionsWaitingCount: number;
   decisionsWaitingVenue: string | null;
   journey: JourneyStage[];
+  planningTasks: { category: string; status: PlanningTask["status"] }[];
   actionItems: ActionItem[];
   initialCustomTasks: CustomTask[];
   initialEvents: UpcomingEvent[];
@@ -389,6 +393,8 @@ export default function Dashboard({
             together
           </p>
         </section>
+
+        <DashboardTimeline tasks={planningTasks} daysToGo={daysUntilWedding} />
 
         <section className="mt-9 overflow-hidden rounded-3xl border border-line bg-paper shadow-sm">
           <div className="grid divide-y divide-line md:grid-cols-2 md:divide-y-0 lg:grid-cols-4 lg:divide-x">

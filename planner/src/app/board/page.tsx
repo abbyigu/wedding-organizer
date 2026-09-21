@@ -6,7 +6,8 @@ import { DEFAULT_BUDGET_SETTINGS } from "@/lib/venues";
 
 export const dynamic = "force-dynamic";
 
-export default async function BoardPage() {
+export default async function BoardPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const { view } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,6 +21,7 @@ export default async function BoardPage() {
     <Board
       initialTasks={tasks ?? []}
       userName={displayName(user?.email)}
+      initialView={view === "timeline" || view === "list" ? view : "board"}
       daysToGo={daysUntil(settings?.wedding_date ?? DEFAULT_BUDGET_SETTINGS.wedding_date)}
     />
   );
