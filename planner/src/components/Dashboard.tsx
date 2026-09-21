@@ -113,6 +113,7 @@ export default function Dashboard({
   decisionsWaitingVenue,
   journey,
   planningTasks,
+  weddingDate,
   actionItems,
   initialCustomTasks,
   initialEvents,
@@ -133,7 +134,8 @@ export default function Dashboard({
   decisionsWaitingCount: number;
   decisionsWaitingVenue: string | null;
   journey: JourneyStage[];
-  planningTasks: { category: string; status: PlanningTask["status"] }[];
+  planningTasks: Pick<PlanningTask, "title" | "category" | "status" | "due_date" | "period">[];
+  weddingDate: string;
   actionItems: ActionItem[];
   initialCustomTasks: CustomTask[];
   initialEvents: UpcomingEvent[];
@@ -394,7 +396,7 @@ export default function Dashboard({
           </p>
         </section>
 
-        <DashboardTimeline tasks={planningTasks} daysToGo={daysUntilWedding} />
+        <DashboardTimeline tasks={planningTasks} weddingDate={weddingDate} />
 
         <section className="mt-9 overflow-hidden rounded-3xl border border-line bg-paper shadow-sm">
           <div className="grid divide-y divide-line md:grid-cols-2 md:divide-y-0 lg:grid-cols-4 lg:divide-x">

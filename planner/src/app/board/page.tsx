@@ -12,17 +12,22 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [{ data: tasks }, { data: settings }] = await Promise.all([
+  const [{ data: tasks }, { data: settings }, { data: vendors }] = await Promise.all([
     supabase.from("planning_tasks").select("*").order("sort_order", { ascending: true }),
     supabase.from("budget_settings").select("wedding_date").eq("id", true).maybeSingle(),
+    supabase.from("vendors").select("id, name").order("name", { ascending: true }),
   ]);
+
+  const weddingDate = settings?.wedding_date ?? DEFAULT_BUDGET_SETTINGS.wedding_date;
 
   return (
     <Board
       initialTasks={tasks ?? []}
       userName={displayName(user?.email)}
       initialView={view === "timeline" || view === "list" ? view : "board"}
-      daysToGo={daysUntil(settings?.wedding_date ?? DEFAULT_BUDGET_SETTINGS.wedding_date)}
+      daysToGo={daysUntil(weddingDate)}
+      weddingDate={weddingDate}
+      vendors={vendors ?? []}
     />
   );
 }

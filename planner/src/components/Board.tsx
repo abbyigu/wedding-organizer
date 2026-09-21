@@ -6,7 +6,11 @@ import { useMemo, useRef, useState } from "react";
 import { CalendarDays, CalendarRange, CircleCheck, CircleHelp, Clock, Ellipsis, Hourglass, Leaf, Lightbulb, GanttChart, LayoutGrid, List as ListIcon, Plus, Search, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
+import Link from "next/link";
 import Timeline from "@/components/Timeline";
+import NewTaskDialog, { type NewTask } from "@/components/NewTaskDialog";
+import { decorRows, planRows, recalcUpdates } from "@/lib/planning-timeline";
+import { blankDiyProject } from "@/lib/diy-projects";
 import DashboardTopBar, { type Notice, type SearchItem } from "@/components/DashboardTopBar";
 import {
   blankTask,
@@ -17,6 +21,7 @@ import {
   partnerOf,
   STATUS_LABELS,
   STATUS_ORDER,
+  TAGS,
   type Assignee,
   type PlanningTask,
   type Priority,
@@ -66,7 +71,7 @@ function Avatars({ value }: { value: Assignee }) {
   return dot(value === "ariel" ? "A" : "F", value);
 }
 
-export default function Board({ initialTasks, userName, daysToGo, initialView = "board" }: { initialTasks: PlanningTask[]; userName: string; daysToGo: number; initialView?: "board" | "timeline" | "list" }) {
+export default function Board({ initialTasks, userName, daysToGo, weddingDate, vendors, initialView = "board" }: { initialTasks: PlanningTask[]; userName: string; daysToGo: number; weddingDate: string; vendors: { id: string; name: string }[]; initialView?: "board" | "timeline" | "list" }) {
   const confirm = useConfirm();
   const [tasks, setTasks] = useState(initialTasks);
   const [error, setError] = useState("");
@@ -82,6 +87,8 @@ export default function Board({ initialTasks, userName, daysToGo, initialView = 
   const [moreOpenId, setMoreOpenId] = useState<string | null>(null);
   const [moreOpenPos, setMoreOpenPos] = useState<{ top: number; left: number } | null>(null);
   const [moveSubmenu, setMoveSubmenu] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [busy, setBusy] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const partner = partnerOf(userName);
@@ -193,6 +200,64 @@ export default function Board({ initialTasks, userName, daysToGo, initialView = 
     if (openId === id) setOpenId(null);
     const supabase = createClient();
     await supabase.from("planning_tasks").delete().eq("id", id);
+  }
+
+  // ---- Timeline actions: the same rows, arranged by WHEN ----
+  function toggleDone(t: PlanningTask) {
+    saveNow(t.id, { status: t.status === "done" ? "todo" : "done" });
+  }
+
+  async function createTimelineTask(nt: NewTask): Promise<string | null> {
+    const supabase = createClient();
+    if (nt.isDiy) {
+      // A DIY project is the record; a trigger mirrors it onto the Planning Board (no duplicates).
+      const diyStatus = { ideas: "idea", todo: "materials_needed", in_progress: "making", done: "finished" }[nt.status as string] ?? "idea";
+      const { data: proj, error: e1 } = await supabase
+        .from("diy_projects")
+        .insert({ ...blankDiyProject("idea", 0), title: nt.title, notes: nt.notes, deadline: nt.due_date, owner: nt.assigned_to, status: diyStatus })
+        .select()
+        .single();
+      if (e1 || !proj) return e1?.message ?? "Couldn't create the DIY project.";
+      const { data: mirrored, error: e2 } = await supabase
+        .from("planning_tasks")
+        .update({ start_date: nt.start_date, date_manual: Boolean(nt.due_date) })
+        .eq("diy_project_id", proj.id)
+        .select()
+        .single();
+      if (e2 || !mirrored) return e2?.message ?? "The DIY project was created but didn't reach the Planning Board.";
+      setTasks((ts) => [...ts, mirrored as PlanningTask]);
+      return null;
+    }
+    const { data, error } = await supabase
+      .from("planning_tasks")
+      .insert(blankTask(nt.status, { title: nt.title, category: nt.category, assigned_to: nt.assigned_to, notes: nt.notes, due_date: nt.due_date, sort_order: tasks.length, ...(nt.due_date ? { date_manual: true } : {}) }))
+      .select()
+      .single();
+    if (error) return error.message;
+    setTasks((ts) => [...ts, data as PlanningTask]);
+    return null;
+  }
+
+  async function seed(kind: "plan" | "decor") {
+    setBusy(kind);
+    setError("");
+    const keys = new Set(tasks.map((t) => t.template_key).filter((k): k is string => Boolean(k)));
+    const rows = kind === "plan" ? planRows(weddingDate, keys) : decorRows(keys);
+    const { data, error } = await createClient().from("planning_tasks").insert(rows).select();
+    if (error) setError(error.message);
+    else setTasks((ts) => [...ts, ...((data ?? []) as PlanningTask[])]);
+    setBusy("");
+  }
+
+  async function recalc() {
+    setBusy("recalc");
+    const supabase = createClient();
+    const updates = recalcUpdates(tasks, weddingDate);
+    const results = await Promise.all(updates.map(({ id, ...patch }) => supabase.from("planning_tasks").update(patch).eq("id", id)));
+    const failed = results.find((r) => r.error);
+    if (failed?.error) setError(failed.error.message);
+    else setTasks((ts) => ts.map((t) => { const u = updates.find((x) => x.id === t.id); return u ? { ...t, due_date: u.due_date, start_date: u.start_date, suggested_for: u.suggested_for } : t; }));
+    setBusy("");
   }
 
   function openMenu(e: React.MouseEvent, id: string) {
@@ -447,7 +512,7 @@ export default function Board({ initialTasks, userName, daysToGo, initialView = 
                 </button>
               ))}
             </div>
-            <button onClick={() => addTask("todo")} className={`flex items-center gap-2 rounded-full bg-surface-wine px-6 py-2.5 text-sm font-medium text-white ${FOCUS_RING}`}>
+            <button onClick={() => (view === "timeline" ? setShowNew(true) : addTask("todo"))} className={`flex items-center gap-2 rounded-full bg-surface-wine px-6 py-2.5 text-sm font-medium text-white ${FOCUS_RING}`}>
               <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
               Add task
             </button>
@@ -511,7 +576,7 @@ export default function Board({ initialTasks, userName, daysToGo, initialView = 
             })}
           </div>
         ) : view === "timeline" ? (
-          <Timeline tasks={tasks} daysToGo={daysToGo} onOpenTask={setOpenId} onAddTask={(c) => addTask("todo", c)} />
+          <Timeline tasks={tasks} weddingDate={weddingDate} daysToGo={daysToGo} busy={busy} onOpenTask={setOpenId} onToggleDone={toggleDone} onAdd={() => setShowNew(true)} onSeed={seed} onRecalc={recalc} />
         ) : (
           <div className="mt-6 flex flex-col divide-y divide-line rounded-2xl border border-line bg-paper shadow-sm">
             {listSorted.length === 0 && <p className="p-5 text-sm text-ink-2">No tasks match these filters.</p>}
@@ -609,11 +674,11 @@ export default function Board({ initialTasks, userName, daysToGo, initialView = 
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="board-f5" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Due date</label>
+                  <label htmlFor="board-f5" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">{open.category === "DIY" ? "Finish by" : "Target date"}</label>
                   <input id="board-f5"
                     type="date"
                     defaultValue={open.due_date ?? ""}
-                    onChange={(e) => scheduleSave(open.id, { due_date: e.target.value || null })}
+                    onChange={(e) => scheduleSave(open.id, { due_date: e.target.value || null, ...(open.template_key ? { date_manual: true } : {}) })}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
                   />
                 </div>
@@ -638,6 +703,63 @@ export default function Board({ initialTasks, userName, daysToGo, initialView = 
                 className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
               />
 
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {(open.category === "DIY" || open.start_date) && (
+                  <div>
+                    <label htmlFor="board-start" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Start date</label>
+                    <input id="board-start" type="date" defaultValue={open.start_date ?? ""} onChange={(e) => scheduleSave(open.id, { start_date: e.target.value || null })} className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm" />
+                  </div>
+                )}
+                <div>
+                  <label htmlFor="board-actual" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Actual cost</label>
+                  <input id="board-actual" type="number" min={0} defaultValue={open.actual_cost ?? ""} onChange={(e) => scheduleSave(open.id, { actual_cost: e.target.value ? +e.target.value : null })} placeholder="$" className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm" />
+                </div>
+                {vendors.length > 0 && (
+                  <div>
+                    <label htmlFor="board-vendor" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Related vendor</label>
+                    <select id="board-vendor" value={open.vendor_id ?? ""} onChange={(e) => saveNow(open.id, { vendor_id: e.target.value || null })} className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm">
+                      <option value="">None</option>
+                      {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {(open.category === "Décor & Florals" || open.category === "DIY" || (open.tags ?? []).length > 0) && (
+                <fieldset className="mt-3">
+                  <legend className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Tags</legend>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {TAGS.map((tag) => {
+                      const on = (open.tags ?? []).includes(tag);
+                      return (
+                        <button key={tag} type="button" aria-pressed={on} onClick={() => saveNow(open.id, { tags: on ? (open.tags ?? []).filter((x) => x !== tag) : [...(open.tags ?? []), tag] })}
+                          className={`rounded-full border px-3 py-1 text-xs ${FOCUS_RING} ${on ? "border-surface-sage-deep bg-surface-sage-deep text-white" : "border-line text-ink-2 hover:border-sage-deep"}`}>
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
+
+              {open.diy_project_id && (
+                <Link href="/diy" className="mt-3 inline-block text-xs font-semibold text-sage-deep underline underline-offset-2">This task mirrors a DIY project — open DIY Projects →</Link>
+              )}
+
+              <details className="mt-4 rounded-lg border border-line bg-bg px-3 py-2" open={Object.values(open.wedding_day ?? {}).some(Boolean)}>
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-ink-2">Wedding Day handoff</summary>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {([["location", "Location / used at"], ["person", "Person responsible"], ["vendor", "Vendor responsible"], ["ready_by", "Ready by (time)"]] as const).map(([k, label]) => (
+                    <div key={k}>
+                      <label htmlFor={`board-wd-${k}`} className="block text-xs text-ink-2">{label}</label>
+                      <input id={`board-wd-${k}`} defaultValue={open.wedding_day?.[k] ?? ""} onChange={(e) => scheduleSave(open.id, { wedding_day: { ...(open.wedding_day ?? {}), [k]: e.target.value } })} className="mt-0.5 w-full rounded border border-line bg-paper px-2 py-1 text-sm" />
+                    </div>
+                  ))}
+                </div>
+                <label htmlFor="board-wd-setup" className="mt-2 block text-xs text-ink-2">Setup instructions</label>
+                <textarea id="board-wd-setup" rows={2} defaultValue={open.wedding_day?.setup ?? ""} onChange={(e) => scheduleSave(open.id, { wedding_day: { ...(open.wedding_day ?? {}), setup: e.target.value } })} className="mt-0.5 w-full rounded border border-line bg-paper px-2 py-1 text-sm" />
+              </details>
+
               <label htmlFor="board-f8" className="mt-3 block text-xs font-semibold uppercase tracking-wide text-ink-2">Notes &amp; links</label>
               <textarea id="board-f8"
                 defaultValue={open.notes}
@@ -653,6 +775,8 @@ export default function Board({ initialTasks, userName, daysToGo, initialView = 
           </div>
         </div>
       )}
+
+      {showNew && <NewTaskDialog onClose={() => setShowNew(false)} onCreate={createTimelineTask} />}
     </div>
   );
 }

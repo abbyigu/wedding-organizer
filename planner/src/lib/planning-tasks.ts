@@ -1,6 +1,7 @@
 export type TaskStatus = "ideas" | "todo" | "in_progress" | "waiting" | "decision_needed" | "done";
 export type Assignee = "ariel" | "fred" | "together";
 export type Priority = "normal" | "high";
+export type WeddingDayHandoff = { location?: string; setup?: string; person?: string; vendor?: string; ready_by?: string };
 
 export type PlanningTask = {
   id: string;
@@ -15,6 +16,16 @@ export type PlanningTask = {
   estimated_cost: number | null;
   sort_order: number;
   diy_project_id: string | null;
+  // Timeline fields (migration 034) — absent until it has been run.
+  start_date?: string | null;
+  period?: string | null;
+  template_key?: string | null;
+  date_manual?: boolean;
+  suggested_for?: string | null;
+  tags?: string[];
+  actual_cost?: number | null;
+  vendor_id?: string | null;
+  wedding_day?: WeddingDayHandoff;
   created_at: string;
   updated_at: string;
 };
@@ -32,33 +43,55 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
 
 export const CATEGORIES = [
   "Venue",
-  "Guests",
-  "Food",
-  "Attire",
-  "Travel",
-  "Décor",
+  "Vendors",
   "Budget",
-  "Stationery",
-  "Ceremony",
-  "Photography",
-  "Lodging",
+  "Guests",
+  "Travel & Stay",
+  "Wedding Party",
+  "Attire",
+  "Décor & Florals",
   "DIY",
+  "Stationery",
+  "Food & Drink",
+  "Ceremony",
+  "Reception",
+  "Photography",
+  "Music",
+  "Beauty",
+  "Registry",
+  "Rehearsal Dinner",
+  "Welcome Party",
+  "Brunch",
+  "Wedding Day",
   "Other",
 ] as const;
 
+// Real / Faux / Mixed / DIY / Rental / Vendor / Venue Included — for décor and florals.
+export const TAGS = ["Real", "Faux", "Mixed", "DIY", "Rental", "Vendor", "Venue Included"] as const;
+
+// Soft accents only — a category is a small dot and a word, never a coloured card.
 const CATEGORY_COLORS: Record<string, string> = {
-  Venue: "var(--sage)",
-  Guests: "var(--gold)",
-  Food: "var(--wine)",
-  Attire: "var(--wood)",
-  Travel: "var(--gold)",
-  Décor: "var(--wine)",
+  Venue: "var(--sage-deep)",
+  Vendors: "var(--wood)",
   Budget: "var(--green)",
-  Stationery: "var(--wood)",
-  Ceremony: "var(--gold)",
-  Photography: "var(--sage-deep)",
-  Lodging: "var(--wood)",
+  Guests: "var(--gold)",
+  "Travel & Stay": "var(--wood)",
+  "Wedding Party": "var(--wine)",
+  Attire: "var(--wood)",
+  "Décor & Florals": "var(--wine)",
   DIY: "var(--green)",
+  Stationery: "var(--gold)",
+  "Food & Drink": "var(--wine)",
+  Ceremony: "var(--gold)",
+  Reception: "var(--sage-deep)",
+  Photography: "var(--sage-deep)",
+  Music: "var(--gold)",
+  Beauty: "var(--wine)",
+  Registry: "var(--sage)",
+  "Rehearsal Dinner": "var(--wood)",
+  "Welcome Party": "var(--gold)",
+  Brunch: "var(--sage)",
+  "Wedding Day": "var(--wine)",
   Other: "var(--sage)",
 };
 
@@ -95,4 +128,8 @@ export function isDueSoon(dueDate: string | null): boolean {
 export function formatDueDate(dateStr: string, withYear = false): string {
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(withYear && { year: "numeric" }) });
+}
+
+export function formatMonthYear(dateStr: string): string {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }

@@ -49,7 +49,7 @@ export default async function DashboardPage() {
     supabase.from("custom_tasks").select("*").eq("done", false).order("created_at", { ascending: true }),
     supabase.from("upcoming_events").select("*").gte("event_date", todayStr).order("event_date", { ascending: true }).limit(5),
     supabase.from("vendors").select("id, status"),
-    supabase.from("planning_tasks").select("category, status"),
+    supabase.from("planning_tasks").select("title, category, status, due_date, period"),
   ]);
 
   const ideas = sharedIdeas ?? [];
@@ -109,6 +109,7 @@ export default async function DashboardPage() {
       decisionsWaitingVenue={dw.venueName}
       journey={journey}
       planningTasks={planningTasks ?? []}
+      weddingDate={weddingDate}
       actionItems={actionItems}
       initialCustomTasks={customTasks ?? []}
       initialEvents={upcomingEvents ?? []}

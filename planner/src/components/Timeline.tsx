@@ -1,273 +1,331 @@
 "use client";
 
-import { type ComponentType } from "react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { ArrowRight, Check, ChevronDown, Circle, CircleCheck, CircleHelp, Hourglass, Plus } from "lucide-react";
 import TimelineAxis from "@/components/TimelineAxis";
-import {
-  Camera,
-  Cake,
-  Check,
-  Flower2,
-  Gem,
-  Gift,
-  Heart,
-  Landmark,
-  ListChecks,
-  Mail,
-  Plus,
-  Shirt,
-  Sparkles,
-  Users,
-} from "lucide-react";
-import {
-  formatDueDate,
-  STATUS_LABELS,
-  type PlanningTask,
-} from "@/lib/planning-tasks";
-import {
-  currentMilestoneMonths,
-  MILESTONES,
-  milestoneState,
-  type MilestoneState,
-} from "@/lib/planning-timeline";
+import { categoryColor, CATEGORIES, formatMonthYear, STATUS_LABELS, type PlanningTask } from "@/lib/planning-tasks";
+import { daysBefore, effectiveDate, PERIODS, PLAN, periodByKey, periodOfDays, periodOfTask, periodRange, recalcUpdates, todayISO, type PeriodKey } from "@/lib/planning-timeline";
 
-const FOCUS_RING =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
-
-type Icon = ComponentType<{ className?: string; strokeWidth?: number }>;
-const ICONS: Record<string, Icon> = {
-  venue: Landmark,
-  camera: Camera,
-  mail: Mail,
-  cake: Cake,
-  flower: Flower2,
-  shirt: Shirt,
-  sparkles: Sparkles,
-  gem: Gem,
-  users: Users,
-  heart: Heart,
-  gift: Gift,
-  list: ListChecks,
+const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
+const QUICK = ["Venue", "Vendors", "Guests", "Attire", "Décor & Florals", "DIY", "Stationery", "Wedding Day"];
+const MORE = CATEGORIES.filter((c) => !QUICK.includes(c));
+const PHOTO_AFTER: Partial<Record<PeriodKey, { src: string; script: string }>> = {
+  big: { src: "/photo-candlelit-table.jpg", script: "Everything else follows the place." },
+  diy: { src: "/photo-flower-table.jpg", script: "Made by hand, with love." },
 };
 
-const TINTS = [
-  "var(--surface-blush)",
-  "var(--sage)",
-  "var(--gold)",
-  "var(--surface-rose)",
-  "var(--sage)",
-  "var(--gold)",
-  "var(--surface-blush)",
-];
-const PHOTOS: Record<number, string> = {
-  24: "/photo-candlelit-table.jpg",
-  0: "/photo-flower-table.jpg",
-};
+function StatusGlyph({ status }: { status: PlanningTask["status"] }) {
+  const cls = "h-[22px] w-[22px]";
+  if (status === "done") return <CircleCheck className={`${cls} fill-[color-mix(in_srgb,var(--sage)_30%,transparent)] text-sage-deep`} strokeWidth={1.75} aria-hidden />;
+  if (status === "in_progress")
+    return (
+      <svg viewBox="0 0 24 24" className={`${cls} text-ink-2`} aria-hidden>
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" />
+      </svg>
+    );
+  if (status === "waiting") return <Hourglass className={`${cls} text-ink-2`} strokeWidth={1.5} aria-hidden />;
+  if (status === "decision_needed") return <CircleHelp className={`${cls} text-ink-2`} strokeWidth={1.5} aria-hidden />;
+  return <Circle className={`${cls} text-ink-2`} strokeWidth={1.5} aria-hidden />;
+}
 
-function StatePill({
-  state,
-  open,
-  opensIn,
-}: {
-  state: MilestoneState;
-  open: number;
-  opensIn: number;
-}) {
-  const base =
-    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold";
-  switch (state) {
-    case "due":
-      return (
-        <span className={`${base} bg-surface-wine text-white`}>
-          Due now · {open} open
-        </span>
-      );
-    case "behind":
-      return (
-        <span className={`${base} border border-wine text-wine`}>
-          Behind · {open} open
-        </span>
-      );
-    case "done":
-      return (
-        <span className={`${base} bg-surface-olive text-white`}>
-          <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden /> Done
-        </span>
-      );
-    case "empty":
-      return (
-        <span className={`${base} bg-paper text-ink-2`}>
-          Nothing planned yet
-        </span>
-      );
-    case "final":
-      return (
-        <span className={`${base} bg-surface-olive text-white`}>
-          You&apos;re here
-        </span>
-      );
-    default:
-      return (
-        <span className={`${base} bg-paper text-ink-2`}>
-          Opens in {opensIn} month{opensIn === 1 ? "" : "s"}
-        </span>
-      );
-  }
+function Who({ v }: { v: PlanningTask["assigned_to"] }) {
+  const dot = (l: string) => <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-paper bg-surface-sage-deep text-[10px] font-semibold text-white">{l}</span>;
+  return (
+    <span className="flex -space-x-1.5" title={v === "together" ? "Both of us" : v === "ariel" ? "Ariel" : "Fred"}>
+      {v === "together" ? <>{dot("A")}{dot("F")}</> : dot(v === "ariel" ? "A" : "F")}
+    </span>
+  );
 }
 
 export default function Timeline({
   tasks,
+  weddingDate,
   daysToGo,
+  busy,
   onOpenTask,
-  onAddTask,
+  onToggleDone,
+  onAdd,
+  onSeed,
+  onRecalc,
 }: {
   tasks: PlanningTask[];
+  weddingDate: string;
   daysToGo: number;
+  busy: string;
   onOpenTask: (id: string) => void;
-  onAddTask: (category: string) => void;
+  onToggleDone: (t: PlanningTask) => void;
+  onAdd: () => void;
+  onSeed: (kind: "plan" | "decor") => void;
+  onRecalc: () => void;
 }) {
-  const current = currentMilestoneMonths(daysToGo);
+  const [category, setCategory] = useState("All");
+  const [who, setWho] = useState<"all" | "ariel" | "fred" | "together">("all");
+  const [upcomingOnly, setUpcomingOnly] = useState(false);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const today = todayISO();
+
+  const done = tasks.filter((t) => t.status === "done").length;
+  const dated = (t: PlanningTask) => effectiveDate(t, weddingDate);
+
+  // The next things to do: not done, soonest target first (anything already past comes first).
+  const next = useMemo(
+    () =>
+      tasks
+        .filter((t) => t.status !== "done" && dated(t))
+        .sort((a, b) => dated(a)!.localeCompare(dated(b)!) || a.sort_order - b.sort_order)
+        .slice(0, 5),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, weddingDate],
+  );
+
+  const filtered = tasks.filter((t) => {
+    if (category !== "All" && t.category !== category) return false;
+    if (who === "ariel" || who === "fred") {
+      if (t.assigned_to !== who && t.assigned_to !== "together") return false;
+    } else if (who === "together" && t.assigned_to !== "together") return false;
+    if (upcomingOnly && t.status === "done") return false;
+    return true;
+  });
+
+  const byPeriod = new Map<string, PlanningTask[]>();
+  for (const t of filtered) {
+    const key = periodOfTask(t, weddingDate);
+    byPeriod.set(key, [...(byPeriod.get(key) ?? []), t]);
+  }
+  for (const list of byPeriod.values()) list.sort((a, b) => (dated(a) ?? "9").localeCompare(dated(b) ?? "9") || a.sort_order - b.sort_order);
+
+  const currentKey = periodOfDays(daysBefore(today, weddingDate)).key;
+  const hasPlan = tasks.some((t) => t.template_key?.startsWith("plan:"));
+  const hasDecor = tasks.some((t) => t.template_key?.startsWith("decor:"));
+  const staleCount = recalcUpdates(tasks, weddingDate).length;
+  const onTheDay = tasks.filter((t) => periodOfTask(t, weddingDate) !== "day" && Object.values(t.wedding_day ?? {}).some(Boolean));
+
+  const sections = [...PERIODS.map((p) => p.key as string), "unscheduled"].filter((k) => k === "day" || (byPeriod.get(k)?.length ?? 0) > 0);
+  const pill = (on: boolean) => `rounded-full border px-4 py-1.5 text-sm ${FOCUS_RING} ${on ? "border-surface-green bg-surface-green text-white" : "border-line bg-paper text-ink hover:border-sage-deep"}`;
+
+  function taskRow(t: PlanningTask) {
+    const d = dated(t);
+    const behind = t.status !== "done" && d != null && d < today;
+    return (
+      <li key={t.id} className="flex items-start gap-3 py-2">
+        <button
+          onClick={() => onToggleDone(t)}
+          aria-label={t.status === "done" ? `Mark “${t.title}” not done` : `Mark “${t.title}” done`}
+          className={`mt-0.5 shrink-0 rounded-full pointer-coarse:p-2 ${FOCUS_RING}`}
+        >
+          <StatusGlyph status={t.status} />
+        </button>
+        <button onClick={() => onOpenTask(t.id)} className={`min-w-0 flex-1 rounded text-left ${FOCUS_RING}`}>
+          <span className={`block leading-snug ${t.status === "done" ? "text-ink-2 line-through decoration-ink-2/40" : "text-ink"}`}>{t.title}</span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-ink-2">
+            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: categoryColor(t.category) }} />
+            {t.category}
+            {d && <span>· {formatMonthYear(d)}</span>}
+            {t.status !== "done" && t.status !== "todo" && <span>· {STATUS_LABELS[t.status]}</span>}
+            {(t.tags ?? []).length > 0 && <span>· {(t.tags ?? []).join(", ")}</span>}
+            {behind && <span className="font-semibold text-wine">· Behind</span>}
+          </span>
+        </button>
+        <Who v={t.assigned_to} />
+      </li>
+    );
+  }
 
   return (
     <section className="mt-6" aria-labelledby="timeline-title">
-      <h2 id="timeline-title" className="font-serif text-3xl font-light">
-        Your Wedding Planning Timeline
-      </h2>
-      <p className="mt-1 text-ink-2">
-        From “we&apos;re getting married!” to “today&apos;s the day.”
-      </p>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-ink-2">Our wedding journey</p>
+          <h2 id="timeline-title" className="mt-2 font-serif text-3xl font-light">Your Wedding Planning Timeline</h2>
+          <TimelineAxis daysToGo={daysToGo} />
+          <div className="mt-1">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="text-ink-2">Planning progress</span>
+              <span className="text-ink">
+                <b className="font-serif text-xl font-light">{done}</b> of {tasks.length} tasks complete
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={tasks.length} aria-label="Tasks complete">
+              <div className="h-full rounded-full bg-sage-deep" style={{ width: `${tasks.length ? (done / tasks.length) * 100 : 0}%` }} />
+            </div>
+            {next[0] && (
+              <p className="mt-4 text-sm text-ink-2">
+                Next milestone: <span className="font-medium text-ink">{next[0].title}</span> · due {formatMonthYear(dated(next[0])!)}
+              </p>
+            )}
+          </div>
+        </div>
 
-      <TimelineAxis daysToGo={daysToGo} />
+        <div className="rounded-2xl bg-[color-mix(in_srgb,var(--sage)_16%,var(--paper))] p-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-ink-2">What&apos;s next</p>
+          {next.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-2">{tasks.length === 0 ? "Add the suggested plan below and your next steps will appear here." : "Nothing is waiting on a date — you're all caught up."}</p>
+          ) : (
+            <ul className="mt-3 flex flex-col gap-3">
+              {next.map((t) => {
+                const d = dated(t)!;
+                return (
+                  <li key={t.id}>
+                    <button onClick={() => onOpenTask(t.id)} className={`block w-full rounded text-left ${FOCUS_RING}`}>
+                      <span className="block font-serif text-lg leading-snug">{t.title}</span>
+                      <span className={`text-sm ${d < today ? "font-semibold text-wine" : "text-ink-2"}`}>{d < today ? `Behind · ${formatMonthYear(d)}` : formatMonthYear(d)}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
 
-      <ol className="mt-4 flex flex-col gap-5">
-        {MILESTONES.map((m, i) => {
-          const { related, open, state, opensIn } = milestoneState(
-            m,
-            tasks,
-            daysToGo,
-            current ?? -1,
-          );
-          const photo = PHOTOS[m.months];
+      {!hasPlan && (
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-paper p-5">
+          <div className="max-w-xl">
+            <p className="font-serif text-xl">Start with a suggested plan</p>
+            <p className="mt-1 text-sm text-ink-2">
+              About {PLAN.length} classic planning tasks, spread from 24 months out to after the wedding, with target dates worked out from your wedding day. They join your Planning Board as normal tasks — edit, move or delete any of them.
+            </p>
+          </div>
+          <button onClick={() => onSeed("plan")} disabled={Boolean(busy)} className={`rounded-full bg-surface-wine px-6 py-2.5 text-sm font-medium text-white disabled:opacity-60 ${FOCUS_RING}`}>
+            {busy === "plan" ? "Adding…" : "Add the suggested plan"}
+          </button>
+        </div>
+      )}
+      {staleCount > 0 && (
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gold bg-[color-mix(in_srgb,var(--gold)_12%,var(--paper))] p-5">
+          <p className="max-w-xl text-sm text-ink">
+            Your wedding date has changed since these dates were suggested. {staleCount} suggested date{staleCount === 1 ? "" : "s"} can be recalculated — dates you chose yourselves stay exactly as they are.
+          </p>
+          <button onClick={onRecalc} disabled={Boolean(busy)} className={`rounded-full bg-surface-green px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60 ${FOCUS_RING}`}>
+            {busy === "recalc" ? "Recalculating…" : "Recalculate suggested dates"}
+          </button>
+        </div>
+      )}
+
+      <div className="mt-8 flex flex-wrap items-center gap-2" role="group" aria-label="Filter the timeline">
+        {["All", ...QUICK].map((c) => (
+          <button key={c} onClick={() => setCategory(c)} aria-pressed={category === c} className={pill(category === c)}>
+            {c}
+          </button>
+        ))}
+        <select aria-label="More categories" value={MORE.includes(category as (typeof MORE)[number]) ? category : ""} onChange={(e) => e.target.value && setCategory(e.target.value)} className={`${pill(MORE.includes(category as (typeof MORE)[number]))} pr-3`}>
+          <option value="">More</option>
+          {MORE.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button onClick={() => setUpcomingOnly((v) => !v)} aria-pressed={upcomingOnly} className={pill(upcomingOnly)}>
+          Show only upcoming
+        </button>
+        <div role="group" aria-label="Whose tasks" className="flex rounded-full border border-line bg-paper p-1">
+          {([["all", "Everyone"], ["ariel", "Ariel"], ["fred", "Fred"], ["together", "Both"]] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setWho(k)} aria-pressed={who === k} className={`rounded-full px-3.5 py-1 text-sm ${FOCUS_RING} ${who === k ? "bg-surface-sage-deep text-white" : "text-ink hover:bg-bg"}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <button onClick={onAdd} className={`ml-auto flex items-center gap-2 rounded-full bg-surface-wine px-5 py-2 text-sm font-medium text-white ${FOCUS_RING}`}>
+          <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Add task
+        </button>
+      </div>
+      {!hasDecor && (
+        <p className="mt-3 text-sm text-ink-2">
+          Planning décor and florals?{" "}
+          <button onClick={() => onSeed("decor")} disabled={Boolean(busy)} className={`rounded font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>
+            {busy === "decor" ? "Adding…" : "Add the Décor & Florals checklist"}
+          </button>{" "}
+          — arch, aisle, centerpieces, bouquets and more, as ideas you can date whenever you&apos;re ready.
+        </p>
+      )}
+
+      {tasks.length > 0 && filtered.length === 0 && <p className="mt-10 text-ink-2">No tasks match these filters.</p>}
+
+      <ol className="relative mt-10 flex flex-col gap-10 before:absolute before:bottom-2 before:left-[7px] before:top-2 before:w-px before:bg-line">
+        {sections.map((key) => {
+          const p = periodByKey(key);
+          const list = byPeriod.get(key) ?? [];
+          const complete = list.length > 0 && list.every((t) => t.status === "done");
+          const isOpen = open[key] ?? !complete;
+          const doneN = list.filter((t) => t.status === "done").length;
+          const isNow = key === currentKey;
+          const isDay = key === "day";
+          const photo = PHOTO_AFTER[key as PeriodKey];
           return (
-            <li
-              key={m.months}
-              className="grid gap-3 md:grid-cols-[8.5rem_minmax(0,1fr)] md:gap-6"
-            >
-              <div className="flex items-baseline gap-2 md:flex-col md:items-end md:gap-0 md:pt-6 md:text-right">
-                <p className="font-serif text-4xl font-light leading-none">
-                  {m.months === 0 ? "Final" : m.months}
-                </p>
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-ink-2">
-                  {m.months === 0 ? "month" : "months"}
-                </p>
-              </div>
-              <div
-                className={`overflow-hidden rounded-2xl ${state === "upcoming" ? "opacity-80" : ""}`}
-                style={{
-                  background: `color-mix(in srgb, ${TINTS[i]} 18%, var(--paper))`,
-                }}
+            <li key={key} className="relative pl-9">
+              <span
+                aria-hidden
+                className={`absolute left-0 top-2 flex h-[15px] w-[15px] items-center justify-center rounded-full border-2 ${
+                  complete ? "border-sage-deep bg-sage-deep text-white" : isNow ? "border-wine bg-wine" : "border-line bg-paper"
+                }`}
               >
-                <div className="flex flex-col md:flex-row">
-                  <div className="flex-1">
-                    <div className="flex items-start gap-3 p-5">
-                      <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-ink-2">
-                            {m.title}
-                          </p>
-                          {m.items.length > 0 && (
-                            <ul className="mt-3 flex flex-wrap gap-2">
-                              {m.items.map((it) => {
-                                const Ic = ICONS[it.icon] ?? Sparkles;
-                                return (
-                                  <li
-                                    key={it.label}
-                                    className="flex items-center gap-1.5 rounded-full bg-paper px-3 py-1.5 text-sm text-ink"
-                                  >
-                                    <Ic
-                                      className="h-4 w-4 text-ink-2"
-                                      strokeWidth={1.5}
-                                      aria-hidden
-                                    />
-                                    {it.label}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          )}
-                          {m.note && (
-                            <p className="mt-3 -rotate-1 font-script text-2xl leading-tight text-sage-deep">
-                              {m.note}
-                            </p>
-                          )}
-                        </div>
-                        <span className="flex items-center gap-2">
-                          <StatePill
-                            state={state}
-                            open={open.length}
-                            opensIn={opensIn}
-                          />
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => onAddTask(m.categories[0] ?? "Other")}
-                        aria-label={`Add a ${m.categories[0] ?? "new"} task to ${m.title}`}
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-wine text-white ${FOCUS_RING}`}
-                      >
-                        <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
-                      </button>
-                    </div>
-                    {related.length > 0 && (
-                      <div className="border-t border-line/70 px-5 pb-5 pt-4">
-                        {
-                          <ul className="flex flex-col gap-1.5">
-                            {related.map((t) => (
-                              <li key={t.id}>
-                                <button
-                                  onClick={() => onOpenTask(t.id)}
-                                  className={`flex w-full items-center gap-3 rounded-xl bg-paper px-4 py-2.5 text-left text-sm ${FOCUS_RING}`}
-                                >
-                                  {t.status === "done" ? (
-                                    <Check
-                                      className="h-4 w-4 shrink-0 text-sage-deep"
-                                      strokeWidth={2.25}
-                                      aria-hidden
-                                    />
-                                  ) : (
-                                    <span
-                                      className="h-4 w-4 shrink-0 rounded-full border border-line"
-                                      aria-hidden
-                                    />
-                                  )}
-                                  <span
-                                    className={`min-w-0 flex-1 ${t.status === "done" ? "text-ink-2 line-through" : "font-medium text-ink"}`}
-                                  >
-                                    {t.title}
-                                  </span>
-                                  <span className="shrink-0 text-xs text-ink-2">
-                                    {STATUS_LABELS[t.status]}
-                                    {t.due_date
-                                      ? ` · ${formatDueDate(t.due_date)}`
-                                      : ""}
-                                  </span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        }
-                      </div>
+                {complete && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+              </span>
+
+              <div className={complete && !isOpen ? "opacity-70" : ""}>
+                <button
+                  onClick={() => list.length > 0 && setOpen((o) => ({ ...o, [key]: !isOpen }))}
+                  aria-expanded={list.length > 0 ? isOpen : undefined}
+                  className={`flex w-full flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded text-left ${FOCUS_RING} ${list.length ? "cursor-pointer" : "cursor-default"}`}
+                >
+                  <span>
+                    <span className="block text-[11px] font-medium uppercase tracking-[0.24em] text-ink-2">
+                      {p ? p.label : "Unscheduled"}
+                      {isNow && <span className="ml-3 rounded-full bg-surface-wine px-2.5 py-0.5 tracking-[0.16em] text-white">Now</span>}
+                    </span>
+                    <span className={`mt-1 block font-serif font-light ${isDay ? "text-4xl" : "text-2xl"}`}>{complete && !isOpen ? `✓ ${p?.title}` : p ? p.title : "Not dated yet"}</span>
+                  </span>
+                  <span className="flex items-center gap-3 text-sm text-ink-2">
+                    {p ? periodRange(p, weddingDate) : "Give these a target date to place them"}
+                    {list.length > 0 && (
+                      <>
+                        <span className={complete ? "font-semibold text-sage-deep" : ""}>{doneN}/{list.length} complete</span>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} strokeWidth={1.75} aria-hidden />
+                      </>
+                    )}
+                  </span>
+                </button>
+
+                {complete && !isOpen && <p className="mt-1 text-sm text-ink-2">View completed tasks</p>}
+
+                {isOpen && list.length > 0 && <ul className="mt-2 divide-y divide-line/60">{list.map(taskRow)}</ul>}
+
+                {isDay && (
+                  <div className="mt-3 text-sm text-ink-2">
+                    <p>
+                      Planning ends here — the day itself is run from{" "}
+                      <Link href="/wedding-day" className={`inline-flex items-center gap-1 rounded font-semibold text-sage-deep underline underline-offset-2 ${FOCUS_RING}`}>
+                        Wedding Day <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                      </Link>
+                      .
+                    </p>
+                    {onTheDay.length > 0 && (
+                      <ul className="mt-3 divide-y divide-line/60 text-ink">
+                        {onTheDay.map((t) => (
+                          <li key={t.id} className="py-2">
+                            <button onClick={() => onOpenTask(t.id)} className={`block w-full rounded text-left ${FOCUS_RING}`}>
+                              <span className="block">{t.title}</span>
+                              <span className="text-sm text-ink-2">
+                                {[t.wedding_day?.location, t.wedding_day?.person && `Setup by ${t.wedding_day.person}`, t.wedding_day?.ready_by && `Ready by ${t.wedding_day.ready_by}`].filter(Boolean).join(" · ")}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
-                  {photo && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={photo}
-                      alt=""
-                      loading="lazy"
-                      className="h-40 w-full object-cover md:h-auto md:w-56"
-                    />
-                  )}
-                </div>
+                )}
               </div>
+
+              {photo && (
+                <figure className="relative mt-8 overflow-hidden rounded-2xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.src} alt="" loading="lazy" className="h-44 w-full object-cover sm:h-56" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/45 to-transparent" />
+                  <figcaption className="absolute bottom-4 left-5 -rotate-2 font-script text-3xl text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.5)]">{photo.script}</figcaption>
+                </figure>
+              )}
             </li>
           );
         })}

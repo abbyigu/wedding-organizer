@@ -95,14 +95,14 @@ export function collectionTabs(ideas: Pick<IdeaPin, "category">[]): string[] {
 // Inspiration collections that share a name with a Planning Board category keep it;
 // the rest map to the closest one.
 const PLANNING_CATEGORY: Record<string, string> = {
-  "Little Details": "Other",
-  Décor: "Décor",
+  "Little Details": "Décor & Florals",
+  Décor: "Décor & Florals",
   Attire: "Attire",
-  Flowers: "Décor",
-  "Food & drinks": "Food",
+  Flowers: "Décor & Florals",
+  "Food & drinks": "Food & Drink",
   DIY: "DIY",
-  Cake: "Food",
-  Colors: "Décor",
+  Cake: "Food & Drink",
+  Colors: "Décor & Florals",
   "Wedding dress": "Attire",
 };
 export function planningCategoryFor(collection: string): string {
