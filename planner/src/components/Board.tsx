@@ -65,7 +65,7 @@ function Avatars({ value }: { value: Assignee }) {
   return dot(value === "ariel" ? "A" : "F", value);
 }
 
-export default function Board({ initialTasks, userName, daysToGo, heroImage }: { initialTasks: PlanningTask[]; userName: string; daysToGo: number; heroImage: string | null }) {
+export default function Board({ initialTasks, userName, daysToGo }: { initialTasks: PlanningTask[]; userName: string; daysToGo: number }) {
   const confirm = useConfirm();
   const [tasks, setTasks] = useState(initialTasks);
   const [error, setError] = useState("");
@@ -375,12 +375,8 @@ export default function Board({ initialTasks, userName, daysToGo, heroImage }: {
             </p>
           </div>
           <div className="relative min-h-[13rem] overflow-hidden rounded-2xl bg-[color-mix(in_srgb,var(--sage)_30%,var(--paper))]">
-            {heroImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            ) : (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,color-mix(in_srgb,var(--gold)_35%,var(--paper)),color-mix(in_srgb,var(--surface-blush)_25%,var(--paper)))]" />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/photo-flower-table.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-[50%_35%]" />
             <p className="absolute bottom-5 right-4 -rotate-2 bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] px-5 py-3 text-center text-[11px] font-medium uppercase leading-[1.8] tracking-[0.24em] text-ink shadow-sm sm:right-6">
               Good things
               <br />

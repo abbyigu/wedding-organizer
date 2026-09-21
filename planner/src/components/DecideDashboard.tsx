@@ -45,13 +45,11 @@ const CTA_LABEL: Record<Kind, string> = {
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 const PILL = "rounded-full px-3 py-1 text-[13px] font-semibold";
 
+const FALLBACK_PHOTO = "/photo-candlelit-table.jpg";
+
 function Cover({ s, className }: { s: DecisionSummary; className: string }) {
-  return s.image ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={s.image} alt="" className={`${className} object-cover`} />
-  ) : (
-    <div className={`${className} bg-[radial-gradient(circle_at_30%_30%,color-mix(in_srgb,var(--gold)_30%,var(--paper)),color-mix(in_srgb,var(--surface-blush)_28%,var(--paper)))]`} />
-  );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={s.image ?? FALLBACK_PHOTO} alt="" className={`${className} object-cover`} />;
 }
 
 function Count({ n, tone }: { n: number; tone: string }) {
@@ -193,12 +191,8 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
             <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
               {needsAttention.map((s, i) => (
                 <Link key={s.id} href={s.href} className={`group relative flex min-h-[17rem] overflow-hidden rounded-2xl text-white ${FOCUS_RING}`}>
-                  {s.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.image} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
-                  ) : (
-                    <div className={`absolute inset-0 ${i === 0 ? "bg-surface-wine" : "bg-surface-olive"}`} />
-                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={s.image ?? FALLBACK_PHOTO} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-black/5" />
                   <div className="relative flex flex-col justify-end p-6 sm:p-8">
                     <p className="text-[11px] font-medium uppercase tracking-[0.24em]">{s.category}</p>
