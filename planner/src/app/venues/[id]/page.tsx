@@ -3,11 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import VenueProfile from "@/components/VenueProfile";
 import { displayName } from "@/lib/auth-names";
 import { getBudgetContext } from "@/lib/budget-context";
+import { getLinkedCosts } from "@/lib/budget-linked";
+import type { BudgetExpense } from "@/lib/budget-extras";
+import type { PlanningTask } from "@/lib/planning-tasks";
 
 export const dynamic = "force-dynamic";
 
-export default async function VenuePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function VenuePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params;
+  const { tab } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,6 +27,11 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
   }
 
   const { assumptions, sharedVals } = await getBudgetContext(supabase);
+  const [{ data: expenses }, { data: tasks }, linked] = await Promise.all([
+    supabase.from("budget_expenses").select("*").order("sort_order", { ascending: true }),
+    supabase.from("planning_tasks").select("*").like("template_key", `venue:${id}:%`).order("created_at", { ascending: true }),
+    getLinkedCosts(supabase),
+  ]);
 
   return (
     <VenueProfile
@@ -31,6 +40,10 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
       userName={displayName(user?.email)}
       assumptions={assumptions}
       sharedVals={sharedVals}
+      expenses={(expenses ?? []) as BudgetExpense[]}
+      linked={linked.items}
+      tasks={(tasks ?? []) as PlanningTask[]}
+      initialTab={tab}
     />
   );
 }

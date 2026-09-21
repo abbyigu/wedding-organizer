@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { researchPercent } from "@/lib/venue-profile";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, CalendarDays, Coins, FileText, GitCompareArrows, Heart, ListChecks, MapPin, MapPinned, Plus, Sparkles, Users } from "lucide-react";
@@ -73,6 +74,7 @@ function buildTabs(): CompareTab[] {
         { label: "Location", value: (v) => v.location || null },
         { label: "Period", value: (v) => v.period || null },
         { label: "Favourite", value: (v) => (v.is_favourite ? "★ Yes" : "No") },
+        { label: "Research complete", value: (v) => `${researchPercent(v)}%` },
       ],
       more: [],
     },

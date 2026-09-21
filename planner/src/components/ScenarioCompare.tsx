@@ -11,7 +11,7 @@ const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visibl
 const MIN = 2;
 const MAX = 4;
 
-function CellView({ cell }: { cell: Cell }) {
+export function CellView({ cell }: { cell: Cell }) {
   if (cell.kind === "amount") {
     return (
       <span>

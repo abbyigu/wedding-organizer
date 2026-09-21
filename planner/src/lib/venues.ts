@@ -30,6 +30,12 @@ export type Venue = {
   is_favourite: boolean;
   lat?: number | null; // absent until migration 033 has been run
   lng?: number | null;
+  // Absent until migration 041 has been run.
+  venue_type?: string;
+  season_notes?: string;
+  amenities?: Record<string, string>;
+  links?: { label: string; url: string }[];
+  files?: { path: string; name: string; addedAt: string }[];
   quote_checklist: Record<string, boolean>;
   budget_note: string;
   budget_lines: BudgetLine[];
