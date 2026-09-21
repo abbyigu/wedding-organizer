@@ -9,7 +9,7 @@ export const BUDGET_GROUPS = [
   "Attire & beauty",
   "Travel & accommodation",
   "DIY projects",
-  "Events & party",
+  "Wedding weekend",
   "Other",
 ] as const;
 export type BudgetGroup = (typeof BUDGET_GROUPS)[number];
@@ -17,7 +17,7 @@ export type BudgetGroup = (typeof BUDGET_GROUPS)[number];
 // Costs entered on other pages (DIY, Events, Wedding Party). Budget only reads them, so each
 // number lives in exactly one place; href sends you back to where it's edited.
 export type LinkedCost = { group: BudgetGroup; label: string; amount: number; href: string; source: string };
-export const LINKED_GROUPS: readonly BudgetGroup[] = ["DIY projects", "Events & party"];
+export const LINKED_GROUPS: readonly BudgetGroup[] = ["DIY projects", "Wedding weekend"];
 
 // SHARED_LINES is a fixed list (see lib/venues.ts) — this maps each label to
 // the display group it belongs in. New custom expenses just pick a group

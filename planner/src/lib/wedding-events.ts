@@ -106,3 +106,46 @@ export function eventCounts(
   }
   return c;
 }
+
+export const EVENT_EXPENSE_CATEGORIES = ["Venue / restaurant", "Food", "Drinks", "Cake / dessert", "Décor", "Stationery", "Transportation", "Tips", "Other"];
+
+export type EventExpense = { id: string; event_id: string; category: string; label: string; amount: number; paid: boolean; sort_order: number };
+
+// What an event costs: its line items once there are any, otherwise the rough estimate.
+export function eventCost(e: Pick<WeddingEvent, "budget_estimate">, expenses: Pick<EventExpense, "amount">[]) {
+  const sum = expenses.reduce((t, x) => t + (x.amount || 0), 0);
+  return sum > 0 ? sum : e.budget_estimate ?? 0;
+}
+
+export const eventStepsDone = (e: WeddingEvent, expenses: unknown[]) => ({
+  place: Boolean(e.event_date && e.location.trim()),
+  menu: Boolean(e.menu.trim()),
+  vendor: Boolean(e.vendor_id),
+  budget: e.budget_estimate != null || expenses.length > 0,
+});
+
+export type TimelineMoment = { id: string; moment_date: string; time: string; title: string; note: string; kind: string; sort_order: number };
+
+export const MOMENT_KINDS = [
+  { key: "free", label: "Guest free time" },
+  { key: "checkin", label: "Hotel check-in" },
+  { key: "transport", label: "Transportation" },
+  { key: "getting-ready", label: "Getting ready" },
+  { key: "photos", label: "Photos" },
+  { key: "shuttle", label: "Shuttle" },
+  { key: "after-party", label: "After-party" },
+  { key: "other", label: "Other" },
+];
+
+// "6:00 PM – 10:00 PM" / "18:30" -> minutes since midnight, for ordering within a day.
+export function parseMinutes(t: string): number {
+  const m = t.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (!m) return 24 * 60;
+  let h = +m[1];
+  const ap = m[3]?.toLowerCase();
+  if (ap === "pm" && h < 12) h += 12;
+  if (ap === "am" && h === 12) h = 0;
+  return h * 60 + +(m[2] ?? 0);
+}
+
+export const EVENT_TASK_CATEGORY: Record<string, string> = { "rehearsal-dinner": "Rehearsal Dinner", "welcome-party": "Welcome Party", brunch: "Brunch" };

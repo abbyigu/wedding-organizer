@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarCheck, CalendarDays, CheckCircle2, Clock, Hourglass, MapPin, Plus, ScrollText, Shirt, UserRound, UserX, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Guest } from "@/lib/guests";
+import EventsViewTabs from "@/components/EventsViewTabs";
 import NewEventDialog, { type NewEvent } from "@/components/NewEventDialog";
 import { blankWeddingEvent, EVENT_PHOTOS, eventCounts, eventHref, inviteLabel, type EventGuest, type WeddingEvent } from "@/lib/wedding-events";
 
@@ -73,6 +74,7 @@ export default function WeddingEvents({ initialEvents, initialEventGuests, guest
             <h2 className="font-serif text-3xl font-medium">Our events</h2>
             <p className="text-ink-2">Every wedding-related event, and who&apos;s invited.</p>
           </div>
+          <EventsViewTabs active="all" />
           <div role="tablist" aria-label="Upcoming or past" className="flex rounded-full border border-line bg-paper p-1 text-sm">
             {([["upcoming", "Upcoming", upcoming.length], ["past", "Past", past.length]] as const).map(([k, label, n]) => (
               <button key={k} role="tab" aria-selected={show === k} onClick={() => setShow(k)} className={`rounded-full px-4 py-2 font-semibold ${show === k ? "bg-surface-green text-white" : "text-ink-2 hover:text-ink"} ${FOCUS_RING}`}>

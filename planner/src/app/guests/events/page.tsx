@@ -1,22 +1,36 @@
 import { createClient } from "@/lib/supabase/server";
 import WeddingEvents from "@/components/WeddingEvents";
-import type { EventGuest, WeddingEvent } from "@/lib/wedding-events";
+import WeddingWeekend from "@/components/WeddingWeekend";
+import type { EventExpense, EventGuest, TimelineMoment, WeddingEvent } from "@/lib/wedding-events";
 
 export const dynamic = "force-dynamic";
 
-export default async function GuestsEventsPage() {
+export default async function GuestsEventsPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const { view } = await searchParams;
   const supabase = await createClient();
-  const [{ data: events }, { data: eventGuests }, { data: guests }] = await Promise.all([
+  const [{ data: events }, { data: eventGuests }, { data: guests }, { data: expenses }, { data: moments, error: momentsError }, { data: settings }, { data: dayItems }] = await Promise.all([
     supabase.from("wedding_events").select("*").order("sort_order", { ascending: true }),
     supabase.from("event_guests").select("*"),
     supabase.from("guests").select("*").order("sort_order", { ascending: true }),
+    supabase.from("event_expenses").select("*"),
+    supabase.from("timeline_moments").select("*").order("sort_order", { ascending: true }),
+    supabase.from("budget_settings").select("wedding_date").eq("id", true).maybeSingle(),
+    supabase.from("wedding_day_events").select("id, time, title, sort_order").order("sort_order", { ascending: true }),
   ]);
 
+  if (view === "all") {
+    return <WeddingEvents initialEvents={(events ?? []) as WeddingEvent[]} initialEventGuests={(eventGuests ?? []) as EventGuest[]} guests={guests ?? []} />;
+  }
   return (
-    <WeddingEvents
+    <WeddingWeekend
       initialEvents={(events ?? []) as WeddingEvent[]}
       initialEventGuests={(eventGuests ?? []) as EventGuest[]}
       guests={guests ?? []}
+      expenses={(expenses ?? []) as EventExpense[]}
+      initialMoments={(moments ?? []) as TimelineMoment[]}
+      momentsMissing={!!momentsError}
+      weddingDate={settings?.wedding_date ?? null}
+      weddingDayItems={dayItems ?? []}
     />
   );
 }

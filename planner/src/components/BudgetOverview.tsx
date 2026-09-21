@@ -30,7 +30,7 @@ const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
   "Attire & beauty": Shirt,
   "Travel & accommodation": Plane,
   "DIY projects": Hammer,
-  "Events & party": PartyPopper,
+  "Wedding weekend": PartyPopper,
   Other: MoreHorizontal,
 };
 
