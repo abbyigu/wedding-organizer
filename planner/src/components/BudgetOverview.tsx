@@ -87,7 +87,7 @@ export default function BudgetOverview({
           { Icon: Calculator, label: remaining >= 0 ? "Remaining" : "Over ceiling", value: fmt(Math.abs(remaining)), note: `${ceilingPct}% used`, warn: remaining < 0 },
           { Icon: CreditCard, label: "Paid so far", value: fmt(paid), note: `of ${fmt(paid + owed)} committed`, warn: false },
           { Icon: ReceiptText, label: "Still owed", value: fmt(owed), note: overdueCount > 0 ? `${overdueCount} overdue` : "on track", warn: overdueCount > 0 },
-        ].map(({ Icon, label, value, note, warn }, i) => (
+        ].map(({ Icon, label, value, note, warn }) => (
           <div key={label} className="flex items-center gap-4 bg-paper p-5 sm:p-6">
             <Icon className={`h-9 w-9 shrink-0 ${warn ? "text-wine" : "text-sage-deep"}`} strokeWidth={1.1} aria-hidden />
             <div>
