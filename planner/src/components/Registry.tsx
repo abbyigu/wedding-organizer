@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Check, Copy, Ellipsis, ExternalLink, Gift, Plus, Share2, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useConfirm } from "@/components/ConfirmProvider";
@@ -58,6 +58,9 @@ export default function Registry({
   const [menuId, setMenuId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const menuTriggers = useRef<Record<string, HTMLButtonElement | null>>({});
+  const lastMenuId = useRef<string | null>(null);
+  const skipMenuFocusReturn = useRef(false); // set just before an action that moves focus itself (opens a dialog)
 
   const partner = partnerName(userName || "Ariel");
   const shown = sortRegistries(entries);
@@ -81,6 +84,19 @@ export default function Registry({
     };
   }, [menuId]);
 
+  // Whichever way the card options popover closes (Escape, outside click, or picking an
+  // action), send focus back to the ⋯ button that opened it instead of dropping it.
+  useEffect(() => {
+    if (menuId) {
+      lastMenuId.current = menuId;
+      return;
+    }
+    const id = lastMenuId.current;
+    lastMenuId.current = null;
+    if (id && !skipMenuFocusReturn.current) menuTriggers.current[id]?.focus();
+    skipMenuFocusReturn.current = false;
+  }, [menuId]);
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(publicUrl);
@@ -97,9 +113,8 @@ export default function Registry({
     let idea_id = existing?.idea_id ?? null;
     const oldPath = image_path;
     if (f.cover.kind === "upload") {
-      const ext = (f.cover.file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const path = `${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from(COVER_BUCKET).upload(path, f.cover.file);
+      const path = `${crypto.randomUUID()}.${f.cover.ext}`;
+      const { error: upErr } = await supabase.storage.from(COVER_BUCKET).upload(path, f.cover.file, { contentType: f.cover.ext === "jpg" ? "image/jpeg" : undefined });
       if (upErr) return `Couldn't upload the image (${upErr.message}). Has migration 044 been run?`;
       image_path = path;
       idea_id = null;
@@ -129,7 +144,8 @@ export default function Registry({
     if (err || !data) return err?.message ?? "Couldn't save.";
 
     const saved = data as RegistryEntry;
-    if (f.is_primary) await supabase.from("registries").update({ is_primary: false }).neq("id", saved.id);
+    // A DB trigger (migration 045) clears is_primary on every other row atomically —
+    // no second round-trip here, so two partners can't race to different winners.
     setEntries((es) => {
       const next = existing ? es.map((e) => (e.id === saved.id ? saved : e)) : [...es, saved];
       return f.is_primary ? next.map((e) => (e.id === saved.id ? e : { ...e, is_primary: false })) : next;
@@ -147,7 +163,7 @@ export default function Registry({
 
   async function makePrimary(id: string) {
     setMenuId(null);
-    await supabase.from("registries").update({ is_primary: false }).neq("id", id);
+    // One write — the registries_single_primary trigger clears the others atomically.
     await patchEntry(id, { is_primary: true });
     setEntries((es) => es.map((e) => (e.id === id ? e : { ...e, is_primary: false })));
   }
@@ -303,8 +319,9 @@ export default function Registry({
                     <RegistryCover src={coverSrc(e, ideas)} type={t} className={`aspect-[16/9] rounded-t-2xl ${hidden ? "opacity-60" : ""}`} />
                     <div className="absolute right-3 top-3 z-10" data-registry-menu>
                       <button
+                        ref={(el) => { menuTriggers.current[e.id] = el; }}
                         onClick={() => setMenuId(menuId === e.id ? null : e.id)}
-                        aria-haspopup="menu"
+                        aria-haspopup="true"
                         aria-expanded={menuId === e.id}
                         aria-label={`Options for ${e.store_name}`}
                         className={`flex h-11 w-11 items-center justify-center rounded-full bg-paper/90 text-ink shadow-sm hover:bg-paper ${FOCUS_RING}`}
@@ -312,11 +329,13 @@ export default function Registry({
                         <Ellipsis className="h-5 w-5" strokeWidth={1.75} aria-hidden />
                       </button>
                       {menuId === e.id && (
-                        <div role="menu" aria-label={`${e.store_name} options`} className="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-xl border border-line bg-paper py-1 shadow-md">
-                          <button role="menuitem" onClick={() => { setMenuId(null); setDialog({ entry: e }); }} className="block min-h-11 w-full px-4 text-left text-sm font-semibold hover:bg-bg">Edit</button>
-                          <button role="menuitem" onClick={() => { setMenuId(null); void patchEntry(e.id, { visible: hidden }); }} className="block min-h-11 w-full px-4 text-left text-sm font-semibold hover:bg-bg">{hidden ? "Show to guests" : "Hide from guests"}</button>
-                          {!e.is_primary && <button role="menuitem" onClick={() => makePrimary(e.id)} className="block min-h-11 w-full px-4 text-left text-sm font-semibold hover:bg-bg">Make primary</button>}
-                          <button role="menuitem" onClick={() => removeEntry(e)} className="block min-h-11 w-full px-4 text-left text-sm font-semibold text-wine hover:bg-bg">Delete</button>
+                        // Plain buttons, not an ARIA menu widget — Tab already reaches each one in order,
+                        // so this doesn't promise arrow-key navigation it would then have to provide.
+                        <div className="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded-xl border border-line bg-paper py-1 shadow-md">
+                          <button onClick={() => { skipMenuFocusReturn.current = true; setMenuId(null); setDialog({ entry: e }); }} className="block min-h-11 w-full px-4 text-left text-sm font-semibold hover:bg-bg">Edit</button>
+                          <button onClick={() => { setMenuId(null); void patchEntry(e.id, { visible: hidden }); }} className="block min-h-11 w-full px-4 text-left text-sm font-semibold hover:bg-bg">{hidden ? "Show to guests" : "Hide from guests"}</button>
+                          {!e.is_primary && <button onClick={() => makePrimary(e.id)} className="block min-h-11 w-full px-4 text-left text-sm font-semibold hover:bg-bg">Make primary</button>}
+                          <button onClick={() => { skipMenuFocusReturn.current = true; removeEntry(e); }} className="block min-h-11 w-full px-4 text-left text-sm font-semibold text-wine hover:bg-bg">Delete</button>
                         </div>
                       )}
                     </div>

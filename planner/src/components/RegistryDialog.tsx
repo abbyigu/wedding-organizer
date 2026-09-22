@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ImagePlus, X } from "lucide-react";
 import { useDialog } from "@/lib/use-dialog";
 import { normalizeUrl } from "@/lib/ideas";
 import RegistryCover, { coverSrc, TYPE_ICON } from "@/components/RegistryCover";
-import { REGISTRY_TYPE_ORDER, REGISTRY_TYPES, typeOf, type IdeaImage, type RegistryEntry, type RegistryType } from "@/lib/registry";
+import { REGISTRY_TYPE_ORDER, REGISTRY_TYPES, resizeCoverImage, typeOf, type IdeaImage, type RegistryEntry, type RegistryType } from "@/lib/registry";
 
 const FIELD = "mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2.5 text-sm outline-none focus:border-sage-deep";
 const LABEL = "block text-xs font-semibold uppercase tracking-wide text-ink-2";
@@ -19,7 +19,8 @@ export type RegistryForm = {
   visible: boolean;
   is_primary: boolean;
   // Exactly one cover source: keep what's there, upload a file, pick an Inspiration pin, or none.
-  cover: { kind: "keep" } | { kind: "upload"; file: File } | { kind: "idea"; id: string } | { kind: "none" };
+  // An upload's file is already resized for the web by the time it lands here.
+  cover: { kind: "keep" } | { kind: "upload"; file: Blob; ext: string } | { kind: "idea"; id: string } | { kind: "none" };
 };
 
 type Source = "upload" | "inspiration";
@@ -50,10 +51,19 @@ export default function RegistryDialog({
   });
   const [source, setSource] = useState<Source>(entry?.idea_id ? "inspiration" : "upload");
   const [preview, setPreview] = useState("");
+  const [pickedName, setPickedName] = useState("");
+  const [resizing, setResizing] = useState(false);
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const set = <K extends keyof RegistryForm>(k: K, v: RegistryForm[K]) => setF((p) => ({ ...p, [k]: v }));
+
+  // The preview is a blob: URL — release it whenever it's replaced or the dialog closes.
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   // What the cover shows right now, given the choice made in this dialog.
   const shown =
@@ -62,13 +72,18 @@ export default function RegistryDialog({
     : f.cover.kind === "none" ? ""
     : entry ? coverSrc(entry, ideas) : "";
 
-  function pickFile(file: File | undefined) {
+  async function pickFile(file: File | undefined) {
     if (!file) return;
     if (!file.type.startsWith("image/")) return setErr("Choose an image file.");
     if (file.size > 5 * 1024 * 1024) return setErr("That image is over 5 MB. Try a smaller one.");
     setErr("");
-    setPreview(URL.createObjectURL(file));
-    set("cover", { kind: "upload", file });
+    setResizing(true);
+    const resized = await resizeCoverImage(file);
+    setResizing(false);
+    const ext = resized === file ? (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg" : "jpg";
+    setPreview(URL.createObjectURL(resized));
+    setPickedName(file.name);
+    set("cover", { kind: "upload", file: resized, ext });
   }
 
   async function submit(e: React.FormEvent) {
@@ -142,11 +157,13 @@ export default function RegistryDialog({
               <div className="min-w-0 flex-1">
                 {source === "upload" ? (
                   <>
-                    <input ref={fileRef} id="reg-file" type="file" accept="image/*" onChange={(e) => pickFile(e.target.files?.[0])} className="sr-only" />
-                    <button type="button" onClick={() => fileRef.current?.click()} className="flex min-h-11 items-center gap-2 rounded-full border border-line px-4 text-sm font-semibold hover:bg-bg">
-                      <ImagePlus className="h-4 w-4" strokeWidth={1.5} aria-hidden /> {shown ? "Choose a different image" : "Choose an image"}
+                    <input ref={fileRef} id="reg-file" type="file" accept="image/*" onChange={(e) => void pickFile(e.target.files?.[0])} className="sr-only" />
+                    <button type="button" disabled={resizing} onClick={() => fileRef.current?.click()} className="flex min-h-11 items-center gap-2 rounded-full border border-line px-4 text-sm font-semibold hover:bg-bg disabled:opacity-60">
+                      <ImagePlus className="h-4 w-4" strokeWidth={1.5} aria-hidden /> {resizing ? "Preparing image…" : shown ? "Choose a different image" : "Choose an image"}
                     </button>
-                    <p className="mt-1.5 text-xs text-ink-2">JPG or PNG, up to 5 MB.</p>
+                    <p className="mt-1.5 text-xs text-ink-2" aria-live="polite">
+                      {pickedName ? `Selected: ${pickedName} — resized for the web.` : "JPG or PNG, up to 5 MB."}
+                    </p>
                   </>
                 ) : ideas.length === 0 ? (
                   <p className="text-sm text-ink-2">No Inspiration pins with an image yet. Add one on the Inspiration board and it will show up here. Nothing is copied, so the registry always uses the pin&apos;s image.</p>
@@ -164,7 +181,7 @@ export default function RegistryDialog({
                   </ul>
                 )}
                 {shown && (
-                  <button type="button" onClick={() => { set("cover", { kind: "none" }); setPreview(""); }} className="mt-1.5 min-h-9 text-xs font-semibold text-wine">
+                  <button type="button" onClick={() => { set("cover", { kind: "none" }); setPreview(""); setPickedName(""); }} className="mt-1.5 min-h-9 text-xs font-semibold text-wine">
                     Remove image
                   </button>
                 )}
@@ -192,7 +209,7 @@ export default function RegistryDialog({
           {err && <p role="alert" className="mt-3 text-sm text-wine">{err}</p>}
           <div className="mt-5 flex justify-end gap-2">
             <button type="button" onClick={onClose} className="min-h-11 rounded-full border border-line px-5 text-sm font-semibold hover:bg-bg">Cancel</button>
-            <button disabled={saving} className="min-h-11 rounded-full bg-surface-sage-deep px-5 text-sm font-semibold text-white disabled:opacity-60">{saving ? "Saving…" : entry ? "Save" : "Add registry"}</button>
+            <button disabled={saving || resizing} className="min-h-11 rounded-full bg-surface-sage-deep px-5 text-sm font-semibold text-white disabled:opacity-60">{saving ? "Saving…" : entry ? "Save" : "Add registry"}</button>
           </div>
         </form>
       </div>

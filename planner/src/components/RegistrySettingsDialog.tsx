@@ -55,9 +55,15 @@ export default function RegistrySettingsDialog({
 
           <label htmlFor="rs-slug" className={`${LABEL} mt-3`}>Your link</label>
           <div className="mt-1 flex items-center rounded-lg border border-line bg-bg focus-within:border-sage-deep">
-            <span className="shrink-0 pl-3 text-sm text-ink-2">{host}/</span>
-            <input id="rs-slug" value={s.slug} onChange={(e) => setS({ ...s, slug: e.target.value })} className="min-w-0 flex-1 bg-transparent px-1 py-2.5 text-sm outline-none" />
-            <span className="shrink-0 pr-3 text-sm text-ink-2">/registry</span>
+            <span id="rs-slug-prefix" className="shrink-0 pl-3 text-sm text-ink-2">{host}/</span>
+            <input
+              id="rs-slug"
+              value={s.slug}
+              onChange={(e) => setS({ ...s, slug: e.target.value })}
+              aria-describedby="rs-slug-prefix rs-slug-suffix"
+              className="min-w-0 flex-1 bg-transparent px-1 py-2.5 text-sm outline-none"
+            />
+            <span id="rs-slug-suffix" className="shrink-0 pr-3 text-sm text-ink-2">/registry</span>
           </div>
           <p className="mt-1 text-xs text-ink-2">If you change this, links you&apos;ve already shared stop working.</p>
 

@@ -47,6 +47,32 @@ export function coverUrl(imagePath: string | null | undefined): string {
   return imagePath ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/registry-covers/${imagePath}` : "";
 }
 
+const COVER_MAX_DIMENSION = 1600; // long edge, in px — plenty for a 16:9 card at any screen size
+const COVER_JPEG_QUALITY = 0.85;
+
+// Downscale and re-encode a picked cover photo before it's uploaded, so a guest opening
+// the public registry page on their phone isn't pulling a multi-megabyte source photo
+// just to fill a small card. Falls back to the original file if canvas encoding fails.
+export async function resizeCoverImage(file: File): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, COVER_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", COVER_JPEG_QUALITY));
+    return blob ?? file;
+  } catch {
+    return file; // an unsupported format, say — ship the original rather than block the upload
+  }
+}
+
 export const isVisible = (r: RegistryEntry) => r.visible !== false;
 
 // Primary first, then the couple's own order.
