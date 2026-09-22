@@ -795,7 +795,7 @@ export default function VenueShortlist({
                             >
                               {v.photos?.[0] && photoUrls[v.photos[0].path] && (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={photoUrls[v.photos[0].path]} alt="" className="mb-2 h-24 w-full rounded-lg object-cover" />
+                                <img src={photoUrls[v.photos[0].path]} alt="" loading="lazy" className="mb-2 h-24 w-full rounded-lg object-cover" />
                               )}
                               <Link href={`/venues/${v.id}`} className="font-serif text-base font-medium text-ink hover:text-sage-deep">
                                 {v.is_favourite ? "★ " : ""}

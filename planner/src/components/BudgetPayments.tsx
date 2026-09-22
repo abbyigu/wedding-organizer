@@ -138,7 +138,7 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
                 onChange={(e) => scheduleSave(open.id, { label: e.target.value })}
                 className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 font-serif text-xl font-medium outline-none focus:border-line focus:bg-bg"
               />
-              <button onClick={() => setOpenId(null)} aria-label="Close" className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink hover:bg-bg">
+              <button onClick={() => setOpenId(null)} aria-label="Close" className={`ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-bg ${FOCUS_RING}`}>
                 <X className="h-4 w-4" strokeWidth={1.5} aria-hidden />
               </button>
             </div>

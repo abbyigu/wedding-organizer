@@ -4,12 +4,19 @@ import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 import { STATUSES, type Venue } from "@/lib/venues";
 
+// Leaflet's marker HTML is injected outside Tailwind, but CSS custom properties still
+// resolve here since it's rendered into the same document. Three of these already exactly
+// match a --surface-* token (a solid fill carrying white text, so it must stay fixed rather
+// than shift in dark mode — see the token comment in globals.css) — reference it instead of
+// duplicating the hex. The other three have no equivalent token yet, so they stay fixed hex
+// on purpose rather than the theme-shifting --sage-deep/--gold/--wood, which would make the
+// white pin glyph illegible once those lighten in dark mode.
 const PIN_COLOR: Record<Venue["status"], string> = {
   researching: "#4f6b4b",
   contacted: "#c9a86a",
-  tour_booked: "#cf5873",
+  tour_booked: "var(--surface-blush)",
   quote_received: "#a5764c",
-  finalist: "#2e4a32",
+  finalist: "var(--surface-green)",
   out: "#9a9385",
 };
 
@@ -30,7 +37,7 @@ export default function VenueMap({ venues }: { venues: (Venue & { lat: number; l
       }).addTo(map);
 
       for (const v of venues) {
-        const fill = v.is_favourite ? "#6e2a36" : PIN_COLOR[v.status];
+        const fill = v.is_favourite ? "var(--surface-wine)" : PIN_COLOR[v.status];
         const icon = L.divIcon({
           className: "",
           iconSize: [28, 28],

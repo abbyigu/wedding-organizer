@@ -37,7 +37,7 @@ function Swatch({ hex, size = "h-4 w-4" }: { hex?: string; size?: string }) {
 function Portrait({ m, className }: { m: WeddingPartyMember; className: string }) {
   return m.photo_url ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={m.photo_url} alt="" className={`${className} object-cover`} />
+    <img src={m.photo_url} alt="" loading="lazy" className={`${className} object-cover`} />
   ) : (
     <div className={`${className} flex items-center justify-center font-serif text-5xl font-light text-ink`} style={{ backgroundColor: SIDE_TINT[m.side] }} aria-hidden>
       {m.name.charAt(0).toUpperCase()}

@@ -49,7 +49,7 @@ const FALLBACK_PHOTO = "/photo-candlelit-table.jpg";
 
 function Cover({ s, className }: { s: DecisionSummary; className: string }) {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={s.image ?? FALLBACK_PHOTO} alt="" className={`${className} object-cover`} />;
+  return <img src={s.image ?? FALLBACK_PHOTO} alt="" loading="lazy" className={`${className} object-cover`} />;
 }
 
 function Count({ n, tone }: { n: number; tone: string }) {
