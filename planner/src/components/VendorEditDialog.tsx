@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { X } from "lucide-react";
 import { useDialog } from "@/lib/use-dialog";
 import VendorPhotos from "@/components/VendorPhotos";
@@ -12,6 +13,7 @@ import {
   COMMUNICATION_ORDER,
   DECISION_LABELS,
   DECISION_ORDER,
+  fmtMoney,
   isBooked,
   PRICE_UNIT_LABELS,
   PRICE_UNIT_ORDER,
@@ -24,6 +26,7 @@ import {
   type Availability,
   type CommunicationStatus,
   type DecisionStatus,
+  type PriceSource,
   type PriceUnit,
   type Reaction,
   type Vendor,
@@ -54,7 +57,7 @@ function ReactionPicker({ label, value, onChange }: { label: string; value: Reac
 }
 
 // The full form: every field a vendor has. Changes save as you type. Prices are entered on the Pricing tab so their history is kept.
-export default function VendorEditDialog({ vendor: v, ideas, save, onPhotos, onClose, onUnbook }: { vendor: Vendor; ideas: IdeaImage[]; save: Save; onPhotos: (p: string[]) => void; onClose: () => void; onUnbook: () => void }) {
+export default function VendorEditDialog({ vendor: v, ideas, save, onPhotos, onClose, onUnbook, onPrice }: { vendor: Vendor; ideas: IdeaImage[]; save: Save; onPhotos: (p: string[]) => void; onClose: () => void; onUnbook: () => void; onPrice: (source: PriceSource, amount: number, note?: string) => void }) {
   const dialogRef = useDialog(true, onClose);
   const booked = isBooked(v);
   const text = (key: keyof Vendor, props: { type?: string; placeholder?: string } = {}) => (
@@ -62,6 +65,38 @@ export default function VendorEditDialog({ vendor: v, ideas, save, onPhotos, onC
   );
   const area = (key: keyof Vendor, rows = 3) => <textarea defaultValue={(v[key] as string) ?? ""} rows={rows} onChange={(e) => save.later({ [key]: e.target.value } as Partial<Vendor>)} className={FIELD} />;
   const number = (key: keyof Vendor) => <input type="number" min={0} defaultValue={(v[key] as number | null) ?? ""} onChange={(e) => save.later({ [key]: num(e.target.value) } as Partial<Vendor>)} className={FIELD} />;
+  // A price typed here is saved on the vendor and, when you leave the box, also lands in the dated price history.
+  const atFocus = useRef<Record<string, number | null>>({});
+  const changed = (key: string, n: number | null) => n != null && n !== (atFocus.current[key] ?? null);
+  const price = (key: "starting_price" | "quoted_total" | "contracted_total", source: PriceSource) => (
+    <input
+      type="number"
+      min={0}
+      defaultValue={(v[key] as number | null) ?? ""}
+      onFocus={() => { atFocus.current[key] = (v[key] as number | null) ?? null; }}
+      onChange={(e) => save.later({ [key]: num(e.target.value) } as Partial<Vendor>)}
+      onBlur={(e) => changed(key, num(e.target.value)) && onPrice(source, num(e.target.value) as number)}
+      className={FIELD}
+    />
+  );
+  const estimate = (key: "price_low" | "price_high") => (
+    <input
+      type="number"
+      min={0}
+      defaultValue={(v[key] as number | null) ?? ""}
+      onFocus={() => { atFocus.current[key] = (v[key] as number | null) ?? null; }}
+      onChange={(e) => save.later({ [key]: num(e.target.value) } as Partial<Vendor>)}
+      onBlur={(e) => {
+        const n = num(e.target.value);
+        if (!changed(key, n)) return;
+        const other = (key === "price_low" ? v.price_high : v.price_low) ?? null;
+        const lo = key === "price_low" ? (n as number) : other ?? (n as number);
+        const hi = key === "price_high" ? (n as number) : other ?? (n as number);
+        onPrice(v.estimate_source, Math.max(lo, hi), lo !== hi ? `Range ${fmtMoney(Math.min(lo, hi))}–${fmtMoney(Math.max(lo, hi))}` : undefined);
+      }}
+      className={FIELD}
+    />
+  );
   const check = (key: keyof Vendor, label: string) => (
     <label className="flex min-h-11 items-center gap-2 text-sm">
       <input type="checkbox" checked={Boolean(v[key])} onChange={(e) => save.now({ [key]: e.target.checked } as Partial<Vendor>)} className="h-4 w-4 accent-sage-deep" />
@@ -132,6 +167,15 @@ export default function VendorEditDialog({ vendor: v, ideas, save, onPhotos, onC
                 </select>
               </Field>
             )}
+          </Section>
+
+          <Section title="What Budget and scenarios use">
+            <p className="text-sm text-ink-2 sm:col-span-2">The most reliable price wins: contracted, then a quote, then an estimate, then the starting price. Anything left blank is unknown, never $0. Each price you enter is also kept in the price history on the Pricing tab.</p>
+            <Field label="Estimated, from ($)">{estimate("price_low")}</Field>
+            <Field label="Estimated, up to ($)">{estimate("price_high")}</Field>
+            <Field label="Starting at ($)">{price("starting_price", "starting_price")}</Field>
+            <Field label="Quoted ($)">{price("quoted_total", "quote")}</Field>
+            <Field label="Contracted ($)">{price("contracted_total", "contracted")}</Field>
           </Section>
 
           <Section title="How they price">

@@ -40,6 +40,7 @@ import {
   type VendorComm,
   type VendorFile,
   type VendorPayment,
+  type PriceSource,
   type VendorPriceRow,
 } from "@/lib/vendors";
 
@@ -125,6 +126,13 @@ export default function VendorProfile({
 
   async function toggleReaction(who: "ariel" | "fred") {
     save.now({ [`${who}_reaction`]: v[`${who}_reaction`] === "love" ? null : "love" } as Partial<Vendor>);
+  }
+
+  // A price entered in the edit form is kept in the dated history too, and nudges the conversation status like the Pricing tab does.
+  async function recordPrice(source: PriceSource, amount: number, note = "") {
+    const { data } = await supabase.from("vendor_prices").insert({ vendor_id: v.id, source, amount, note, recorded_on: today }).select().single();
+    if (data) setPrices((ps) => [data as VendorPriceRow, ...ps]);
+    if (source === "quote" && !isBooked(v)) save.now({ communication_status: "quote_received" });
   }
 
   async function unbook() {
@@ -357,7 +365,7 @@ export default function VendorProfile({
         </div>
       </div>
 
-      {editing && <VendorEditDialog vendor={v} ideas={ideas} save={save} onPhotos={patchPhotos} onClose={() => setEditing(false)} onUnbook={unbook} />}
+      {editing && <VendorEditDialog vendor={v} ideas={ideas} save={save} onPhotos={patchPhotos} onClose={() => setEditing(false)} onUnbook={unbook} onPrice={recordPrice} />}
       {booking && (
         <BookDialog
           vendor={v}
