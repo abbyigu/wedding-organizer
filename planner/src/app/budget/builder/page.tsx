@@ -8,11 +8,14 @@ export const dynamic = "force-dynamic";
 
 export default async function BudgetBuilderPage({ searchParams }: { searchParams: Promise<{ venue?: string; compare?: string }> }) {
   const supabase = await createClient();
-  const { data: venues } = await supabase.from("venues").select("*").order("sort_order", { ascending: true });
-  const { settings, guestSummary, assumptions } = await getBudgetContext(supabase);
-  const { data: expenses } = await supabase.from("budget_expenses").select("*").order("sort_order", { ascending: true });
-  const linked = await getLinkedCosts(supabase, { adults: assumptions.adults, kids: assumptions.kids });
-  const { venue, compare } = await searchParams;
+  const ctxP = getBudgetContext(supabase);
+  const [{ data: venues }, { settings, guestSummary }, { data: expenses }, linked, { venue, compare }] = await Promise.all([
+    supabase.from("venues").select("*").order("sort_order", { ascending: true }),
+    ctxP,
+    supabase.from("budget_expenses").select("*").order("sort_order", { ascending: true }),
+    getLinkedCosts(supabase, ctxP.then((c) => ({ adults: c.assumptions.adults, kids: c.assumptions.kids }))),
+    searchParams,
+  ]);
 
   return (
     <BudgetBuilder

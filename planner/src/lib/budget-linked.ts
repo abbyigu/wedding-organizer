@@ -6,7 +6,8 @@ import { budgetGroupOf, isBooked, vendorPrice, type Vendor } from "@/lib/vendors
 
 // Everything that costs money on another page and should count toward the wedding total.
 // guests: headcount used to price per-person vendors. Without it those vendors stay "unknown" and are left out, never counted as $0.
-export async function getLinkedCosts(supabase: SupabaseClient, guests?: { adults: number; kids: number }) {
+type Guests = { adults: number; kids: number };
+export async function getLinkedCosts(supabase: SupabaseClient, guestsIn?: Guests | Promise<Guests | undefined>) {
   const [{ data: diy }, { data: events }, { data: party }, { data: eventExpenses }, { data: diyMaterials }, { data: vendors }, { data: vendorScenarios }] = await Promise.all([
     supabase.from("diy_projects").select("id, title, cost_estimate, cost_actual"),
     supabase.from("wedding_events").select("id, key, title, budget_estimate"),
@@ -17,6 +18,7 @@ export async function getLinkedCosts(supabase: SupabaseClient, guests?: { adults
     supabase.from("vendor_scenarios").select("vendor_id, venue_id"),
   ]);
 
+  const guests = await guestsIn; // may still be loading while the queries above run
   const items: LinkedCost[] = [];
   let diyCount = 0;
   let diyEstimated = 0;

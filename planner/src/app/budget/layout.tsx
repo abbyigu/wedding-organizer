@@ -7,11 +7,13 @@ import { BUDGET_GROUPS } from "@/lib/budget-extras";
 
 export default async function BudgetLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [
+    {
+      data: { user },
+    },
+    { data: vendors },
+  ] = await Promise.all([supabase.auth.getUser(), supabase.from("vendors").select("id, name, category")]);
   const userName = displayName(user?.email);
-  const { data: vendors } = await supabase.from("vendors").select("id, name, category");
 
   return (
     <div className="min-h-screen pb-20 lg:pl-56">
