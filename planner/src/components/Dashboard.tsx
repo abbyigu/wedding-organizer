@@ -1,5 +1,7 @@
 "use client";
 
+import NeedsAttention from "@/components/NeedsAttention";
+import type { AttentionItem } from "@/lib/needs-attention";
 import { useConfirm } from "@/components/ConfirmProvider";
 import Link from "next/link";
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -116,6 +118,8 @@ export default function Dashboard({
   planningTasks,
   weddingDate,
   actionItems,
+  attention,
+  plan,
   initialCustomTasks,
   initialEvents,
   searchItems,
@@ -139,6 +143,8 @@ export default function Dashboard({
   planningTasks: Pick<PlanningTask, "title" | "category" | "status" | "due_date" | "period">[];
   weddingDate: string;
   actionItems: ActionItem[];
+  attention: AttentionItem[];
+  plan: Parameters<typeof NeedsAttention>[0]["plan"];
   initialCustomTasks: CustomTask[];
   initialEvents: UpcomingEvent[];
   searchItems: SearchItem[];
@@ -551,6 +557,8 @@ export default function Dashboard({
             </div>
           </div>
         </section>
+
+        <NeedsAttention items={attention} plan={plan} />
 
         <section id="manage" className="mt-9 grid scroll-mt-6 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <div id="next-actions" className="scroll-mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">

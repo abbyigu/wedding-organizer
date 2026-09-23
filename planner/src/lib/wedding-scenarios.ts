@@ -27,6 +27,7 @@ export type ScenarioRow = {
   target_budget: number | null;
   contingency_pct: number | null;
   archived: boolean;
+  is_active?: boolean; // once migration 049 has run
   sort_order: number;
   created_at: string;
 };

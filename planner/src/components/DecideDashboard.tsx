@@ -159,6 +159,7 @@ export default function DecideDashboard({ summaries, userName, partner }: { summ
         <header className="relative mt-8">
           <h1 className="font-serif text-5xl font-light tracking-[-0.02em] sm:text-6xl xl:text-[4.5rem]">Decide together</h1>
           <p className="mt-3 text-lg text-ink-2">Every choice brings your wedding into focus.</p>
+          <Link href="/style" className="mt-2 inline-flex min-h-11 items-center rounded font-medium text-green underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep">Our wedding style, as decided so far →</Link>
           <div className="pointer-events-none absolute right-0 top-0 hidden md:block" aria-hidden>
             <p className="absolute right-24 top-2 -rotate-[8deg] text-right font-script text-[1.7rem] leading-[1.1] text-sage-deep">
               Better

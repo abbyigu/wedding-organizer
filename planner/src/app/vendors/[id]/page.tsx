@@ -5,6 +5,7 @@ import { displayName } from "@/lib/auth-names";
 import { getBudgetContext } from "@/lib/budget-context";
 import { isBooked, isFavourite, type Vendor, type VendorFile, type VendorPriceRow } from "@/lib/vendors";
 import { loadVendorData } from "@/lib/vendors-data";
+import { loadStyle } from "@/lib/wedding-style";
 
 export const dynamic = "force-dynamic";
 const TABS = ["overview", "pricing", "services", "communication", "files", "notes"] as const;
@@ -17,12 +18,13 @@ export default async function VendorPage({ params, searchParams }: { params: Pro
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [d, { data: prices }, { data: files }, { data: scenarios }, ctx] = await Promise.all([
+  const [d, { data: prices }, { data: files }, { data: scenarios }, ctx, style] = await Promise.all([
     loadVendorData(supabase),
     supabase.from("vendor_prices").select("*").eq("vendor_id", id),
     supabase.from("vendor_files").select("*").eq("vendor_id", id),
     supabase.from("vendor_scenarios").select("venue_id").eq("vendor_id", id),
     getBudgetContext(supabase),
+    loadStyle(supabase),
   ]);
   const vendor = d.vendors.find((v) => v.id === id);
   if (!vendor) notFound();
@@ -49,6 +51,8 @@ export default async function VendorPage({ params, searchParams }: { params: Pro
       guests={{ adults: ctx.assumptions.adults, kids: ctx.assumptions.kids }}
       initialTab={tab}
       openEdit={sp.edit === "1"}
+      style={style}
+      planName={d.planVendorIds.includes(id) ? d.planName : null}
     />
   );
 }

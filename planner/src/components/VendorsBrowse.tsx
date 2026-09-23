@@ -32,6 +32,7 @@ export default function VendorsBrowse({
   mode,
   initialVendors,
   followUps,
+  planVendorIds,
   payments,
   ideas,
   venueChosen,
@@ -40,6 +41,7 @@ export default function VendorsBrowse({
   mode: "potential" | "booked";
   initialVendors: Vendor[];
   followUps: FollowUp[];
+  planVendorIds: string[];
   payments: VendorPayment[];
   ideas: IdeaImage[];
   venueChosen: boolean;
@@ -182,7 +184,7 @@ export default function VendorsBrowse({
           const state = cardState(v, attention);
           const src = photoSrc(v.photos[0], ideaMap);
           return mode === "booked" ? (
-            <BookedCard key={v.id} vendor={v} src={src} state={state} attention={attention} pay={paymentSummary(v, payments, today)} />
+            <BookedCard key={v.id} vendor={v} src={src} state={state} attention={attention} pay={paymentSummary(v, payments, today)} inPlan={planVendorIds.includes(v.id)} />
           ) : (
             <PotentialCard
               key={v.id}
@@ -190,6 +192,7 @@ export default function VendorsBrowse({
               src={src}
               state={state}
               attention={attention}
+              inPlan={planVendorIds.includes(v.id)}
               compare={{ checked: compareIds.includes(v.id), onToggle: () => toggleCompare(v.id), ...compareBlock(v) }}
               onReaction={(who) => saveNow(v.id, { [`${who}_reaction`]: v[`${who}_reaction`] === "love" ? null : "love" } as Partial<Vendor>)}
             />

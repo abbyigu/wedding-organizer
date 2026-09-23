@@ -6,6 +6,8 @@ import { getBudgetContext } from "@/lib/budget-context";
 import { getLinkedCosts } from "@/lib/budget-linked";
 import type { BudgetExpense } from "@/lib/budget-extras";
 import type { PlanningTask } from "@/lib/planning-tasks";
+import type { VenueComm } from "@/components/VenueComms";
+import { loadPlanRefs } from "@/lib/plan";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +29,12 @@ export default async function VenuePage({ params, searchParams }: { params: Prom
   }
 
   const { assumptions, sharedVals } = await getBudgetContext(supabase);
-  const [{ data: expenses }, { data: tasks }, linked] = await Promise.all([
+  const [{ data: expenses }, { data: tasks }, linked, { data: comms, error: commsError }, plan] = await Promise.all([
     supabase.from("budget_expenses").select("*").order("sort_order", { ascending: true }),
     supabase.from("planning_tasks").select("*").like("template_key", `venue:${id}:%`).order("created_at", { ascending: true }),
     getLinkedCosts(supabase, { adults: assumptions.adults, kids: assumptions.kids }),
+    supabase.from("venue_communications").select("*").eq("venue_id", id),
+    loadPlanRefs(supabase),
   ]);
 
   return (
@@ -44,6 +48,9 @@ export default async function VenuePage({ params, searchParams }: { params: Prom
       linked={linked.items}
       tasks={(tasks ?? []) as PlanningTask[]}
       initialTab={tab}
+      comms={(comms ?? []) as VenueComm[]}
+      commsMissing={Boolean(commsError)}
+      planName={plan?.venueId === id ? plan.name : null}
     />
   );
 }

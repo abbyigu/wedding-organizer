@@ -4,12 +4,14 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, ChevronRight, EllipsisVertical, ImagePlus, Link2, Paperclip, Share2, Star, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronRight, EllipsisVertical, Heart, ImagePlus, Link2, Paperclip, Share2, Star, Trash2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import TagField from "@/components/TagField";
 import VenueActions from "@/components/VenueActions";
 import VenueAmenities from "@/components/VenueAmenities";
+import { FILE_KIND_LABELS, FILE_KINDS } from "@/lib/vendors";
+import VenueComms, { type VenueComm } from "@/components/VenueComms";
 import VenueCosts from "@/components/VenueCosts";
 import { geocodeVenue } from "@/lib/geocode";
 import { scenarioOf } from "@/lib/budget-scenarios";
@@ -29,6 +31,7 @@ const TABS = [
   ["amenities", "Amenities & Spaces"],
   ["notes", "Notes & Research"],
   ["questions", "Questions"],
+  ["contact", "Contact history"],
   ["files", "Files & Links"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
@@ -43,6 +46,9 @@ export default function VenueProfile({
   linked,
   tasks,
   initialTab,
+  comms,
+  commsMissing,
+  planName,
 }: {
   venue: Venue;
   signedUrls: Record<string, string>;
@@ -53,6 +59,9 @@ export default function VenueProfile({
   linked: LinkedCost[];
   tasks: PlanningTask[];
   initialTab?: string;
+  comms: VenueComm[];
+  commsMissing: boolean;
+  planName: string | null;
 }) {
   const confirm = useConfirm();
   const router = useRouter();
@@ -353,6 +362,11 @@ export default function VenueProfile({
             <Link href="/venues" className="flex items-center gap-1.5 hover:text-wine"><ArrowLeft className="h-4 w-4" aria-hidden />Venues</Link>
             <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             <span>{v.name}</span>
+            {planName && (
+              <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-wine/40 px-3 py-1 text-xs font-semibold text-wine">
+                <Heart className="h-3.5 w-3.5 fill-wine" strokeWidth={1.5} aria-hidden /> In our wedding · {planName}
+              </span>
+            )}
           </nav>
           <div className="flex flex-wrap items-center gap-2">
             <span role="status" className="text-xs text-ink-2">{saved}</span>
@@ -463,6 +477,7 @@ export default function VenueProfile({
             </section>
           )}
 
+          {tab === "contact" && <VenueComms venueId={v.id} defaultContact={contact.name ?? ""} initial={comms} missing={commsMissing} />}
           {tab === "files" && (
             <div className="grid items-start gap-6 lg:grid-cols-2">
               <section className={PANEL} aria-label="Files">
@@ -474,6 +489,9 @@ export default function VenueProfile({
                     <li key={f.path} className="flex items-center gap-3 py-2 text-sm">
                       <Paperclip className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
                       <button onClick={() => openFile(f.path)} className="min-w-0 flex-1 truncate text-left font-semibold underline-offset-2 hover:underline">{f.name}</button>
+                      <select aria-label={`Type of ${f.name}`} value={f.kind ?? "other"} onChange={(e) => update({ files: files.map((x) => (x.path === f.path ? { ...x, kind: e.target.value } : x)) }, 0)} className="h-10 max-w-[9rem] rounded-lg border border-line bg-bg px-2 text-xs">
+                        {FILE_KINDS.map((k) => <option key={k} value={k}>{FILE_KIND_LABELS[k]}</option>)}
+                      </select>
                       <button onClick={() => removeFile(f.path)} aria-label={`Remove ${f.name}`} className="flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:text-wine"><X className="h-4 w-4" strokeWidth={1.5} aria-hidden /></button>
                     </li>
                   ))}

@@ -5,7 +5,9 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
 import { CalendarDays, CircleCheck, Plus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { fmt } from "@/lib/venues";
+import { isOverdue, type PlanPayment } from "@/lib/payment-plan";
 import { BUDGET_GROUPS, blankPayment, formatDueDate, paymentStatus, type Payment, type PaymentStatus } from "@/lib/budget-extras";
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
@@ -17,7 +19,9 @@ function statusPillClass(status: PaymentStatus) {
 }
 const STATUS_LABEL: Record<PaymentStatus, string> = { upcoming: "Upcoming", overdue: "Overdue", paid: "Paid" };
 
-export default function BudgetPayments({ initialPayments, vendors }: { initialPayments: Payment[]; vendors: { id: string; name: string }[] }) {
+export type PaymentSummary = { estimated: number | null; target: number | null; contracted: number; planName: string | null };
+
+export default function BudgetPayments({ initialPayments, vendors, venuePayments, summary }: { initialPayments: Payment[]; vendors: { id: string; name: string }[]; venuePayments: PlanPayment[]; summary: PaymentSummary }) {
   const confirm = useConfirm();
   const [payments, setPayments] = useState(initialPayments);
   const [error, setError] = useState("");
@@ -27,8 +31,13 @@ export default function BudgetPayments({ initialPayments, vendors }: { initialPa
 
   const open = payments.find((p) => p.id === openId) ?? null;
   const dialogRef = useDialog(Boolean(open), () => setOpenId(null));
-  const paid = payments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-  const committed = payments.reduce((s, p) => s + p.amount, 0);
+  const today = new Date().toISOString().slice(0, 10);
+  const paid = payments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount, 0) + venuePayments.filter((p) => p.paid).reduce((s, p) => s + p.amount, 0);
+  const scheduledUnpaid = payments.filter((p) => p.status !== "paid").reduce((s, p) => s + p.amount, 0) + venuePayments.filter((p) => !p.paid).reduce((s, p) => s + p.amount, 0);
+  // Still owed is what the contracts say, so an unscheduled balance still shows up.
+  const owed = summary.contracted > 0 ? Math.max(summary.contracted - paid, scheduledUnpaid) : scheduledUnpaid;
+  const unscheduled = Math.max(owed - scheduledUnpaid, 0);
+  const remaining = summary.estimated != null && summary.target != null ? summary.target - summary.estimated : null;
   const sorted = [...payments].sort((a, b) => {
     if (a.status !== b.status && (a.status === "paid" || b.status === "paid")) return a.status === "paid" ? 1 : -1;
     return (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999");
@@ -74,20 +83,41 @@ export default function BudgetPayments({ initialPayments, vendors }: { initialPa
 
   return (
     <div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">Paid</p>
-          <b className="mt-1 block font-serif text-2xl">{fmt(paid)}</b>
-        </div>
-        <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">Committed</p>
-          <b className="mt-1 block font-serif text-2xl">{fmt(committed)}</b>
-        </div>
-        <div className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-2">Remaining</p>
-          <b className="mt-1 block font-serif text-2xl">{fmt(committed - paid)}</b>
-        </div>
-      </div>
+      <dl className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        {[
+          { label: "Estimated", value: summary.estimated != null ? fmt(summary.estimated) : "—", note: summary.planName ? `our plan, ${summary.planName}` : "no plan chosen yet" },
+          { label: "Contracted", value: fmt(summary.contracted), note: "venue and booked vendors" },
+          { label: "Paid", value: fmt(paid), note: "so far" },
+          { label: "Still owed", value: fmt(owed), note: unscheduled > 0 ? `${fmt(unscheduled)} not scheduled yet` : "all scheduled" },
+          { label: remaining != null && remaining < 0 ? "Over target" : "Remaining", value: remaining != null ? fmt(Math.abs(remaining)) : "—", note: "of the budget target" },
+        ].map((c) => (
+          <div key={c.label} className="rounded-2xl border border-line bg-paper p-5 shadow-sm">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-ink-2">{c.label}</dt>
+            <dd className="mt-1 font-serif text-2xl font-medium">{c.value}</dd>
+            <dd className="text-xs text-ink-2">{c.note}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {venuePayments.length > 0 && (
+        <section aria-label="Venue payments" className="mt-6">
+          <h2 className="font-serif text-xl font-medium">From the venue record</h2>
+          <p className="text-sm text-ink-2">Edited on the venue&apos;s Costs &amp; Payments tab, so they&apos;re never entered twice.</p>
+          <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-paper shadow-sm">
+            {venuePayments.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-3 p-4 sm:flex-nowrap">
+                <Link href={p.href} className={`min-w-0 flex-1 rounded ${FOCUS_RING}`}>
+                  <p className="font-semibold">{p.label}</p>
+                  <p className="text-sm text-ink-2">{p.payee}</p>
+                </Link>
+                <span className="flex shrink-0 items-center gap-1 text-sm text-ink-2"><CalendarDays className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />{p.due ? formatDueDate(p.due) : "No due date"}</span>
+                <span className="w-24 shrink-0 text-right font-semibold">{fmt(p.amount)}</span>
+                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${p.paid ? statusPillClass("paid") : isOverdue(p, today) ? statusPillClass("overdue") : statusPillClass("upcoming")}`}>{p.paid ? "Paid" : isOverdue(p, today) ? "Overdue" : "Upcoming"}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="mt-6 flex items-center justify-between">
         <h2 className="font-serif text-xl font-medium">All payments</h2>

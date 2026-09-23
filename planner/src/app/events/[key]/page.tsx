@@ -1,3 +1,4 @@
+import { loadStyle } from "@/lib/wedding-style";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import EventDetail from "@/components/EventDetail";
@@ -28,6 +29,8 @@ export default async function EventDetailPage({ params, searchParams }: { params
     supabase.from("planning_tasks").select("*").like("template_key", `event:${event.id}:%`).order("created_at", { ascending: true }),
   ]);
 
+  const style = await loadStyle(supabase);
+
   return (
     <EventDetail
       initialEvent={event as WeddingEvent}
@@ -40,6 +43,7 @@ export default async function EventDetailPage({ params, searchParams }: { params
       // Booked vendors, plus whoever this event is already linked to.
       vendors={((vendors ?? []) as Vendor[]).filter((v) => isBooked(v) || v.id === event.vendor_id)}
       userName={displayName(user?.email)}
+      style={style}
     />
   );
 }

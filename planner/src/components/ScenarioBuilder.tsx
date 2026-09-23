@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, Copy, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, ChevronDown, Copy, Heart, Pencil, Plus } from "lucide-react";
 import ScenarioDialog from "@/components/ScenarioDialog";
 import ScenarioSummary from "@/components/ScenarioSummary";
+import PlanDialog from "@/components/PlanDialog";
 import ScenarioSnapshots from "@/components/ScenarioSnapshots";
 import { CustomForm, LineRow, NumField, type CustomDraft } from "@/components/ScenarioRows";
 import { BTN, FIELD, FOCUS_RING } from "@/components/VendorUi";
@@ -84,6 +85,9 @@ export default function ScenarioBuilder({
   const [choices, setChoices] = useState(initialChoices);
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState<"edit" | "duplicate" | null>(null);
+  const [planDialog, setPlanDialog] = useState(false);
+  const [planBusy, setPlanBusy] = useState(false);
+  const [planError, setPlanError] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -177,6 +181,26 @@ export default function ScenarioBuilder({
       setError(failed.error.message);
       router.refresh();
     }
+  }
+
+  // One scenario at a time is the plan. The others are left alone.
+  async function togglePlan() {
+    setPlanBusy(true);
+    setPlanError("");
+    const turningOn = !scenario.is_active;
+    if (turningOn) {
+      const { error: clearErr } = await supabase.from("wedding_scenarios").update({ is_active: false }).eq("is_active", true);
+      if (clearErr) {
+        setPlanBusy(false);
+        return setPlanError(`${clearErr.message} Has migration 049 been run?`);
+      }
+    }
+    const { error: err } = await supabase.from("wedding_scenarios").update({ is_active: turningOn }).eq("id", scenario.id);
+    setPlanBusy(false);
+    if (err) return setPlanError(err.message);
+    setScenario({ ...scenario, is_active: turningOn });
+    setPlanDialog(false);
+    router.refresh();
   }
 
   function jump(key: string) {
@@ -436,7 +460,7 @@ export default function ScenarioBuilder({
 
       <header className="mt-1 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-ink-2">Wedding scenario</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-ink-2">{scenario.is_active ? "Our wedding plan" : "Wedding scenario"}</p>
           <h2 className="mt-2 font-serif text-4xl font-light leading-[1.05] tracking-[-0.02em] sm:text-5xl">{scenario.name}</h2>
           {scenario.description && <p className="mt-2 max-w-xl text-ink-2">{scenario.description}</p>}
           <p className="mt-2 text-sm text-ink-2">
@@ -446,6 +470,9 @@ export default function ScenarioBuilder({
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setDialog("edit")} className={BTN}><Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />Details</button>
           <button onClick={() => setDialog("duplicate")} className={BTN}><Copy className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />Duplicate</button>
+          <button onClick={() => setPlanDialog(true)} aria-pressed={Boolean(scenario.is_active)} className={`${BTN} ${scenario.is_active ? "!border-wine !bg-[color-mix(in_srgb,var(--wine)_10%,var(--paper))] text-wine" : "border-wine text-wine"}`}>
+            <Heart className={`h-3.5 w-3.5 ${scenario.is_active ? "fill-wine" : ""}`} strokeWidth={1.75} aria-hidden />{scenario.is_active ? "Our wedding" : "Make this our wedding"}
+          </button>
         </div>
       </header>
 
@@ -492,6 +519,8 @@ export default function ScenarioBuilder({
           <ScenarioSummary name={scenario.name} r={r} onJump={jump} />
         </aside>
       </div>
+
+      {planDialog && <PlanDialog name={scenario.name} r={r} active={Boolean(scenario.is_active)} busy={planBusy} error={planError} onConfirm={togglePlan} onClose={() => setPlanDialog(false)} />}
 
       {dialog && (
         <ScenarioDialog

@@ -1,3 +1,4 @@
+import { loadStyle } from "@/lib/wedding-style";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import DiyProjectDetail from "@/components/DiyProjectDetail";
@@ -20,6 +21,8 @@ export default async function DiyProjectPage({ params, searchParams }: { params:
     project.idea_pin_id ? supabase.from("idea_pins").select("id, title, image_url").eq("id", project.idea_pin_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
+  const style = await loadStyle(supabase);
+
   return (
     <DiyProjectDetail
       initialProject={project as DiyProject}
@@ -28,6 +31,7 @@ export default async function DiyProjectPage({ params, searchParams }: { params:
       idea={idea}
       initialTab={tab}
       userName={displayName(user?.email)}
+      style={style}
     />
   );
 }

@@ -1,5 +1,8 @@
 "use client";
 
+import StyleStrip from "@/components/StyleStrip";
+import type { WeddingStyleRow } from "@/lib/wedding-style";
+
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -49,6 +52,7 @@ export default function EventDetail({
   guests,
   vendors,
   userName,
+  style,
   initialTab,
 }: {
   initialEvent: WeddingEvent;
@@ -59,6 +63,7 @@ export default function EventDetail({
   guests: Guest[];
   vendors: Vendor[];
   userName: string;
+  style: WeddingStyleRow;
   initialTab?: string;
 }) {
   const router = useRouter();
@@ -201,7 +206,8 @@ export default function EventDetail({
           </div>
         </section>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-line">
+        <div className="mt-5"><StyleStrip style={style} focus="tables" /></div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-line">
           <div role="tablist" aria-label="Event sections" className="flex flex-wrap gap-x-7 gap-y-1">
             {TABS.map((t) => (
               <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`border-b-2 pb-3 text-base capitalize ${tab === t ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>

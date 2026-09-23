@@ -1,5 +1,8 @@
 "use client";
 
+import StyleStrip from "@/components/StyleStrip";
+import type { WeddingStyleRow } from "@/lib/wedding-style";
+
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,6 +42,7 @@ export default function DiyProjectDetail({
   materialsMissing,
   idea,
   userName,
+  style,
   initialTab,
 }: {
   initialProject: DiyProject;
@@ -46,6 +50,7 @@ export default function DiyProjectDetail({
   materialsMissing: boolean;
   idea: { id: string; title: string; image_url: string } | null;
   userName: string;
+  style: WeddingStyleRow;
   initialTab?: string;
 }) {
   const router = useRouter();
@@ -158,7 +163,8 @@ export default function DiyProjectDetail({
           </div>
         </header>
 
-        <div role="tablist" aria-label="Project sections" className="mt-6 flex gap-x-7 overflow-x-auto border-b border-line">
+        <div className="mt-5"><StyleStrip style={style} focus="details" /></div>
+        <div role="tablist" aria-label="Project sections" className="mt-4 flex gap-x-7 overflow-x-auto border-b border-line">
           {TABS.map((t) => (
             <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`shrink-0 border-b-2 pb-3 text-base capitalize ${tab === t ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{t}</button>
           ))}

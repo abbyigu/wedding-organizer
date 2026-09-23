@@ -40,13 +40,22 @@ function StateBadge({ state, label }: { state: CardState; label?: string }) {
   );
 }
 
-type Common = { vendor: Vendor; src: string; state: CardState; attention: string | null };
+function PlanChip() {
+  return (
+    <span className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--paper)_94%,transparent)] px-3 py-1 text-xs font-semibold text-wine shadow-sm">
+      <Heart className="h-3.5 w-3.5 fill-wine" strokeWidth={1.5} aria-hidden /> In our wedding
+    </span>
+  );
+}
+
+type Common = { vendor: Vendor; src: string; state: CardState; attention: string | null; inPlan?: boolean };
 
 export function PotentialCard({
   vendor: v,
   src,
   state,
   attention,
+  inPlan,
   compare,
   onReaction,
 }: Common & {
@@ -63,6 +72,7 @@ export function PotentialCard({
           <VendorPhoto src={src} className="aspect-[4/3] w-full" />
         </Link>
         <StateBadge state={passed ? "researching" : state} label={passed ? "Passed" : attention && state === "attention" ? attention : undefined} />
+        {inPlan && <PlanChip />}
         {isFavourite(v) && (
           <span className="pointer-events-none absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--paper)_92%,transparent)] px-3 py-1 text-xs font-semibold text-ink shadow-sm">
             <Heart className="h-3.5 w-3.5 fill-wine text-wine" strokeWidth={1.5} aria-hidden /> Favourite
@@ -111,7 +121,7 @@ export function PotentialCard({
   );
 }
 
-export function BookedCard({ vendor: v, src, state, attention, pay }: Common & { pay: PaymentSummary }) {
+export function BookedCard({ vendor: v, src, state, attention, pay, inPlan }: Common & { pay: PaymentSummary }) {
   const arrival = v.arrival_time ? `Arrives ${v.arrival_time}` : "";
   const action = attention ?? (pay.next ? "" : arrival);
   return (
@@ -121,6 +131,7 @@ export function BookedCard({ vendor: v, src, state, attention, pay }: Common & {
           <VendorPhoto src={src} className="aspect-[16/10] w-full" />
         </Link>
         <StateBadge state={state} label={state === "booked" ? "Booked" : undefined} />
+        {inPlan && <PlanChip />}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-4">
         <Link href={`/vendors/${v.id}`} className={`w-fit rounded font-serif text-2xl leading-tight ${FOCUS_RING}`}>{v.name}</Link>

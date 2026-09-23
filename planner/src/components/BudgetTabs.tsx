@@ -8,6 +8,7 @@ const TABS = [
   { href: "/budget/scenarios", label: "Wedding scenarios" },
   { href: "/budget/builder", label: "Budget builder" },
   { href: "/budget/payments", label: "Payments" },
+  { href: "/budget/files", label: "Files & contracts" },
   { href: "/budget/notes", label: "Notes" },
 ];
 

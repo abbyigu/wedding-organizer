@@ -1,5 +1,8 @@
 "use client";
 
+import StyleStrip from "@/components/StyleStrip";
+import type { WeddingStyleRow } from "@/lib/wedding-style";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
@@ -66,6 +69,8 @@ export default function VendorProfile({
   guests,
   initialTab,
   openEdit,
+  planName,
+  style,
 }: {
   userName: string;
   initial: Vendor;
@@ -80,6 +85,8 @@ export default function VendorProfile({
   guests: { adults: number; kids: number };
   initialTab: TabKey;
   openEdit: boolean;
+  planName: string | null;
+  style: WeddingStyleRow;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -202,6 +209,11 @@ export default function VendorProfile({
                 {booked && <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />}
                 {booked && !attention ? `Booked${v.booked_on ? ` ${formatShortDate(v.booked_on)}` : ""}` : attention ?? CARD_STATE_LABEL[state]}
               </span>
+              {planName && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-wine/40 px-3 py-1 text-xs font-semibold text-wine">
+                  <Heart className="h-3.5 w-3.5 fill-wine" strokeWidth={1.5} aria-hidden /> In our wedding · {planName}
+                </span>
+              )}
               {isFavourite(v) && (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-semibold">
                   <Heart className="h-3.5 w-3.5 fill-wine text-wine" strokeWidth={1.5} aria-hidden />
@@ -252,7 +264,8 @@ export default function VendorProfile({
         </div>
         {error && <p role="alert" className="mt-4 text-sm text-wine">{error}</p>}
 
-        <div role="tablist" aria-label="Vendor details" className="mt-10 flex gap-6 overflow-x-auto border-b border-line">
+        <div className="mt-8"><StyleStrip style={style} focus={v.category === "Florist" ? "flowers" : v.category === "Rentals" ? "tables" : v.category === "Hair & Makeup" ? "attire" : "details"} /></div>
+        <div role="tablist" aria-label="Vendor details" className="mt-4 flex gap-6 overflow-x-auto border-b border-line">
           {TABS.map((t, i) => (
             <button
               key={t.key}

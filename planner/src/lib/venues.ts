@@ -35,7 +35,7 @@ export type Venue = {
   season_notes?: string;
   amenities?: Record<string, string>;
   links?: { label: string; url: string }[];
-  files?: { path: string; name: string; addedAt: string }[];
+  files?: { path: string; name: string; addedAt: string; kind?: string }[];
   quote_checklist: Record<string, boolean>;
   budget_note: string;
   budget_lines: BudgetLine[];

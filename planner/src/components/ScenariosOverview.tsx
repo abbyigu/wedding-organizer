@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArchiveRestore, Archive, ArrowRight, Copy, Plus, Scale } from "lucide-react";
+import { ArchiveRestore, Archive, ArrowRight, Copy, Heart, Plus, Scale } from "lucide-react";
 import ScenarioDialog, { type ScenarioDialogMode } from "@/components/ScenarioDialog";
 import { BTN, BTN_PRIMARY, FOCUS_RING } from "@/components/VendorUi";
 import { createClient } from "@/lib/supabase/client";
@@ -32,7 +32,7 @@ export default function ScenariosOverview({
   const togglePick = (id: string) => setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 4 ? cur : [...cur, id]));
 
   const results = useMemo(() => new Map(scenarios.map((s) => [s.id, computeScenario(s, choices, world)])), [scenarios, choices, world]);
-  const live = scenarios.filter((s) => !s.archived);
+  const live = scenarios.filter((s) => !s.archived).sort((a, b) => Number(Boolean(b.is_active)) - Number(Boolean(a.is_active)));
   const archived = scenarios.filter((s) => s.archived);
   const blank = useMemo(() => setupOf({ adults: null, kids: null, invited: null, expected: null, target_budget: null, contingency_pct: null } as ScenarioRow, world), [world]);
 
@@ -93,6 +93,11 @@ export default function ScenariosOverview({
                     <span aria-hidden className="absolute inset-0 flex items-center justify-center font-script text-3xl text-sage-deep/70">{r.venue ? r.venue.name : "Venue still to choose"}</span>
                   )}
                   <span className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                  {s.is_active && (
+                    <span className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-paper/95 px-3 py-1.5 text-xs font-semibold text-wine">
+                      <Heart className="h-3.5 w-3.5 fill-wine" strokeWidth={1.5} aria-hidden /> Our wedding
+                    </span>
+                  )}
                   <span className="absolute inset-x-5 bottom-4">
                     <span className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-white/85">{[s.season, s.wedding_date && new Date(s.wedding_date + "T12:00").toLocaleDateString("en-CA", { month: "long", year: "numeric" })].filter(Boolean).join(" · ") || "Scenario"}</span>
                     <span className="mt-1 block font-serif text-3xl font-light leading-tight text-white sm:text-4xl">{s.name}</span>

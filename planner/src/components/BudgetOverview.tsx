@@ -21,7 +21,10 @@ import {
 import BudgetActions from "@/components/BudgetActions";
 import BudgetNotes, { type BudgetNote } from "@/components/BudgetNotes";
 import { BUDGET_CEILING, fmt, resolveAssumptions, type BudgetSettings, type Venue } from "@/lib/venues";
-import { computeBreakdown, formatDueDate, paymentStatus, type BudgetExpense, type BudgetGroup, type LinkedCost, type Payment } from "@/lib/budget-extras";
+import { computeBreakdown, formatDueDate, type BudgetExpense, type BudgetGroup, type LinkedCost, type Payment } from "@/lib/budget-extras";
+import { isOverdue, paymentTotals, paymentVenue, planPayments } from "@/lib/payment-plan";
+import type { PlanSummary } from "@/lib/plan";
+import { Heart } from "lucide-react";
 
 const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
   "Venue & catering": UtensilsCrossed,
@@ -45,6 +48,7 @@ export default function BudgetOverview({
   notes,
   notesMissing,
   linked,
+  plan,
 }: {
   venues: Venue[];
   settings: BudgetSettings;
@@ -54,6 +58,7 @@ export default function BudgetOverview({
   notes: BudgetNote[];
   notesMissing: boolean;
   linked: LinkedCost[];
+  plan: PlanSummary | null;
 }) {
   if (venues.length === 0) {
     return <p className="text-ink-2">No venues yet — add some from the venue shortlist first.</p>;
@@ -62,26 +67,36 @@ export default function BudgetOverview({
   const as = resolveAssumptions(settings, guestSummary);
   const cur = venues.find((v) => v.is_final) ?? venues.filter((v) => v.status !== "out")[0] ?? venues[0];
   const breakdown = computeBreakdown(cur, as, settings.shared_line_amounts, expenses, linked);
-  const ceilingPct = Math.min(100, Math.round((breakdown.grand / BUDGET_CEILING) * 100));
-  const remaining = BUDGET_CEILING - breakdown.grand;
+  // With an Active Wedding Plan the plan's numbers lead; otherwise it's the venue estimate as before.
+  const grand = plan ? plan.projected : breakdown.grand;
+  const perGuest = plan ? plan.perGuest : breakdown.perGuest;
+  const target = plan ? plan.target : BUDGET_CEILING;
+  const groups = plan ? plan.groups.map((g) => ({ name: g.name, total: g.total, pct: plan.projected ? Math.round((g.total / plan.projected) * 100) : 0 })) : breakdown.groups;
+  const ceilingPct = Math.min(100, Math.round((grand / target) * 100));
+  const remaining = target - grand;
 
-  const paid = payments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-  const owed = payments.filter((p) => p.status !== "paid").reduce((s, p) => s + p.amount, 0);
-  const upcoming = [...payments]
-    .filter((p) => p.status !== "paid")
-    .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"))
-    .slice(0, 3);
-  const overdueCount = payments.filter((p) => paymentStatus(p) === "overdue").length;
+  const today = new Date().toISOString().slice(0, 10);
+  const items = planPayments(payments, paymentVenue(venues, plan?.venueId ?? null));
+  const totals = paymentTotals(items, today);
+  const paid = totals.paid;
+  const owed = totals.owed;
+  const upcoming = totals.unpaid.slice(0, 3);
+  const overdueCount = totals.overdue.length;
 
-  const leader = [...breakdown.groups].sort((a, b) => b.total - a.total)[0];
+  const leader = [...groups].sort((a, b) => b.total - a.total)[0];
 
   const risks: string[] = [];
-  if (!cur.is_final) risks.push(`No venue chosen yet — this overview is based on ${cur.name}. Pick one in the budget builder or Decide Together.`);
-  if (cur.is_final && !cur.quote_received) risks.push(`${cur.name} hasn't sent a complete quote yet — the total below is still an estimate.`);
-  if (breakdown.grand > BUDGET_CEILING) risks.push(`Estimated total is ${fmt(breakdown.grand - BUDGET_CEILING)} over your preferred ceiling.`);
+  if (plan) {
+    if (plan.unknownCount > 0) risks.push(`${plan.unknownCount} cost${plan.unknownCount === 1 ? " is" : "s are"} still unknown in ${plan.name}, so the total is a minimum.`);
+    if (!plan.venueName) risks.push(`${plan.name} has no venue yet.`);
+  } else {
+    if (!cur.is_final) risks.push(`No venue chosen yet — this overview is based on ${cur.name}. Pick one in the budget builder or Decide Together.`);
+    if (cur.is_final && !cur.quote_received) risks.push(`${cur.name} hasn't sent a complete quote yet — the total below is still an estimate.`);
+  }
+  if (grand > target) risks.push(`Estimated total is ${fmt(grand - target)} over ${plan ? "the plan's target" : "your preferred ceiling"}.`);
   if (overdueCount > 0) risks.push(`${overdueCount} payment${overdueCount === 1 ? "" : "s"} overdue.`);
 
-  const exportRows = breakdown.groups.flatMap((g) => g.items.map((it): [string, string, number] => [g.name, it.label, Math.round(it.total)]));
+  const exportRows: [string, string, number][] = plan ? plan.groups.map((g): [string, string, number] => [g.name, plan.name, Math.round(g.total)]) : breakdown.groups.flatMap((g) => g.items.map((it): [string, string, number] => [g.name, it.label, Math.round(it.total)]));
   const SECTION = "rounded-2xl border border-line bg-paper p-5 shadow-sm sm:p-6";
   const PILL = `inline-flex items-center gap-1.5 rounded-full border border-ink/25 px-5 py-2.5 text-sm font-semibold hover:bg-bg ${FOCUS_RING}`;
 
@@ -89,7 +104,7 @@ export default function BudgetOverview({
     <div className="flex flex-col gap-6">
       <section aria-label="Budget summary" className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-line bg-line shadow-sm sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { Icon: PiggyBank, label: "Estimated total", value: fmt(breakdown.grand), note: `${fmt(breakdown.perGuest)} per guest`, warn: false },
+          { Icon: PiggyBank, label: "Estimated total", value: `${plan && plan.unknownCount > 0 ? "≥ " : ""}${fmt(grand)}`, note: `${fmt(perGuest)} per guest`, warn: false },
           { Icon: Calculator, label: remaining >= 0 ? "Remaining" : "Over ceiling", value: fmt(Math.abs(remaining)), note: `${ceilingPct}% used`, warn: remaining < 0 },
           { Icon: CreditCard, label: "Paid so far", value: fmt(paid), note: `of ${fmt(paid + owed)} committed`, warn: false },
           { Icon: ReceiptText, label: "Still owed", value: fmt(owed), note: overdueCount > 0 ? `${overdueCount} overdue` : "on track", warn: overdueCount > 0 },
@@ -105,6 +120,18 @@ export default function BudgetOverview({
         ))}
       </section>
 
+      {plan && (
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-2xl border border-wine/25 bg-[color-mix(in_srgb,var(--wine)_6%,var(--paper))] px-5 py-4 sm:px-6">
+          <p className="flex items-center gap-3 text-sm">
+            <Heart className="h-5 w-5 shrink-0 fill-wine text-wine" strokeWidth={1.5} aria-hidden />
+            <span>Working from our wedding plan, <b>{plan.name}</b>{plan.venueName ? ` at ${plan.venueName}` : ""}{plan.hasPrices ? ` · ${plan.confidencePct}% confirmed pricing` : ""}</span>
+          </p>
+          <Link href={`/budget/scenarios/${plan.id}`} className={`flex items-center gap-1.5 rounded text-sm font-semibold text-green ${FOCUS_RING}`}>
+            Open the plan <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          </Link>
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
         <div role="progressbar" aria-label="Budget used" aria-valuenow={ceilingPct} aria-valuemin={0} aria-valuemax={100} className="h-3 flex-1 overflow-hidden rounded-full bg-line">
           <div className={`h-full rounded-full ${remaining >= 0 ? "bg-surface-green" : "bg-surface-wine"}`} style={{ width: `${ceilingPct}%` }} />
@@ -116,7 +143,7 @@ export default function BudgetOverview({
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-2xl bg-[color-mix(in_srgb,var(--sage)_16%,var(--paper))] px-5 py-4 sm:px-6">
           <p className="flex items-center gap-3 text-sm text-ink">
             <Flower2 className="h-6 w-6 shrink-0 text-sage-deep" strokeWidth={1.25} aria-hidden />
-            <span>Largest cost driver: <b>{leader.name}</b> · {leader.pct}% of your budget — based on {cur.name}</span>
+            <span>Largest cost driver: <b>{leader.name}</b> · {leader.pct}% of your budget{plan ? "" : ` — based on ${cur.name}`}</span>
           </p>
           <Link href="/budget/builder" className={`flex items-center gap-1.5 rounded text-sm font-semibold text-green ${FOCUS_RING}`}>
             View details <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
@@ -138,8 +165,8 @@ export default function BudgetOverview({
             <h2 className="font-serif text-2xl font-medium">Category breakdown</h2>
             <p className="text-sm text-ink-2">See where your budget is going.</p>
             <ul className="mt-5 flex flex-col gap-4">
-              {breakdown.groups.map((g) => {
-                const Icon = GROUP_ICONS[g.name];
+              {groups.map((g) => {
+                const Icon = GROUP_ICONS[g.name as BudgetGroup] ?? MoreHorizontal;
                 return (
                   <li key={g.name} className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto_2.5rem] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[1.25rem_11rem_minmax(0,1fr)_5.5rem_2.5rem]">
                     <Icon className="h-4 w-4 text-ink-2" strokeWidth={1.5} aria-hidden />
@@ -163,7 +190,7 @@ export default function BudgetOverview({
             <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
               {[
                 { Icon: Users, n: String(as.adults + as.kids), label: "Guests" },
-                { Icon: Tag, n: fmt(breakdown.perGuest), label: "Per guest" },
+                { Icon: Tag, n: fmt(perGuest), label: "Per guest" },
                 { Icon: PieChart, n: `${ceilingPct}%`, label: "Used" },
               ].map(({ Icon, n, label }) => (
                 <div key={label} className="flex items-center gap-3">
@@ -204,16 +231,15 @@ export default function BudgetOverview({
             ) : (
               <ul className="mt-3 flex flex-col divide-y divide-line">
                 {upcoming.map((p) => {
-                  const status = paymentStatus(p);
                   return (
                     <li key={p.id} className="flex items-center justify-between gap-2 py-3 text-sm">
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-ink">{p.vendor || p.label}</p>
-                        <p className="text-xs text-ink-2">{p.due_date ? formatDueDate(p.due_date) : "No due date"}</p>
+                        <Link href={p.href} className={`block truncate rounded font-semibold text-ink hover:underline ${FOCUS_RING}`}>{p.payee}{p.source === "venue" ? ` · ${p.label.toLowerCase()}` : ""}</Link>
+                        <p className="text-xs text-ink-2">{p.due ? formatDueDate(p.due) : "No due date"}</p>
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="font-semibold">{fmt(p.amount)}</p>
-                        {status === "overdue" && <p className="text-xs font-semibold text-wine">Overdue</p>}
+                        {isOverdue(p, today) && <p className="text-xs font-semibold text-wine">Overdue</p>}
                       </div>
                     </li>
                   );
