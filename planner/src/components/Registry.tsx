@@ -239,6 +239,7 @@ export default function Registry({
             <p className="-rotate-2 font-script text-3xl leading-none text-ink-2">Gifts for good beginnings ♡</p>
             <h1 className="mt-2 font-serif text-5xl font-light tracking-[-0.02em] sm:text-6xl">Registry</h1>
             <p className="mt-3 max-w-md text-ink-2">Where you&apos;re registered, so it&apos;s easy to share with guests.</p>
+            <Link href="/honeymoon" className="mt-2 inline-flex min-h-11 items-center rounded font-medium text-green underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep">Plan the honeymoon this fund is for →</Link>
           </div>
         </section>
 

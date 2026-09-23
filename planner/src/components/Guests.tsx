@@ -722,6 +722,17 @@ export default function Guests({ initialGuests, guestTarget, registryNames = [] 
                         />
                       </div>
                     </div>
+                    <div className="mt-3">
+                      <label htmlFor="guests-gift-amount" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Amount ($) <span className="font-normal normal-case">for cash or fund gifts</span></label>
+                      <input id="guests-gift-amount"
+                        type="number"
+                        min={0}
+                        inputMode="decimal"
+                        defaultValue={open.gift_amount ?? ""}
+                        onChange={(e) => scheduleSave(open.id, { gift_amount: e.target.value === "" ? null : Number(e.target.value) })}
+                        className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm sm:w-40"
+                      />
+                    </div>
                     <label className="mt-2 flex min-h-11 items-center gap-2 text-sm">
                       <input
                         type="checkbox"

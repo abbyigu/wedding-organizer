@@ -17,6 +17,7 @@ import {
   Lightbulb,
   MapPin,
   PartyPopper,
+  Plane,
   SquareCheckBig,
   Sun,
   Wine,
@@ -52,6 +53,7 @@ const NAV: NavLink[] = [
 const MORE: NavLink[] = [
   { href: "/registry", label: "Registry", icon: Gift },
   { href: "/diy", label: "DIY Projects", icon: Hammer },
+  { href: "/honeymoon", label: "Honeymoon", icon: Plane },
 ];
 
 const FLAT: NavLink[] = [...NAV.flatMap((l) => [l, ...(l.children ?? [])]), ...MORE];

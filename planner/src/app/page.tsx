@@ -10,6 +10,7 @@ import { partnerName } from "@/lib/ideas";
 import { loadActivePlan } from "@/lib/plan";
 import { paymentTotals, paymentVenue, planPayments } from "@/lib/payment-plan";
 import { buildAttention } from "@/lib/needs-attention";
+import { loadHoneymoonSummary } from "@/lib/honeymoon";
 import type { Payment } from "@/lib/budget-extras";
 import type { Venue } from "@/lib/venues";
 
@@ -58,6 +59,7 @@ export default async function DashboardPage() {
     { data: diyRows },
     { data: paymentRows },
     plan,
+    honeymoon,
   ] = await Promise.all([
     user ? supabase.from("venue_ratings").select("*").eq("rater_id", user.id) : Promise.resolve({ data: [] as Rating[] }),
     supabase.from("idea_pins").select("id, title, image_url, category").eq("visibility", "shared").order("sort_order", { ascending: true }),
@@ -73,6 +75,7 @@ export default async function DashboardPage() {
     supabase.from("diy_projects").select("id, title, status, start_date"),
     supabase.from("payments").select("*"),
     loadActivePlan(supabase),
+    loadHoneymoonSummary(supabase),
   ]);
   const followUpsDue = (vendorComms ?? []).filter((c) => c.follow_up_date && !c.follow_up_done && c.follow_up_date <= todayStr);
   const followUpVendor = followUpsDue.length ? (vendors ?? []).find((v) => v.id === followUpsDue[0].vendor_id)?.name ?? "" : "";
@@ -104,6 +107,7 @@ export default async function DashboardPage() {
     guestsPending: guests.filter((g) => g.rsvp_status === "pending").reduce((n, g) => n + g.party_size + g.kids_count, 0),
     diy: diyRows ?? [],
     plan,
+    honeymoon,
   });
 
   const ideas = sharedIdeas ?? [];

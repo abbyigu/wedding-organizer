@@ -25,6 +25,7 @@ import { computeBreakdown, formatDueDate, type BudgetExpense, type BudgetGroup, 
 import { isOverdue, paymentTotals, paymentVenue, planPayments } from "@/lib/payment-plan";
 import type { PlanSummary } from "@/lib/plan";
 import { Heart } from "lucide-react";
+import type { HoneymoonSummary } from "@/lib/honeymoon";
 
 const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
   "Venue & catering": UtensilsCrossed,
@@ -49,6 +50,8 @@ export default function BudgetOverview({
   notesMissing,
   linked,
   plan,
+  honeymoon,
+  together,
 }: {
   venues: Venue[];
   settings: BudgetSettings;
@@ -59,6 +62,8 @@ export default function BudgetOverview({
   notesMissing: boolean;
   linked: LinkedCost[];
   plan: PlanSummary | null;
+  honeymoon: HoneymoonSummary | null;
+  together: boolean;
 }) {
   if (venues.length === 0) {
     return <p className="text-ink-2">No venues yet — add some from the venue shortlist first.</p>;
@@ -129,6 +134,22 @@ export default function BudgetOverview({
           <Link href={`/budget/scenarios/${plan.id}`} className={`flex items-center gap-1.5 rounded text-sm font-semibold text-green ${FOCUS_RING}`}>
             Open the plan <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           </Link>
+        </div>
+      )}
+
+      {honeymoon && (
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-2xl border border-line bg-paper px-5 py-4 sm:px-6">
+          <p className="flex items-center gap-3 text-sm">
+            <Plane className="h-5 w-5 shrink-0 text-sage-deep" strokeWidth={1.4} aria-hidden />
+            <span>
+              Honeymoon in {honeymoon.name}, kept separate: <b>{honeymoon.estimated == null ? "cost unknown" : `${honeymoon.unknown > 0 ? "≥ " : ""}${fmt(honeymoon.estimated)}`}</b>
+              {together && honeymoon.estimated != null && <> · Wedding + honeymoon: <b>{fmt(grand + honeymoon.estimated)}</b></>}
+            </span>
+          </p>
+          <span className="flex gap-4 text-sm font-semibold">
+            <Link href={together ? "/budget" : "/budget?together=1"} className={`rounded text-green underline underline-offset-2 ${FOCUS_RING}`}>{together ? "Show wedding only" : "Show both together"}</Link>
+            <Link href="/honeymoon" className={`rounded text-green underline underline-offset-2 ${FOCUS_RING}`}>Open honeymoon</Link>
+          </span>
         </div>
       )}
 

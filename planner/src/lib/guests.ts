@@ -29,6 +29,7 @@ export type Guest = {
   thank_you_required?: boolean;
   thank_you_date?: string | null;
   gift_notes?: string;
+  gift_amount?: number | null; // migration 051
   sort_order: number;
   created_at: string;
   updated_at: string;

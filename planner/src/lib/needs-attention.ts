@@ -16,6 +16,7 @@ type Input = {
   guestsPending: number;
   diy: { id: string; title: string; status: string; start_date: string | null }[];
   plan: PlanSummary | null;
+  honeymoon?: { name: string; unknown: number; overdue: number; dueSoon: number } | null;
 };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -65,6 +66,13 @@ export function buildAttention(i: Input): AttentionItem[] {
   if (i.plan) {
     if (i.plan.unknownCount > 0) out.push({ id: "plan-unknown", text: `${i.plan.name} has ${plural(i.plan.unknownCount, "unknown cost")}`, href: `/budget/scenarios/${i.plan.id}`, tone: "soon", area: "Our plan" });
     for (const [n, m] of i.plan.missing.filter((x) => x.kind === "unknown" && !x.href.startsWith("#")).slice(0, 3).entries()) out.push({ id: `plan-missing-${n}`, text: m.text, href: m.href, tone: "info", area: "Our plan" });
+  }
+
+  if (i.honeymoon) {
+    const h = i.honeymoon;
+    if (h.overdue > 0) out.push({ id: "hm-overdue", text: `${plural(h.overdue, "honeymoon payment")} overdue`, href: "/honeymoon", tone: "urgent", area: "Honeymoon" });
+    if (h.dueSoon > 0) out.push({ id: "hm-soon", text: `${plural(h.dueSoon, "honeymoon payment")} due in the next 30 days`, href: "/honeymoon", tone: "soon", area: "Honeymoon" });
+    if (h.unknown > 0) out.push({ id: "hm-unknown", text: `Honeymoon in ${h.name} has ${plural(h.unknown, "unknown cost")}`, href: "/honeymoon", tone: "info", area: "Honeymoon" });
   }
 
   return out.sort((a, b) => rank[a.tone] - rank[b.tone]);

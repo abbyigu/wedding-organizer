@@ -277,7 +277,7 @@ export default function IdeaBoard({
         <header className="relative mt-8">
           <h1 className="font-serif text-5xl font-light tracking-[-0.02em] sm:text-6xl xl:text-[4.5rem]">Our Inspiration Board</h1>
           <p className="mt-3 text-lg text-ink-2">Everything we want our wedding to feel like.</p>
-          <Link href="/style" className="mt-2 inline-flex min-h-11 items-center rounded font-medium text-green underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep">See what we've decided: our wedding style →</Link>
+          <Link href="/style" className="mt-2 inline-flex min-h-11 items-center rounded font-medium text-green underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep">See what we&apos;ve decided: our wedding style →</Link>
           <dl className="mt-5 flex flex-wrap gap-x-12 gap-y-3">
             {[
               { n: ideas.length, label: `saved idea${ideas.length === 1 ? "" : "s"}`, Icon: Bookmark },
