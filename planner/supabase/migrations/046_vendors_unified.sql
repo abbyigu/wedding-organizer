@@ -114,6 +114,7 @@ select
   p.ariel_reaction, p.fred_reaction, p.pros, p.concerns, p.communication_status,
   p.date_discovered, p.date_contacted, p.follow_up_date, p.quote_expiry, p.source, p.decision_status, p.works_with_venue
 from potential_vendors p
+where true
 on conflict (id) do nothing;
 
 -- Old quote / brochure / contract links become proper files on the vendor.
