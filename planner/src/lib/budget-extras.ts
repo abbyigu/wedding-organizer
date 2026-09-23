@@ -16,7 +16,10 @@ export type BudgetGroup = (typeof BUDGET_GROUPS)[number];
 
 // Costs entered on other pages (DIY, Events, Wedding Party). Budget only reads them, so each
 // number lives in exactly one place; href sends you back to where it's edited.
-export type LinkedCost = { group: BudgetGroup; label: string; amount: number; href: string; source: string };
+// venueIds set = only counts in those venue scenarios (a potential vendor added to a scenario); unset = every scenario.
+export type LinkedCost = { group: BudgetGroup; label: string; amount: number; href: string; source: string; venueIds?: string[] };
+export const linkedFor = (items: LinkedCost[], venueId: string) => items.filter((l) => !l.venueIds || l.venueIds.includes(venueId));
+export const linkedTotalFor = (items: LinkedCost[], venueId: string) => linkedFor(items, venueId).reduce((t, l) => t + l.amount, 0);
 export const LINKED_GROUPS: readonly BudgetGroup[] = ["DIY projects", "Wedding weekend"];
 
 // SHARED_LINES is a fixed list (see lib/venues.ts) — this maps each label to
@@ -97,6 +100,7 @@ export type Payment = {
   id: string;
   label: string;
   vendor: string;
+  vendor_id?: string | null; // set once migration 046 has run; the vendor record is the source of truth
   category: string;
   amount: number;
   due_date: string | null;
@@ -191,7 +195,7 @@ export function computeBreakdown(venue: Venue, as: Assumptions, sharedVals: numb
   });
 
   let linkedTotal = 0;
-  for (const l of linked) {
+  for (const l of linkedFor(linked, venue.id)) {
     linkedTotal += l.amount;
     byGroup.get(l.group)!.push({ label: l.label, total: l.amount, editable: "linked", href: l.href, source: l.source });
   }

@@ -58,7 +58,10 @@ function ComingLater({ userName }: { userName: string }) {
   );
 }
 
-export default function WeddingDay({ initialEvents, userName, venueConfirmed }: { initialEvents: WeddingDayEvent[]; userName: string; venueConfirmed: boolean }) {
+// Read from each booked vendor's own record (set when booking or under Edit details), never retyped here.
+type DayVendor = { id: string; name: string; category: string; contact_name: string; phone: string; arrival_time: string; day_of_notes: string };
+
+export default function WeddingDay({ initialEvents, userName, venueConfirmed, vendors = [] }: { initialEvents: WeddingDayEvent[]; userName: string; venueConfirmed: boolean; vendors?: DayVendor[] }) {
   const confirm = useConfirm();
   const [events, setEvents] = useState(initialEvents);
   const [error, setError] = useState("");
@@ -158,6 +161,26 @@ export default function WeddingDay({ initialEvents, userName, venueConfirmed }: 
             </div>
           ))}
         </div>
+
+        {vendors.length > 0 && (
+          <section aria-labelledby="vendor-arrivals" className="mt-10">
+            <h2 id="vendor-arrivals" className="font-serif text-2xl font-medium">Vendor arrivals</h2>
+            <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-paper shadow-sm">
+              {vendors.map((v) => (
+                <li key={v.id}>
+                  <Link href={`/vendors/${v.id}`} className={`flex flex-wrap items-baseline gap-x-4 gap-y-0.5 rounded-2xl p-4 hover:bg-bg ${FOCUS_RING}`}>
+                    <span className="w-28 shrink-0 text-sm font-semibold text-sage-deep">{v.arrival_time || "Time not set"}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{v.name} <span className="font-normal text-ink-2">· {v.category}</span></span>
+                      {(v.contact_name || v.phone) && <span className="block text-sm text-ink-2">{[v.contact_name, v.phone].filter(Boolean).join(" · ")}</span>}
+                      {v.day_of_notes && <span className="block text-sm text-ink-2">{v.day_of_notes}</span>}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </div>
   );

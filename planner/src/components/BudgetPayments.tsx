@@ -17,7 +17,7 @@ function statusPillClass(status: PaymentStatus) {
 }
 const STATUS_LABEL: Record<PaymentStatus, string> = { upcoming: "Upcoming", overdue: "Overdue", paid: "Paid" };
 
-export default function BudgetPayments({ initialPayments }: { initialPayments: Payment[] }) {
+export default function BudgetPayments({ initialPayments, vendors }: { initialPayments: Payment[]; vendors: { id: string; name: string }[] }) {
   const confirm = useConfirm();
   const [payments, setPayments] = useState(initialPayments);
   const [error, setError] = useState("");
@@ -106,7 +106,7 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
             <div key={p.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-bg sm:flex-nowrap">
               <button onClick={() => setOpenId(p.id)} className={`min-w-0 flex-1 rounded text-left ${FOCUS_RING}`}>
                 <p className="font-semibold text-ink">{p.label}</p>
-                <p className="text-sm text-ink-2">{p.vendor || p.category}</p>
+                <p className="text-sm text-ink-2">{(p.vendor_id && vendors.find((v) => v.id === p.vendor_id)?.name) || p.vendor || p.category}</p>
               </button>
               <span className="flex shrink-0 items-center gap-1 text-sm text-ink-2">
                 <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
@@ -146,11 +146,20 @@ export default function BudgetPayments({ initialPayments }: { initialPayments: P
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="budget-payments-f1" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Vendor</label>
-                  <input id="budget-payments-f1"
-                    defaultValue={open.vendor}
-                    onChange={(e) => scheduleSave(open.id, { vendor: e.target.value })}
+                  <select
+                    id="budget-payments-f1"
+                    value={open.vendor_id ?? ""}
+                    onChange={(e) => {
+                      const v = vendors.find((x) => x.id === e.target.value);
+                      saveNow(open.id, { vendor_id: v?.id ?? null, vendor: v?.name ?? open.vendor });
+                    }}
                     className="mt-1 w-full rounded border border-line bg-bg px-2 py-1 text-sm"
-                  />
+                  >
+                    <option value="">{open.vendor && !open.vendor_id ? `${open.vendor} (not linked)` : "Not tied to a vendor"}</option>
+                    {vendors.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label htmlFor="budget-payments-f2" className="block text-xs font-semibold uppercase tracking-wide text-ink-2">Category</label>

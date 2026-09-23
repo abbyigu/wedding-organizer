@@ -44,14 +44,18 @@ export default async function DashboardPage() {
     { data: upcomingEvents },
     { data: vendors },
     { data: planningTasks },
+    { data: vendorComms },
   ] = await Promise.all([
     user ? supabase.from("venue_ratings").select("*").eq("rater_id", user.id) : Promise.resolve({ data: [] as Rating[] }),
     supabase.from("idea_pins").select("id, title, image_url, category").eq("visibility", "shared").order("sort_order", { ascending: true }),
     supabase.from("custom_tasks").select("*").eq("done", false).order("created_at", { ascending: true }),
     supabase.from("upcoming_events").select("*").gte("event_date", todayStr).order("event_date", { ascending: true }).limit(5),
-    supabase.from("vendors").select("id, status"),
+    supabase.from("vendors").select("id, name, status"),
     supabase.from("planning_tasks").select("title, category, status, due_date, period"),
+    supabase.from("vendor_communications").select("vendor_id, follow_up_date, follow_up_done"), // once migration 046 has run
   ]);
+  const followUpsDue = (vendorComms ?? []).filter((c) => c.follow_up_date && !c.follow_up_done && c.follow_up_date <= todayStr);
+  const followUpVendor = followUpsDue.length ? (vendors ?? []).find((v) => v.id === followUpsDue[0].vendor_id)?.name ?? "" : "";
 
   const ideas = sharedIdeas ?? [];
   const { data: ideaReactions } = ideas.length
@@ -108,6 +112,7 @@ export default async function DashboardPage() {
       ideaCount={ideas.length}
       ideaUndecidedCount={ideaUndecidedCount}
       decisionsWaitingCount={dw.count}
+      vendorFollowUps={{ count: new Set(followUpsDue.map((c) => c.vendor_id)).size, name: followUpVendor }}
       decisionsWaitingVenue={dw.venueName}
       journey={journey}
       planningTasks={planningTasks ?? []}

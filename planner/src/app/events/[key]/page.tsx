@@ -4,7 +4,7 @@ import EventDetail from "@/components/EventDetail";
 import { displayName } from "@/lib/auth-names";
 import type { PlanningTask } from "@/lib/planning-tasks";
 import type { EventExpense, EventGuest, WeddingEvent } from "@/lib/wedding-events";
-import type { Vendor } from "@/lib/vendors";
+import { isBooked, type Vendor } from "@/lib/vendors";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,8 @@ export default async function EventDetailPage({ params, searchParams }: { params
       initialSteps={(steps ?? []) as PlanningTask[]}
       initialTab={tab}
       guests={guests ?? []}
-      vendors={(vendors ?? []) as Vendor[]}
+      // Booked vendors, plus whoever this event is already linked to.
+      vendors={((vendors ?? []) as Vendor[]).filter((v) => isBooked(v) || v.id === event.vendor_id)}
       userName={displayName(user?.email)}
     />
   );

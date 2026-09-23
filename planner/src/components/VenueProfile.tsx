@@ -13,7 +13,7 @@ import VenueAmenities from "@/components/VenueAmenities";
 import VenueCosts from "@/components/VenueCosts";
 import { geocodeVenue } from "@/lib/geocode";
 import { scenarioOf } from "@/lib/budget-scenarios";
-import type { BudgetExpense, LinkedCost } from "@/lib/budget-extras";
+import { linkedTotalFor, type BudgetExpense, type LinkedCost } from "@/lib/budget-extras";
 import type { PlanningTask } from "@/lib/planning-tasks";
 import { joinContact, parseContact, researchChecklist, researchPercent, VENUE_TYPES } from "@/lib/venue-profile";
 import { CHECKLIST_ITEMS, checklistPercent, fmt, STATUSES, type Assumptions, type Photo, type Venue } from "@/lib/venues";
@@ -205,7 +205,7 @@ export default function VenueProfile({
     await supabase.storage.from("venue-photos").remove([path]);
   }
 
-  const s = scenarioOf(v, assumptions, sharedVals, expenses, linked.reduce((t, l) => t + l.amount, 0));
+  const s = scenarioOf(v, assumptions, sharedVals, expenses, linkedTotalFor(linked, v.id));
   const research = researchChecklist(v);
   const guestCount = assumptions.adults + assumptions.kids;
   const venueBuckets = ["venue", "alcohol", "rentals", "accommodation", "transport"] as const;

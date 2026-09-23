@@ -110,6 +110,7 @@ export default function Dashboard({
   ideaCount,
   ideaUndecidedCount,
   decisionsWaitingCount,
+  vendorFollowUps,
   decisionsWaitingVenue,
   journey,
   planningTasks,
@@ -132,6 +133,7 @@ export default function Dashboard({
   ideaCount: number;
   ideaUndecidedCount: number;
   decisionsWaitingCount: number;
+  vendorFollowUps: { count: number; name: string };
   decisionsWaitingVenue: string | null;
   journey: JourneyStage[];
   planningTasks: Pick<PlanningTask, "title" | "category" | "status" | "due_date" | "period">[];
@@ -257,6 +259,9 @@ export default function Dashboard({
       label: `${decisionsWaitingCount} private vote${decisionsWaitingCount === 1 ? " needs" : "s need"} your answer${decisionsWaitingVenue ? ` — ${decisionsWaitingVenue}` : ""}`,
       href: "/decide",
     });
+  }
+  if (vendorFollowUps.count > 0) {
+    notices.push({ label: `${vendorFollowUps.count} vendor follow-up${vendorFollowUps.count === 1 ? " is" : "s are"} due${vendorFollowUps.count === 1 && vendorFollowUps.name ? ` — ${vendorFollowUps.name}` : ""}`, href: "/vendors" });
   }
   if (ideaUndecidedCount > 0) {
     notices.push({ label: `${ideaUndecidedCount} idea${ideaUndecidedCount === 1 ? " needs" : "s need"} a decision`, href: "/ideas" });

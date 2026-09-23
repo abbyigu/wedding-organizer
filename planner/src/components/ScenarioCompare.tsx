@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { BUDGET_CEILING, fmt, resolveAssumptions, type BudgetSettings, type Venue } from "@/lib/venues";
-import type { BudgetExpense } from "@/lib/budget-extras";
+import { linkedTotalFor, type BudgetExpense, type LinkedCost } from "@/lib/budget-extras";
 import { BUCKETS, BUCKET_LABEL, CELL_TEXT, scenarioOf, type Cell } from "@/lib/budget-scenarios";
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
@@ -29,14 +29,14 @@ export default function ScenarioCompare({
   settings,
   guestSummary,
   expenses,
-  linkedTotal,
+  linked,
   onOpen,
 }: {
   venues: Venue[];
   settings: BudgetSettings;
   guestSummary: { adults: number; kids: number; confirmedAdults: number; confirmedKids: number };
   expenses: BudgetExpense[];
-  linkedTotal: number;
+  linked: LinkedCost[];
   onOpen: (id: string) => void;
 }) {
   const candidates = venues.filter((v) => v.status !== "out");
@@ -44,7 +44,7 @@ export default function ScenarioCompare({
     [...candidates].sort((a, b) => Number(b.is_final) - Number(a.is_final) || Number(b.is_favourite) - Number(a.is_favourite)).slice(0, 3).map((v) => v.id),
   );
   const as = resolveAssumptions(settings, guestSummary);
-  const cols = ids.map((id) => venues.find((v) => v.id === id)).filter((v): v is Venue => Boolean(v)).map((v) => ({ v, s: scenarioOf(v, as, settings.shared_line_amounts, expenses, linkedTotal) }));
+  const cols = ids.map((id) => venues.find((v) => v.id === id)).filter((v): v is Venue => Boolean(v)).map((v) => ({ v, s: scenarioOf(v, as, settings.shared_line_amounts, expenses, linkedTotalFor(linked, v.id)) }));
   const lowest = cols.length > 1 ? Math.min(...cols.map((c) => c.s.grand)) : null;
 
   function toggle(id: string) {

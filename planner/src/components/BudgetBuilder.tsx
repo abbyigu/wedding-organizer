@@ -49,6 +49,7 @@ import {
   type ExpenseUnit,
   type LinkedCost,
   LINKED_GROUPS,
+  linkedTotalFor,
 } from "@/lib/budget-extras";
 
 const GROUP_ICONS: Record<BudgetGroup, typeof UtensilsCrossed> = {
@@ -268,7 +269,7 @@ export default function BudgetBuilder({
       ? "Under the preferred ceiling, but the surprise money is gone."
       : "Over the preferred ceiling.";
   const ceilingPct = Math.min(100, Math.round((breakdown.grand / BUDGET_CEILING) * 100));
-  const scenario = scenarioOf(cur, as, settings.shared_line_amounts, expenses, linked.items.reduce((t, l) => t + l.amount, 0));
+  const scenario = scenarioOf(cur, as, settings.shared_line_amounts, expenses, linkedTotalFor(linked.items, cur.id));
 
   const visibleGroups = breakdown.groups.filter((g) => {
     if (categoryFilter !== "all" && g.name !== categoryFilter) return false;
@@ -296,7 +297,7 @@ export default function BudgetBuilder({
 
         <div role="radiogroup" aria-label="Venue scenario" className="mt-4 flex gap-2 overflow-x-auto pb-1">
           {venues.map((v) => {
-            const sc = scenarioOf(v, as, settings.shared_line_amounts, expenses, linked.items.reduce((t, l) => t + l.amount, 0));
+            const sc = scenarioOf(v, as, settings.shared_line_amounts, expenses, linkedTotalFor(linked.items, v.id));
             const on = v.id === cur.id;
             return (
               <button
@@ -369,7 +370,7 @@ export default function BudgetBuilder({
             settings={settings}
             guestSummary={guestSummary}
             expenses={expenses}
-            linkedTotal={linked.items.reduce((t, l) => t + l.amount, 0)}
+            linked={linked.items}
             onOpen={(id) => {
               setCurId(id);
               setCompare(false);

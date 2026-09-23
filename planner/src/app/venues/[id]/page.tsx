@@ -30,7 +30,7 @@ export default async function VenuePage({ params, searchParams }: { params: Prom
   const [{ data: expenses }, { data: tasks }, linked] = await Promise.all([
     supabase.from("budget_expenses").select("*").order("sort_order", { ascending: true }),
     supabase.from("planning_tasks").select("*").like("template_key", `venue:${id}:%`).order("created_at", { ascending: true }),
-    getLinkedCosts(supabase),
+    getLinkedCosts(supabase, { adults: assumptions.adults, kids: assumptions.kids }),
   ]);
 
   return (

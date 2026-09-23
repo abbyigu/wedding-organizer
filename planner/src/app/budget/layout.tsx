@@ -11,7 +11,7 @@ export default async function BudgetLayout({ children }: { children: React.React
     data: { user },
   } = await supabase.auth.getUser();
   const userName = displayName(user?.email);
-  const { data: vendors } = await supabase.from("vendors").select("name, category");
+  const { data: vendors } = await supabase.from("vendors").select("id, name, category");
 
   return (
     <div className="min-h-screen pb-20 lg:pl-56">
@@ -22,7 +22,7 @@ export default async function BudgetLayout({ children }: { children: React.React
           partner={partnerName(userName || "Ariel")}
           items={[
             ...BUDGET_GROUPS.map((g) => ({ label: g, hint: "Category", href: "/budget/builder" })),
-            ...(vendors ?? []).map((v) => ({ label: v.name, hint: v.category || "Vendor", href: "/vendors" })),
+            ...(vendors ?? []).map((v) => ({ label: v.name, hint: v.category || "Vendor", href: `/vendors/${v.id}` })),
           ]}
         />
         <div className="mt-6">{children}</div>

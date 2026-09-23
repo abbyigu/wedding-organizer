@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Plus, X } from "lucide-react";
 import { BUDGET_CEILING, fmt, GENERIC_LINES, SHARED_LINES, type Assumptions, type BudgetLine, type LineState, type Venue } from "@/lib/venues";
-import { expenseAppliesTo, expenseTotal, type BudgetExpense, type LinkedCost } from "@/lib/budget-extras";
+import { expenseAppliesTo, expenseTotal, linkedTotalFor, type BudgetExpense, type LinkedCost } from "@/lib/budget-extras";
 import { BUCKETS, BUCKET_LABEL, LINE_STATE_LABEL, scenarioOf } from "@/lib/budget-scenarios";
 import { CellView } from "@/components/ScenarioCompare";
 
@@ -25,7 +25,7 @@ export default function VenueCosts({
   linked: LinkedCost[];
   update: (patch: Partial<Venue>, wait?: number) => void;
 }) {
-  const s = scenarioOf(v, assumptions, sharedVals, expenses, linked.reduce((t, l) => t + l.amount, 0));
+  const s = scenarioOf(v, assumptions, sharedVals, expenses, linkedTotalFor(linked, v.id));
   const left = BUDGET_CEILING - s.grand;
   const shared = [
     ...SHARED_LINES.map(([label, amount], i) => ({ label, amount: sharedVals[i] ?? amount })),

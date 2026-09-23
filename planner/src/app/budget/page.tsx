@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function BudgetOverviewPage() {
   const supabase = await createClient();
   const { data: venues } = await supabase.from("venues").select("*").order("sort_order", { ascending: true });
-  const { settings, guestSummary } = await getBudgetContext(supabase);
-  const { items: linked } = await getLinkedCosts(supabase);
+  const { settings, guestSummary, assumptions } = await getBudgetContext(supabase);
+  const { items: linked } = await getLinkedCosts(supabase, { adults: assumptions.adults, kids: assumptions.kids });
   const [{ data: expenses }, { data: payments }, { data: notes, error: notesError }] = await Promise.all([
     supabase.from("budget_expenses").select("*").order("sort_order", { ascending: true }),
     supabase.from("payments").select("*"),
