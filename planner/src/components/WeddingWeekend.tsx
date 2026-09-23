@@ -8,17 +8,13 @@ import type { Guest } from "@/lib/guests";
 import EventsViewTabs from "@/components/EventsViewTabs";
 import NewEventDialog, { type NewEvent } from "@/components/NewEventDialog";
 import TimelineMomentDialog, { type MomentForm } from "@/components/TimelineMomentDialog";
-import { blankWeddingEvent, EVENT_PHOTOS, eventCounts, eventHref, eventStepsDone, parseMinutes, type EventExpense, type EventGuest, type TimelineMoment, type WeddingEvent } from "@/lib/wedding-events";
+import { AUDIENCE_LABEL, AUDIENCE_ORDER, buildDays, VIEWS, visibleTo, type Arrival, type Audience, type DayItem, type WeekendEntry, type WeekendView } from "@/lib/weekend";
+import { blankWeddingEvent, EVENT_PHOTOS, eventCounts, eventHref, eventStepsDone, type EventExpense, type EventGuest, type TimelineMoment, type WeddingEvent } from "@/lib/wedding-events";
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 const KIND_ICON: Record<string, typeof Clock> = { free: Coffee, checkin: BedDouble, transport: Car, "getting-ready": Sparkles, photos: Camera, shuttle: Bus, "after-party": Music, other: Clock };
 
-export type WeddingDayItem = { id: string; time: string; title: string };
-
-type Entry =
-  | { type: "event"; ev: WeddingEvent; at: number }
-  | { type: "moment"; m: TimelineMoment; at: number }
-  | { type: "wedding-day"; at: number };
+export type WeddingDayItem = DayItem;
 
 const dayLabel = (d: string) => {
   const dt = new Date(`${d}T12:00:00Z`);
@@ -35,6 +31,9 @@ export default function WeddingWeekend({
   momentsMissing,
   weddingDate,
   weddingDayItems,
+  bookedVendors,
+  audienceReady,
+  initialView,
 }: {
   initialEvents: WeddingEvent[];
   initialEventGuests: EventGuest[];
@@ -44,12 +43,26 @@ export default function WeddingWeekend({
   momentsMissing: boolean;
   weddingDate: string | null;
   weddingDayItems: WeddingDayItem[];
+  bookedVendors: Arrival[];
+  audienceReady: boolean;
+  initialView: WeekendView;
 }) {
   const supabase = createClient();
   const [events, setEvents] = useState(initialEvents);
   const [moments, setMoments] = useState(initialMoments);
   const [addingEvent, setAddingEvent] = useState(false);
+  const [dayItems, setDayItems] = useState(weddingDayItems);
   const [momentDialog, setMomentDialog] = useState<{ moment?: TimelineMoment } | null>(null);
+  const [view, setViewState] = useState<WeekendView>(initialView);
+  const [error, setError] = useState("");
+  const planning = view === "planning";
+  const setView = (v: WeekendView) => {
+    setViewState(v);
+    const u = new URL(window.location.href);
+    if (v === "planning") u.searchParams.delete("as");
+    else u.searchParams.set("as", v);
+    window.history.replaceState(null, "", u);
+  };
 
   async function createEvent(n: NewEvent): Promise<string | null> {
     const { data, error } = await supabase.from("wedding_events").insert({ ...blankWeddingEvent(events.length), ...n }).select().single();
@@ -77,15 +90,48 @@ export default function WeddingWeekend({
     await supabase.from("timeline_moments").delete().eq("id", id);
   }
 
-  // Group everything by real date. Events without a date wait at the end.
-  const days = new Map<string, Entry[]>();
-  const push = (d: string, e: Entry) => days.set(d, [...(days.get(d) ?? []), e]);
-  for (const ev of events) push(ev.event_date ?? "tbd", { type: "event", ev, at: parseMinutes(ev.time) });
-  for (const m of moments) push(m.moment_date, { type: "moment", m, at: parseMinutes(m.time) });
-  if (weddingDate) push(weddingDate, { type: "wedding-day", at: parseMinutes(weddingDayItems[0]?.time ?? "3 pm") });
-  const keys = [...days.keys()].sort((a, b) => (a === "tbd" ? 1 : b === "tbd" ? -1 : a.localeCompare(b)));
+  const arrivals = bookedVendors.filter((v) => v.arrival_time.trim());
+  const { days, keys } = buildDays({ events, moments, dayItems, arrivals, weddingDate, hasEventAudience: audienceReady, hasMomentAudience: audienceReady });
+
+  // Who sees an item is saved on the item itself, so every view reads the same records.
+  async function setAudience(en: WeekendEntry, a: Audience) {
+    if (!en.table) return;
+    setError("");
+    const before = { events, moments, dayItems };
+    if (en.table === "wedding_events") setEvents((xs) => xs.map((x) => (x.id === en.id ? { ...x, audience: a } : x)));
+    if (en.table === "timeline_moments") setMoments((xs) => xs.map((x) => (x.id === en.id ? { ...x, audience: a } : x)));
+    if (en.table === "wedding_day_events") setDayItems((xs) => xs.map((x) => (x.id === en.id ? { ...x, audience: a } : x)));
+    const { error: err } = await supabase.from(en.table).update({ audience: a }).eq("id", en.id);
+    if (err) {
+      setEvents(before.events);
+      setMoments(before.moments);
+      setDayItems(before.dayItems);
+      setError(`${err.message} Has migration 050 been run?`);
+    }
+  }
+
+  const ready = {
+    planned: events.filter((e) => Object.values(eventStepsDone(e, expenses.filter((x) => x.event_id === e.id))).every(Boolean)).length,
+    noArrival: bookedVendors.length - arrivals.length,
+    noTime: [...moments.map((m) => m.time), ...dayItems.map((d) => d.time)].filter((t) => !t.trim()).length,
+  };
+
+  const AudienceSelect = ({ en }: { en: WeekendEntry }) =>
+    en.table ? (
+      <label className="flex shrink-0 items-center gap-1.5 text-xs text-ink-2">
+        <span className="sr-only">Who sees {en.title}</span>
+        <span aria-hidden>Seen by</span>
+        <select value={en.audience} onChange={(e) => setAudience(en, e.target.value as Audience)} className="h-11 rounded-lg border border-line bg-bg px-2 text-sm text-ink">
+          {AUDIENCE_ORDER.map((a) => <option key={a} value={a}>{AUDIENCE_LABEL[a]}</option>)}
+        </select>
+      </label>
+    ) : (
+      <span className="shrink-0 text-xs text-ink-2">Seen by vendors</span>
+    );
 
   const btn = `flex items-center justify-center gap-1.5 rounded-full px-5 py-3 text-sm font-semibold ${FOCUS_RING}`;
+
+  const viewInfo = VIEWS.find((v) => v.key === view)!;
 
   return (
     <div className="flex flex-col gap-6">
@@ -96,17 +142,49 @@ export default function WeddingWeekend({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <EventsViewTabs active="weekend" />
-          <button onClick={() => setMomentDialog({})} className={`${btn} border border-ink/25 bg-paper text-ink hover:bg-bg`}><Plus className="h-4 w-4" aria-hidden />Add timeline moment</button>
-          <button onClick={() => setAddingEvent(true)} className={`${btn} bg-surface-green text-white`}><Plus className="h-4 w-4" aria-hidden />Add event</button>
+          {planning && (
+            <>
+              <button onClick={() => setMomentDialog({})} className={`${btn} border border-ink/25 bg-paper text-ink hover:bg-bg`}><Plus className="h-4 w-4" aria-hidden />Add timeline moment</button>
+              <button onClick={() => setAddingEvent(true)} className={`${btn} bg-surface-green text-white`}><Plus className="h-4 w-4" aria-hidden />Add event</button>
+            </>
+          )}
         </div>
       </div>
+
+      <div>
+        <div role="group" aria-label="View the weekend as" className="flex flex-wrap gap-2">
+          {VIEWS.map((v) => (
+            <button key={v.key} onClick={() => setView(v.key)} aria-pressed={view === v.key} className={`min-h-11 rounded-full border px-5 text-sm font-medium ${view === v.key ? "border-surface-green bg-surface-green text-white" : "border-line bg-paper hover:border-sage-deep"} ${FOCUS_RING}`}>
+              {v.label} view
+            </button>
+          ))}
+        </div>
+        <p role="status" className="mt-2 text-sm text-ink-2">{planning ? viewInfo.sees : `Previewing what the ${viewInfo.label.toLowerCase()} would see. ${viewInfo.sees}`}</p>
+      </div>
+
+      {error && <p role="alert" className="rounded-xl bg-[color-mix(in_srgb,var(--wine)_10%,var(--paper))] px-4 py-3 text-sm text-wine">{error}</p>}
+      {!audienceReady && <p role="status" className="rounded-xl bg-[color-mix(in_srgb,var(--gold)_18%,var(--paper))] px-4 py-3 text-sm">The weekend views need one small database update (migration 050). Until then only planning is available, and nothing is shared.</p>}
+
+      {planning && (
+        <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-line bg-line text-sm" aria-label="Weekend readiness">
+          {[
+            [`${ready.planned} of ${events.length}`, "events fully planned"],
+            [String(ready.noArrival), `booked vendor${ready.noArrival === 1 ? "" : "s"} without an arrival time`],
+            [String(ready.noTime), `item${ready.noTime === 1 ? "" : "s"} without a time`],
+          ].map(([n, l]) => (
+            <div key={l} className="bg-paper px-4 py-3"><dt className="sr-only">{l}</dt><dd><b className="font-serif text-xl font-medium">{n}</b> <span className="text-ink-2">{l}</span></dd></div>
+          ))}
+        </dl>
+      )}
 
       {keys.length === 0 && <p className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-ink-2">Nothing on the weekend yet. Add an event or a timeline moment, and give events a date so they land on the right day.</p>}
 
       {keys.map((k, di) => {
-        const entries = (days.get(k) ?? []).sort((a, b) => a.at - b.at);
-        const first = entries.find((e) => e.type === "event") as Extract<Entry, { type: "event" }> | undefined;
-        const photo = first?.ev.photo_url || EVENT_PHOTOS[di % EVENT_PHOTOS.length];
+        const all = days.get(k) ?? [];
+        const entries = all.filter((e) => visibleTo(view, e.audience));
+        if (!planning && entries.length === 0) return null;
+        const first = entries.find((e) => e.type === "event");
+        const photo = first?.event?.photo_url || EVENT_PHOTOS[di % EVENT_PHOTOS.length];
         const label = k === "tbd" ? null : dayLabel(k);
         return (
           <section key={k} aria-label={label?.weekday ?? "Date to be decided"} className="flex flex-col">
@@ -120,44 +198,50 @@ export default function WeddingWeekend({
               </div>
             </div>
             <ul className="flex flex-col divide-y divide-line rounded-b-2xl border border-t-0 border-line bg-paper">
+              {entries.length === 0 && <li className="px-5 py-4 text-sm text-ink-2">Nothing yet.</li>}
               {entries.map((en) => {
-                if (en.type === "moment") {
-                  const Icon = KIND_ICON[en.m.kind] ?? Clock;
+                if (!planning) {
+                  const ev = en.event;
                   return (
-                    <li key={en.m.id} className="flex items-center gap-4 bg-[color-mix(in_srgb,var(--sage)_10%,var(--paper))] px-5 py-4 sm:px-8">
+                    <li key={en.key} className="flex gap-4 px-5 py-4 sm:px-8">
+                      <span className="w-24 shrink-0 pt-0.5 text-sm font-medium tabular-nums text-ink-2">{en.time || "Time to come"}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-serif text-xl leading-tight">{en.title}</span>
+                        {(en.location || ev?.dress_code) && <span className="block text-sm text-ink-2">{[en.location, ev?.dress_code && `Dress: ${ev.dress_code}`].filter(Boolean).join(" · ")}</span>}
+                        {ev?.description && <span className="block text-sm text-ink-2">{ev.description}</span>}
+                      </span>
+                    </li>
+                  );
+                }
+                if (en.type === "moment" && en.moment) {
+                  const m = en.moment;
+                  const Icon = KIND_ICON[m.kind] ?? Clock;
+                  return (
+                    <li key={en.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-[color-mix(in_srgb,var(--sage)_10%,var(--paper))] px-5 py-3 sm:px-8">
                       <Icon className="h-5 w-5 shrink-0 text-sage-deep" strokeWidth={1.4} aria-hidden />
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold">{en.m.title}{en.m.time && <span className="ml-2 font-normal text-ink-2">{en.m.time}</span>}</p>
-                        {en.m.note && <p className="text-sm text-ink-2">{en.m.note}</p>}
+                        <p className="font-semibold">{m.title}{m.time && <span className="ml-2 font-normal text-ink-2">{m.time}</span>}</p>
+                        {m.note && <p className="text-sm text-ink-2">{m.note}</p>}
                       </div>
-                      <button onClick={() => setMomentDialog({ moment: en.m })} aria-label={`Edit ${en.m.title}`} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-2 hover:text-ink ${FOCUS_RING}`}><Pencil className="h-4 w-4" strokeWidth={1.5} aria-hidden /></button>
+                      <AudienceSelect en={en} />
+                      <button onClick={() => setMomentDialog({ moment: m })} aria-label={`Edit ${m.title}`} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:text-ink ${FOCUS_RING}`}><Pencil className="h-4 w-4" strokeWidth={1.5} aria-hidden /></button>
                     </li>
                   );
                 }
-                if (en.type === "wedding-day") {
+                if (en.type === "day" || en.type === "arrival") {
                   return (
-                    <li key="wedding-day" className="bg-[color-mix(in_srgb,var(--surface-wine)_9%,var(--paper))] px-5 py-5 sm:px-8">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <Heart className="h-6 w-6 text-wine" strokeWidth={1.4} aria-hidden />
-                          <div>
-                            <p className="font-serif text-2xl font-medium">Wedding Day</p>
-                            <p className="text-sm text-ink-2">The full run-of-show lives on the Wedding Day page.</p>
-                          </div>
-                        </div>
-                        <Link href="/wedding-day" className={`rounded-full border border-line px-4 py-2.5 text-sm font-semibold hover:bg-bg ${FOCUS_RING}`}>Open run-of-show →</Link>
+                    <li key={en.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-[color-mix(in_srgb,var(--surface-wine)_7%,var(--paper))] px-5 py-3 sm:px-8">
+                      <Heart className="h-5 w-5 shrink-0 text-wine" strokeWidth={1.4} aria-hidden />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold">{en.title}{en.time ? <span className="ml-2 font-normal text-ink-2">{en.time}</span> : <span className="ml-2 font-normal text-wine">no time yet</span>}</p>
+                        <p className="text-sm text-ink-2">{[en.sub, en.location].filter(Boolean).join(" · ")}</p>
                       </div>
-                      {weddingDayItems.length > 0 && (
-                        <ul className="mt-3 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
-                          {weddingDayItems.slice(0, 8).map((w) => (
-                            <li key={w.id} className="flex gap-3"><span className="w-20 shrink-0 text-ink-2">{w.time}</span><span>{w.title}</span></li>
-                          ))}
-                        </ul>
-                      )}
+                      <AudienceSelect en={en} />
+                      {en.href && <Link href={en.href} className={`shrink-0 rounded px-2 py-3 text-sm font-medium text-green underline underline-offset-2 ${FOCUS_RING}`}>{en.type === "day" ? "Run-of-show" : "Vendor"}<span className="sr-only"> for {en.title}</span></Link>}
                     </li>
                   );
                 }
-                const ev = en.ev;
+                const ev = en.event!;
                 const c = eventCounts(ev, guests, initialEventGuests);
                 const evExpenses = expenses.filter((x) => x.event_id === ev.id);
                 const done = eventStepsDone(ev, evExpenses);
@@ -169,7 +253,7 @@ export default function WeddingWeekend({
                   ["Budget", done.budget],
                 ] as const;
                 return (
-                  <li key={ev.id} className="group relative grid md:grid-cols-[14rem_minmax(0,1fr)]">
+                  <li key={en.key} className="group relative grid md:grid-cols-[14rem_minmax(0,1fr)]">
                     <div className="relative h-40 md:h-auto">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={ev.photo_url || EVENT_PHOTOS[ev.sort_order % EVENT_PHOTOS.length]} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -195,6 +279,7 @@ export default function WeddingWeekend({
                           </li>
                         ))}
                       </ul>
+                      <div className="relative z-10 mt-2"><AudienceSelect en={en} /></div>
                     </div>
                   </li>
                 );
