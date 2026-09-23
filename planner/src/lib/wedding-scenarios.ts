@@ -556,3 +556,99 @@ export const CONFIDENCE_SHORT: Record<PriceSource, string> = {
 };
 
 export const money = (n: number) => `$${Math.round(n).toLocaleString("en-CA")}`;
+
+// ── Comparing and explaining ────────────────────────────────────────────────
+// Anything with lines can be compared: a live scenario, or a snapshot of one.
+export type LinesView = { lines: ScenarioLine[]; contingency: number; projected: number };
+
+export const COMPARE_ROWS: { key: string; label: string; cats: string[] }[] = [
+  { key: "venue", label: "Venue", cats: ["venue"] },
+  { key: "food", label: "Food", cats: ["food"] },
+  { key: "bar", label: "Alcohol", cats: ["bar"] },
+  { key: "vendors", label: "Vendors", cats: ["photo", "music", "flowers", "hair", "officiant", "stationery", "cake"] },
+  { key: "rentals", label: "Rentals", cats: ["rentals"] },
+  { key: "diy", label: "DIY", cats: ["diy"] },
+  { key: "transport", label: "Transportation", cats: ["transport"] },
+  { key: "travel", label: "Accommodation", cats: ["travel"] },
+  { key: "weekend", label: "Wedding weekend", cats: ["events", "party"] },
+  { key: "guest", label: "Guest experience", cats: ["guest"] },
+  { key: "other", label: "Other", cats: ["other"] },
+];
+
+export type RowCell = { kind: "none" | "amount" | "zero" | "included" | "na" | "unknown"; base: number; total: number; partial: boolean; names: string[] };
+
+export function rowCells(v: LinesView): Record<string, RowCell> {
+  const out: Record<string, RowCell> = {};
+  for (const row of COMPARE_ROWS) {
+    const ls = v.lines.filter((l) => row.cats.includes(l.category));
+    const money = ls.filter((l) => l.state === "amount" || l.state === "zero");
+    const base = money.reduce((t, l) => t + l.base, 0);
+    const total = money.reduce((t, l) => t + l.total, 0);
+    const unknown = ls.some((l) => l.state === "unknown" || l.partial);
+    const kind: RowCell["kind"] = ls.length === 0 ? "none" : base > 0 || total > 0 ? "amount" : unknown ? "unknown" : money.length ? "zero" : ls.some((l) => l.state === "included") ? "included" : "na";
+    out[row.key] = { kind, base, total, partial: kind === "amount" && unknown, names: ls.filter((l) => l.source !== "Venue" || l.category === "venue").map((l) => l.label) };
+  }
+  return out;
+}
+
+export const feeTotals = (v: LinesView) => ({
+  service: v.lines.reduce((t, l) => t + (l.state === "amount" || l.state === "zero" ? l.service : 0), 0),
+  tax: v.lines.reduce((t, l) => t + (l.state === "amount" || l.state === "zero" ? l.tax : 0), 0),
+});
+
+export type Reason = { label: string; delta: number; detail: string };
+export type Difference = { delta: number; reasons: Reason[]; incomplete: boolean };
+
+// Why B costs more or less than A, row by row. Row differences include each row's own fees and taxes,
+// so together with contingency they add up to the whole difference.
+export function explainDifference(a: LinesView, b: LinesView): Difference {
+  const ca = rowCells(a);
+  const cb = rowCells(b);
+  const reasons: Reason[] = [];
+  for (const row of COMPARE_ROWS) {
+    const delta = cb[row.key].total - ca[row.key].total;
+    if (Math.abs(delta) < 1) continue;
+    const gone = ca[row.key].names.filter((n) => !cb[row.key].names.includes(n));
+    const added = cb[row.key].names.filter((n) => !ca[row.key].names.includes(n));
+    const detail = gone.length && added.length ? `${gone.join(", ")} → ${added.join(", ")}` : added.length ? `adds ${added.join(", ")}` : gone.length ? `drops ${gone.join(", ")}` : "same choices, different pricing or guest counts";
+    reasons.push({ label: row.label, delta, detail });
+  }
+  reasons.sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta));
+  const cont = b.contingency - a.contingency;
+  if (Math.abs(cont) >= 1) reasons.push({ label: "Contingency", delta: cont, detail: "follows the rest of the total" });
+  const open = (v: LinesView) => v.lines.some((l) => l.state === "unknown" || l.partial);
+  return { delta: b.projected - a.projected, reasons, incomplete: open(a) || open(b) };
+}
+
+export type SnapshotData = {
+  lines: ScenarioLine[];
+  groups: Record<SummaryGroup, number>;
+  subtotal: number;
+  contingency: number;
+  projected: number;
+  perGuest: number;
+  unknownCount: number;
+  confidence: ScenarioResult["confidence"];
+  setup: Pick<ScenarioSetup, "adults" | "kids" | "invited" | "expected" | "target" | "contPct">;
+  venueName: string | null;
+  missing: string[];
+};
+
+export type SnapshotRow = { id: string; scenario_id: string; name: string; note: string; data: SnapshotData; created_at: string };
+
+export function snapshotOf(r: ScenarioResult): SnapshotData {
+  const { adults, kids, invited, expected, target, contPct } = r.setup;
+  return {
+    lines: r.lines,
+    groups: r.groups,
+    subtotal: r.subtotal,
+    contingency: r.contingency,
+    projected: r.projected,
+    perGuest: r.perGuest,
+    unknownCount: r.unknownCount,
+    confidence: r.confidence,
+    setup: { adults, kids, invited, expected, target, contPct },
+    venueName: r.venue?.name ?? null,
+    missing: r.missing.map((m) => m.text),
+  };
+}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronDown, Copy, Pencil, Plus } from "lucide-react";
 import ScenarioDialog from "@/components/ScenarioDialog";
 import ScenarioSummary from "@/components/ScenarioSummary";
+import ScenarioSnapshots from "@/components/ScenarioSnapshots";
 import { CustomForm, LineRow, NumField, type CustomDraft } from "@/components/ScenarioRows";
 import { BTN, FIELD, FOCUS_RING } from "@/components/VendorUi";
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +31,7 @@ import {
   type ChoiceRole,
   type ChoiceRow,
   type RefType,
+  type SnapshotRow,
   type ScenarioLine,
   type ScenarioRow,
   type World,
@@ -65,12 +67,16 @@ export default function ScenarioBuilder({
   initialChoices,
   ideas,
   photoUrls,
+  snapshots,
+  snapshotsMissing,
 }: {
   world: World;
   initialScenario: ScenarioRow;
   initialChoices: ChoiceRow[];
   ideas: IdeaImage[];
   photoUrls: Record<string, string>;
+  snapshots: SnapshotRow[];
+  snapshotsMissing: boolean;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -478,6 +484,8 @@ export default function ScenarioBuilder({
               </div>
             )}
           </section>
+
+          <ScenarioSnapshots scenarioId={scenario.id} current={r} initial={snapshots} needsMigration={snapshotsMissing} />
         </div>
 
         <aside id="scenario-summary" aria-label="Scenario summary and gaps" className="scroll-mt-16 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pb-2">

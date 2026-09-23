@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArchiveRestore, Archive, ArrowRight, Copy, Plus } from "lucide-react";
+import { ArchiveRestore, Archive, ArrowRight, Copy, Plus, Scale } from "lucide-react";
 import ScenarioDialog, { type ScenarioDialogMode } from "@/components/ScenarioDialog";
 import { BTN, BTN_PRIMARY, FOCUS_RING } from "@/components/VendorUi";
 import { createClient } from "@/lib/supabase/client";
@@ -28,6 +28,8 @@ export default function ScenariosOverview({
   const [dialog, setDialog] = useState<{ mode: ScenarioDialogMode; scenario?: ScenarioRow } | null>(null);
   const [error, setError] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const togglePick = (id: string) => setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 4 ? cur : [...cur, id]));
 
   const results = useMemo(() => new Map(scenarios.map((s) => [s.id, computeScenario(s, choices, world)])), [scenarios, choices, world]);
   const live = scenarios.filter((s) => !s.archived);
@@ -141,6 +143,9 @@ export default function ScenariosOverview({
                     <button onClick={() => setDialog({ mode: "duplicate", scenario: s })} className={BTN}>
                       <Copy className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /> Duplicate
                     </button>
+                    <button onClick={() => togglePick(s.id)} aria-pressed={picked.includes(s.id)} className={`${BTN} ${picked.includes(s.id) ? "!border-sage-deep text-sage-deep" : ""}`}>
+                      <Scale className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /> {picked.includes(s.id) ? "Comparing" : "Compare"}
+                    </button>
                     <button onClick={() => setArchived(s, true)} className={BTN}>
                       <Archive className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /> Archive
                     </button>
@@ -179,6 +184,16 @@ export default function ScenariosOverview({
         Looking for the venue-by-venue cost comparison? It&apos;s still in the{" "}
         <Link href="/budget/builder" className={`rounded font-medium text-green underline underline-offset-2 ${FOCUS_RING}`}>Budget builder</Link>.
       </p>
+
+      {picked.length > 0 && (
+        <div className="sticky bottom-20 z-20 mt-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-paper px-5 py-3 shadow-sm lg:bottom-4">
+          <p className="text-sm">{picked.length === 1 ? "Pick one more to compare." : `${picked.length} scenarios picked.`}</p>
+          <div className="flex gap-2">
+            <button onClick={() => setPicked([])} className={BTN}>Clear</button>
+            {picked.length >= 2 && <Link href={`/budget/scenarios/compare?ids=${picked.join(",")}`} className={BTN_PRIMARY}>Compare {picked.length} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /></Link>}
+          </div>
+        </div>
+      )}
 
       {dialog && (
         <ScenarioDialog
