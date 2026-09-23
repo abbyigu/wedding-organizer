@@ -499,13 +499,14 @@ export default function BudgetBuilder({
             <div className="relative min-w-[180px] flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-2" strokeWidth={1.5} aria-hidden />
               <input
+                aria-label="Search expenses"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search expenses…"
                 className="w-full rounded-full border border-line bg-paper py-2 pl-9 pr-3 text-sm outline-none focus:border-sage-deep"
               />
             </div>
-            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as "all" | BudgetGroup)} className="rounded-full border border-line bg-paper px-3 py-2 text-sm font-semibold text-ink-2">
+            <select aria-label="Filter expenses by category" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as "all" | BudgetGroup)} className="rounded-full border border-line bg-paper px-3 py-2 text-sm font-semibold text-ink-2">
               <option value="all">All categories</option>
               {BUDGET_GROUPS.map((g) => (
                 <option key={g} value={g}>{g}</option>

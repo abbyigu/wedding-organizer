@@ -99,12 +99,14 @@ export default function GuestsRsvp({ initialGuests }: { initialGuests: Guest[] }
                 </p>
               </div>
               <input
+                aria-label={`Meal selection for ${g.name}`}
                 defaultValue={g.meal_selection}
                 onChange={(e) => scheduleSave(g.id, { meal_selection: e.target.value })}
                 placeholder="Meal selection…"
                 className="w-40 shrink-0 rounded border border-line bg-bg px-2 py-1 text-sm outline-none focus:border-sage-deep"
               />
               <select
+                aria-label={`RSVP status for ${g.name}`}
                 value={g.rsvp_status}
                 onChange={(e) => scheduleSave(g.id, { rsvp_status: e.target.value as RsvpStatus })}
                 className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${rsvpPillClass(g.rsvp_status)}`}

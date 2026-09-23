@@ -275,6 +275,7 @@ export default function Guests({ initialGuests, guestTarget, registryNames = [] 
           <div className="relative min-w-[200px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-2" strokeWidth={1.5} aria-hidden />
             <input
+              aria-label="Search households"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search households…"
@@ -366,6 +367,7 @@ export default function Guests({ initialGuests, guestTarget, registryNames = [] 
           <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-sage-deep bg-[color-mix(in_srgb,var(--sage)_16%,var(--paper))] px-4 py-2.5">
             <span className="text-sm font-semibold text-ink">{selectedIds.size} selected</span>
             <select
+              aria-label="Move selected households to a group"
               defaultValue=""
               onChange={(e) => e.target.value && moveSelectedTo(e.target.value)}
               className="rounded-full border border-line bg-paper px-3 py-1.5 text-sm"
@@ -434,6 +436,7 @@ export default function Guests({ initialGuests, guestTarget, registryNames = [] 
                           {g.party_size} adult{g.party_size === 1 ? "" : "s"}
                         </span>
                         <select
+                          aria-label={`RSVP status for ${g.name}`}
                           value={g.rsvp_status}
                           onChange={(e) => scheduleSave(g.id, { rsvp_status: e.target.value as RsvpStatus })}
                           className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${rsvpPillClass(g.rsvp_status)}`}

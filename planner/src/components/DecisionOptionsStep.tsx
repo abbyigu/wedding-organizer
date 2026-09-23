@@ -7,6 +7,7 @@ import { useDialog } from "@/lib/use-dialog";
 import { fmt } from "@/lib/venues";
 import { HEX, OPTION_INTRO, OPTION_TIPS, OPTION_TYPES, relevantIdeas, type DecisionOption, type GenericDecision, type IdeaRef, type OptionType, type VendorRef, type VenueRef } from "@/lib/decisions";
 
+const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 const FIELD = "w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-sage-deep";
 const ICON_BTN = "flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-bg hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep";
 
@@ -192,7 +193,7 @@ export default function DecisionOptionsStep({
             <button onClick={() => setPicker(o.id)} className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-center gap-1 rounded-full bg-paper/95 px-2 py-2 text-xs font-semibold text-ink shadow-sm hover:bg-paper">
               <ImagePlus className="h-3.5 w-3.5" aria-hidden />{src ? "Change" : "Add photo"}
             </button>
-            {src && <button onClick={() => onUpdate(o.id, { idea_id: null, image_url: "" })} aria-label="Remove image" className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-paper/95 text-ink shadow-sm"><X className="h-3.5 w-3.5" aria-hidden /></button>}
+            {src && <button onClick={() => onUpdate(o.id, { idea_id: null, image_url: "" })} aria-label="Remove image" className={`absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-ink ${FOCUS_RING}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-paper/95 shadow-sm"><X className="h-3.5 w-3.5" aria-hidden /></span></button>}
           </div>
         )}
 

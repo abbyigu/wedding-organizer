@@ -140,12 +140,12 @@ export default function WeddingParty({
                   <p className="text-sm text-ink-2">{m.role || "Role to assign"}</p>
                   <div className="mt-3 flex gap-1">
                     {m.email ? (
-                      <a href={`mailto:${m.email}`} aria-label={`Email ${m.name}`} className={`flex h-10 w-10 items-center justify-center rounded-full text-ink hover:bg-bg ${FOCUS_RING}`}>
+                      <a href={`mailto:${m.email}`} aria-label={`Email ${m.name}`} className={`flex h-11 w-11 items-center justify-center rounded-full text-ink hover:bg-bg ${FOCUS_RING}`}>
                         <Mail className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                       </a>
                     ) : null}
                     {m.phone ? (
-                      <a href={`tel:${m.phone}`} aria-label={`Call ${m.name}`} className={`flex h-10 w-10 items-center justify-center rounded-full text-ink hover:bg-bg ${FOCUS_RING}`}>
+                      <a href={`tel:${m.phone}`} aria-label={`Call ${m.name}`} className={`flex h-11 w-11 items-center justify-center rounded-full text-ink hover:bg-bg ${FOCUS_RING}`}>
                         <Phone className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                       </a>
                     ) : null}
@@ -421,7 +421,7 @@ function Responsibilities({
                     {memberName(t.member_id) && <span className="block text-xs text-ink-2">{memberName(t.member_id)}</span>}
                   </span>
                   {!preview && (
-                    <button onClick={() => onRemove(t.id)} aria-label={`Remove ${t.title}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-2 hover:text-wine">×</button>
+                    <button onClick={() => onRemove(t.id)} aria-label={`Remove ${t.title}`} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-2 hover:text-wine ${FOCUS_RING}`}>×</button>
                   )}
                 </li>
               ))}

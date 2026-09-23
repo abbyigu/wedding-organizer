@@ -392,11 +392,11 @@ export default function VenueProfile({
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-8">
                   <input value={p.caption} onChange={(e) => setCaption(p.path, e.target.value)} aria-label="Photo caption" placeholder={i === 0 ? "Primary photo — add a caption" : "Add a caption"} className="w-full bg-transparent text-xs text-white outline-none placeholder:text-white/70" />
                 </div>
-                <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-                  {i > 0 && <button onClick={() => makePrimary(i)} aria-label="Make this the primary photo" className="flex h-9 w-9 items-center justify-center rounded-full bg-paper/95 text-ink shadow-sm"><Star className="h-4 w-4" strokeWidth={1.5} aria-hidden /></button>}
-                  {i > 0 && <button onClick={() => movePhoto(i, i - 1)} aria-label="Move earlier" className="flex h-9 w-9 items-center justify-center rounded-full bg-paper/95 text-ink shadow-sm"><ArrowLeft className="h-4 w-4" strokeWidth={1.5} aria-hidden /></button>}
-                  {i < photos.length - 1 && <button onClick={() => movePhoto(i, i + 1)} aria-label="Move later" className="flex h-9 w-9 items-center justify-center rounded-full bg-paper/95 text-ink shadow-sm"><ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden /></button>}
-                  <button onClick={() => removePhoto(p.path)} aria-label="Delete photo" className="flex h-9 w-9 items-center justify-center rounded-full bg-paper/95 text-wine shadow-sm"><X className="h-4 w-4" strokeWidth={1.75} aria-hidden /></button>
+                <div className="absolute right-1.5 top-1.5 flex max-w-[6rem] flex-wrap justify-end gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+                  {i > 0 && <button onClick={() => makePrimary(i)} aria-label="Make this the primary photo" className={`flex h-11 w-11 items-center justify-center rounded-full bg-paper/95 text-ink shadow-sm ${FOCUS_RING}`}><Star className="h-4 w-4" strokeWidth={1.5} aria-hidden /></button>}
+                  {i > 0 && <button onClick={() => movePhoto(i, i - 1)} aria-label="Move earlier" className={`flex h-11 w-11 items-center justify-center rounded-full bg-paper/95 text-ink shadow-sm ${FOCUS_RING}`}><ArrowLeft className="h-4 w-4" strokeWidth={1.5} aria-hidden /></button>}
+                  {i < photos.length - 1 && <button onClick={() => movePhoto(i, i + 1)} aria-label="Move later" className={`flex h-11 w-11 items-center justify-center rounded-full bg-paper/95 text-ink shadow-sm ${FOCUS_RING}`}><ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden /></button>}
+                  <button onClick={() => removePhoto(p.path)} aria-label="Delete photo" className={`flex h-11 w-11 items-center justify-center rounded-full bg-paper/95 text-wine shadow-sm ${FOCUS_RING}`}><X className="h-4 w-4" strokeWidth={1.75} aria-hidden /></button>
                 </div>
               </li>
             ))}

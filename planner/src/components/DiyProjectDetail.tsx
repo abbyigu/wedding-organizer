@@ -288,7 +288,7 @@ export default function DiyProjectDetail({
                   <li key={i} className="group relative h-20 w-20 overflow-hidden rounded-lg border border-line">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={normalizeUrl(url)} alt="" loading="lazy" className="h-full w-full object-cover" />
-                    <button onClick={() => save({ progress_photos: p.progress_photos.filter((_, j) => j !== i) }, 0)} aria-label="Remove photo" className="absolute right-0.5 top-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-paper/90 text-ink-2 hover:text-wine"><X className="h-3.5 w-3.5" aria-hidden /></button>
+                    <button onClick={() => save({ progress_photos: p.progress_photos.filter((_, j) => j !== i) }, 0)} aria-label="Remove photo" className={`absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-ink-2 hover:text-wine ${FOCUS_RING}`}><span className="flex h-7 w-7 items-center justify-center rounded-full bg-paper/90"><X className="h-3.5 w-3.5" aria-hidden /></span></button>
                   </li>
                 ))}
               </ul>
