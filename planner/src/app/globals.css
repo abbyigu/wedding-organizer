@@ -89,3 +89,12 @@ body {
   color: var(--ink);
   font-family: var(--font-instrument-sans), system-ui, sans-serif;
 }
+
+@keyframes wr-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.wr-fade-in { animation: wr-fade 0.3s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .wr-fade-in { animation: none; }
+}
