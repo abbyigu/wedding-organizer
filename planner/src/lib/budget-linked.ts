@@ -8,7 +8,7 @@ import { budgetGroupOf, isBooked, vendorPrice, type Vendor } from "@/lib/vendors
 // guests: headcount used to price per-person vendors. Without it those vendors stay "unknown" and are left out, never counted as $0.
 type Guests = { adults: number; kids: number };
 export async function getLinkedCosts(supabase: SupabaseClient, guestsIn?: Guests | Promise<Guests | undefined>) {
-  const [{ data: diy }, { data: events }, { data: party }, { data: eventExpenses }, { data: diyMaterials }, { data: vendors }, { data: vendorScenarios }] = await Promise.all([
+  const [{ data: diy }, { data: events }, { data: party }, { data: eventExpenses }, { data: diyMaterials }, { data: vendors }, { data: vendorScenarios }, { data: privateLines }] = await Promise.all([
     supabase.from("diy_projects").select("id, title, cost_estimate, cost_actual"),
     supabase.from("wedding_events").select("id, key, title, budget_estimate"),
     supabase.from("wedding_party").select("id, name, cost"), // "cost" exists once migration 039 has run
@@ -16,6 +16,8 @@ export async function getLinkedCosts(supabase: SupabaseClient, guestsIn?: Guests
     supabase.from("diy_materials").select("*"), // once migration 043 has run
     supabase.from("vendors").select("id, name, category, status, contracted_total, quoted_total, price_low, price_high, price_unit, starting_price"), // once migration 046 has run
     supabase.from("vendor_scenarios").select("vendor_id, venue_id"),
+    // Private surprise expenses, already anonymised for the person asking: a partner only ever gets "Private expense" and an amount.
+    supabase.rpc("private_expense_lines"), // once migration 052 has run
   ]);
 
   const guests = await guestsIn; // may still be loading while the queries above run
@@ -50,6 +52,9 @@ export async function getLinkedCosts(supabase: SupabaseClient, guestsIn?: Guests
     const price = vendorPrice(v, guests);
     if (price.amount == null || price.amount <= 0) continue;
     items.push({ group: budgetGroupOf(v.category), label: `${v.name} (${price.label.toLowerCase()})`, amount: price.amount, href: `/vendors/${v.id}?tab=pricing`, source: "Vendors", venueIds });
+  }
+  for (const p of (privateLines ?? []) as { id: string | null; label: string; amount: number; mine: boolean }[]) {
+    items.push({ group: "Other", label: p.label, amount: Number(p.amount), href: p.mine && p.id ? `/private?tab=surprises` : "/budget", source: p.mine ? "Private" : "Private expense" });
   }
   return { items, diyCount, diyEstimated, diySpent };
 }

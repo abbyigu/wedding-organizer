@@ -3,7 +3,7 @@
 import { useDialog } from "@/lib/use-dialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { useMemo, useRef, useState } from "react";
-import { CalendarDays, CalendarRange, CircleCheck, CircleHelp, Clock, Ellipsis, Hourglass, Leaf, Lightbulb, GanttChart, LayoutGrid, List as ListIcon, Plus, Search, Users, X } from "lucide-react";
+import { CalendarDays, CalendarRange, CircleCheck, CircleHelp, Clock, Ellipsis, Hourglass, Leaf, Lightbulb, GanttChart, Lock, LayoutGrid, List as ListIcon, Plus, Search, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import Link from "next/link";
@@ -296,6 +296,7 @@ export default function Board({ initialTasks, userName, daysToGo, weddingDate, v
               onClick={() => setOpenId(t.id)}
               className={`block min-w-0 rounded text-left text-[15px] font-medium leading-snug ${FOCUS_RING} ${done ? "text-ink-2 line-through decoration-ink-2/50" : "text-ink"}`}
             >
+              {t.private_owner_id && <Lock className="mr-1 inline h-3 w-3 text-wine" strokeWidth={1.75} aria-label="Private task, only you" />}
               {t.title}
             </button>
           </div>
@@ -589,7 +590,7 @@ export default function Board({ initialTasks, userName, daysToGo, weddingDate, v
                 >
                   {t.category}
                 </span>
-                <span className="min-w-0 flex-1 font-semibold text-ink">{t.title}</span>
+                <span className="min-w-0 flex-1 font-semibold text-ink">{t.private_owner_id && <Lock className="mr-1 inline h-3.5 w-3.5 text-wine" strokeWidth={1.75} aria-label="Private task, only you" />}{t.title}</span>
                 {t.priority === "high" && <span className="shrink-0 text-xs font-semibold text-wine">! High priority</span>}
                 <Avatars value={t.assigned_to} />
                 {t.due_date && (

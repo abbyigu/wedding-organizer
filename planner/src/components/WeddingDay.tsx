@@ -61,7 +61,7 @@ function ComingLater({ userName }: { userName: string }) {
 // Read from each booked vendor's own record (set when booking or under Edit details), never retyped here.
 type DayVendor = { id: string; name: string; category: string; contact_name: string; phone: string; arrival_time: string; day_of_notes: string };
 
-export default function WeddingDay({ initialEvents, userName, venueConfirmed, vendors = [] }: { initialEvents: WeddingDayEvent[]; userName: string; venueConfirmed: boolean; vendors?: DayVendor[] }) {
+export default function WeddingDay({ initialEvents, userName, venueConfirmed, vendors = [], privateItems = [] }: { initialEvents: WeddingDayEvent[]; userName: string; venueConfirmed: boolean; vendors?: DayVendor[]; privateItems?: { id: string | null; day_time: string; title: string; mine: boolean }[] }) {
   const confirm = useConfirm();
   const [events, setEvents] = useState(initialEvents);
   const [error, setError] = useState("");
@@ -161,6 +161,22 @@ export default function WeddingDay({ initialEvents, userName, venueConfirmed, ve
             </div>
           ))}
         </div>
+
+        {privateItems.length > 0 && (
+          <section aria-labelledby="private-items" className="mt-10">
+            <h2 id="private-items" className="font-serif text-2xl font-medium">Private items</h2>
+            <p className="text-sm text-ink-2">Little things one of you has planned. What you can see depends on what its creator chose to share.</p>
+            <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-paper shadow-sm">
+              {[...privateItems].sort((a, b) => a.day_time.localeCompare(b.day_time)).map((p, i) => (
+                <li key={p.id ?? `p-${i}`} className="flex items-baseline gap-4 p-4">
+                  <span className="w-24 shrink-0 text-sm font-semibold text-wine">{p.day_time}</span>
+                  <span className="flex-1 font-serif text-lg">{p.title}</span>
+                  <span className="text-xs text-ink-2">{p.mine ? "Only you can see the details" : "Private"}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {vendors.length > 0 && (
           <section aria-labelledby="vendor-arrivals" className="mt-10">

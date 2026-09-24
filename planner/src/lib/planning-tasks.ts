@@ -25,6 +25,8 @@ export type PlanningTask = {
   tags?: string[];
   actual_cost?: number | null;
   vendor_id?: string | null;
+  private_owner_id?: string | null; // a private surprise task: only its owner can read it (migration 052)
+  surprise_id?: string | null;
   wedding_day?: WeddingDayHandoff;
   created_at: string;
   updated_at: string;

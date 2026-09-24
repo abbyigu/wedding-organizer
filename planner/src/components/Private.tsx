@@ -1,217 +1,105 @@
 "use client";
 
-import { useConfirm } from "@/components/ConfirmProvider";
 import { useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { Lock } from "lucide-react";
 import NavBar from "@/components/NavBar";
-import {
-  blankNote,
-  blankSurprise,
-  SURPRISE_STATUS_ORDER,
-  SURPRISE_STATUSES,
-  type PrivateNote,
-  type Surprise,
-  type SurpriseStatus,
-} from "@/lib/private";
+import PrivateNotes from "@/components/PrivateNotes";
+import PrivateRevealed from "@/components/PrivateRevealed";
+import PrivateSurprises from "@/components/PrivateSurprises";
+import { Sprig } from "@/components/PrivateArt";
+import type { EventRef, PrivateNote, RevealedSurprise, Surprise, Teaser } from "@/lib/private";
 
-const STATUS_STYLE: Record<SurpriseStatus, string> = {
-  idea: "bg-[color-mix(in_srgb,var(--sage)_20%,var(--paper))] text-ink-2",
-  planning: "bg-[color-mix(in_srgb,var(--new,#4A6C8A)_25%,var(--paper))] text-[var(--new,#4A6C8A)]",
-  ready: "bg-[color-mix(in_srgb,var(--gold)_30%,var(--paper))] text-[var(--wood)]",
-  done: "bg-[color-mix(in_srgb,var(--sage)_35%,var(--paper))] text-[var(--sage-deep)]",
-};
+type Tab = "space" | "surprises" | "revealed";
 
 export default function Private({
   initialNotes,
   initialSurprises,
+  teasers,
+  revealed,
+  events,
+  weddingDate,
   userName,
   userId,
+  partner,
+  initialTab,
+  needsMigration,
 }: {
   initialNotes: PrivateNote[];
   initialSurprises: Surprise[];
+  teasers: Teaser[];
+  revealed: RevealedSurprise[];
+  events: EventRef[];
+  weddingDate: string | null;
   userName: string;
   userId: string;
+  partner: string;
+  initialTab: Tab;
+  needsMigration: boolean;
 }) {
-  const confirm = useConfirm();
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [notes, setNotes] = useState(initialNotes);
   const [surprises, setSurprises] = useState(initialSurprises);
   const [error, setError] = useState("");
-  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const supabase = createClient();
+  const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ space: null, surprises: null, revealed: null });
 
-  const mySurprises = surprises.filter((s) => s.owner_id === userId);
-  const partnerSurprises = surprises.filter((s) => s.owner_id !== userId);
-
-  function scheduleNoteSave(id: string, patch: Partial<PrivateNote>) {
-    setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, ...patch } : n)));
-    const key = id + Object.keys(patch)[0];
-    clearTimeout(timers.current[key]);
-    timers.current[key] = setTimeout(async () => {
-      const { error } = await supabase.from("private_notes").update(patch).eq("id", id);
-      if (error) setError(error.message);
-    }, 700);
-  }
-
-  async function addNote() {
-    setError("");
-    const { data, error } = await supabase.from("private_notes").insert(blankNote()).select().single();
-    if (error) setError(error.message);
-    else if (data) setNotes((ns) => [data as PrivateNote, ...ns]);
-  }
-
-  async function removeNote(id: string) {
-    if (!(await confirm("Delete this note? This can't be undone."))) return;
-    setNotes((ns) => ns.filter((n) => n.id !== id));
-    await supabase.from("private_notes").delete().eq("id", id);
-  }
-
-  function scheduleSurpriseSave(id: string, patch: Partial<Surprise>) {
-    setSurprises((ss) => ss.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-    const key = id + Object.keys(patch)[0];
-    clearTimeout(timers.current[key]);
-    timers.current[key] = setTimeout(async () => {
-      const { error } = await supabase.from("surprises").update(patch).eq("id", id);
-      if (error) setError(error.message);
-    }, 700);
-  }
-
-  async function reveal(id: string) {
-    setSurprises((ss) => ss.map((s) => (s.id === id ? { ...s, revealed: true } : s)));
-    await supabase.from("surprises").update({ revealed: true }).eq("id", id);
-  }
-
-  async function addSurprise() {
-    setError("");
-    const { data, error } = await supabase.from("surprises").insert(blankSurprise(userName)).select().single();
-    if (error) setError(error.message);
-    else if (data) setSurprises((ss) => [data as Surprise, ...ss]);
-  }
-
-  async function removeSurprise(id: string) {
-    if (!(await confirm("Delete this surprise?"))) return;
-    setSurprises((ss) => ss.filter((s) => s.id !== id));
-    await supabase.from("surprises").delete().eq("id", id);
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: "space", label: "My Private Space", count: notes.length },
+    { key: "surprises", label: "Surprises", count: surprises.length },
+    { key: "revealed", label: "Revealed to Me", count: revealed.length + teasers.length },
+  ];
+  function onKey(e: React.KeyboardEvent, i: number) {
+    const to = e.key === "ArrowRight" ? (i + 1) % 3 : e.key === "ArrowLeft" ? (i + 2) % 3 : e.key === "Home" ? 0 : e.key === "End" ? 2 : -1;
+    if (to < 0) return;
+    e.preventDefault();
+    setTab(tabs[to].key);
+    tabRefs.current[tabs[to].key]?.focus();
   }
 
   return (
-    <div className="min-h-screen lg:pl-56">
+    <div className="min-h-screen pb-20 lg:pl-56">
       <NavBar userName={userName} />
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="font-serif text-3xl font-medium sm:text-4xl">Private</h1>
-        <p className="mt-2 max-w-2xl text-ink-2">
-          Notes here stay yours alone. Surprises stay hidden from the other person until you reveal them, or their reveal date arrives.
-        </p>
-        {error && <p className="mt-2 text-sm text-wine">{error}</p>}
+      <div className="relative mx-auto max-w-[1100px] overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
+        <Sprig aria-hidden className="pointer-events-none absolute right-4 top-4 hidden h-40 w-32 rotate-6 text-sage-deep/30 sm:block" />
+        <header className="relative">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-wine">Private</p>
+          <h1 className="mt-2 font-serif text-5xl font-light leading-[1.05] tracking-[-0.02em] sm:text-6xl">Private</h1>
+          <p className="mt-3 font-script text-3xl leading-snug text-wine">A little space that&apos;s only yours. ♡</p>
+          <p className="mt-2 max-w-lg text-ink-2">Keep thoughts to yourself, plan a surprise, or save something for later.</p>
+          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--surface-wine)_25%,var(--line))] bg-[color-mix(in_srgb,var(--surface-blush)_8%,var(--paper))] px-4 py-1.5 text-sm text-wine">
+            <Lock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />Only {userName || "you"} can see your private space.
+          </p>
+        </header>
 
-        <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold">Your private notes <small className="font-normal text-ink-2">— nobody else ever sees these</small></h3>
-            <button onClick={addNote} className="rounded-full bg-surface-sage-deep px-3.5 py-1.5 text-sm font-semibold text-white">＋ Add note</button>
-          </div>
-          {notes.length === 0 ? (
-            <p className="text-sm text-ink-2">Nothing here yet.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {notes.map((n) => (
-                <div key={n.id} className="rounded-xl border border-line bg-bg p-3">
-                  <div className="flex items-center gap-2">
-                    <input
-                      defaultValue={n.title}
-                      onChange={(e) => scheduleNoteSave(n.id, { title: e.target.value })}
-                      className="flex-1 rounded border border-transparent bg-transparent px-1 py-1 font-semibold outline-none focus:border-line focus:bg-paper"
-                    />
-                    <button onClick={() => removeNote(n.id)} aria-label={`Delete ${n.title}`} className="text-wine">×</button>
-                  </div>
-                  <textarea
-                    defaultValue={n.body}
-                    onChange={(e) => scheduleNoteSave(n.id, { body: e.target.value })}
-                    rows={3}
-                    className="mt-1 w-full rounded border border-transparent bg-transparent px-1 py-1 text-sm outline-none focus:border-line focus:bg-paper"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+        {needsMigration && <p role="status" className="mt-6 rounded-2xl border border-line bg-[color-mix(in_srgb,var(--gold)_18%,var(--paper))] px-5 py-4 text-sm">The new Private space needs one database update (migration 052) before notes, surprises and files can be saved.</p>}
+        {error && <p role="alert" className="mt-4 text-sm text-wine">{error}</p>}
+
+        <div role="tablist" aria-label="Private space" className="mt-8 flex gap-6 overflow-x-auto border-b border-line">
+          {tabs.map((t, i) => (
+            <button
+              key={t.key}
+              ref={(el) => { tabRefs.current[t.key] = el; }}
+              role="tab"
+              id={`ptab-${t.key}`}
+              aria-selected={tab === t.key}
+              aria-controls={`ppanel-${t.key}`}
+              tabIndex={tab === t.key ? 0 : -1}
+              onClick={() => setTab(t.key)}
+              onKeyDown={(e) => onKey(e, i)}
+              className={`flex min-h-11 shrink-0 items-center gap-2 border-b-2 text-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wine ${tab === t.key ? "border-wine font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
+            >
+              {t.label}
+              {t.count > 0 && <span className="text-sm text-ink-2">{t.count}</span>}
+            </button>
+          ))}
         </div>
 
-        <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold">Your surprises</h3>
-            <button onClick={addSurprise} className="rounded-full bg-surface-sage-deep px-3.5 py-1.5 text-sm font-semibold text-white">＋ Add surprise</button>
-          </div>
-          {mySurprises.length === 0 ? (
-            <p className="text-sm text-ink-2">Nothing here yet.</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {mySurprises.map((s) => (
-                <div key={s.id} className="flex flex-col rounded-2xl border border-line bg-bg p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <input
-                      defaultValue={s.title}
-                      onChange={(e) => scheduleSurpriseSave(s.id, { title: e.target.value })}
-                      className="flex-1 rounded border border-transparent bg-transparent px-1 py-1 font-serif text-lg font-medium outline-none focus:border-line focus:bg-paper"
-                    />
-                    <button onClick={() => removeSurprise(s.id)} aria-label={`Delete ${s.title}`} className="shrink-0 text-wine">×</button>
-                  </div>
-                  <select
-                    value={s.status}
-                    onChange={(e) => scheduleSurpriseSave(s.id, { status: e.target.value as SurpriseStatus })}
-                    className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[s.status]}`}
-                  >
-                    {SURPRISE_STATUS_ORDER.map((k) => (
-                      <option key={k} value={k}>{SURPRISE_STATUSES[k]}</option>
-                    ))}
-                  </select>
-                  <textarea
-                    defaultValue={s.details}
-                    onChange={(e) => scheduleSurpriseSave(s.id, { details: e.target.value })}
-                    rows={3}
-                    placeholder="Details…"
-                    className="mt-2 w-full flex-1 rounded border border-transparent bg-transparent px-1 py-1 text-sm outline-none focus:border-line focus:bg-paper"
-                  />
-                  <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-line pt-2 text-sm">
-                    <label className="flex items-center gap-1.5 text-ink-2">
-                      Reveal on
-                      <input
-                        type="date"
-                        defaultValue={s.reveal_on ?? ""}
-                        onChange={(e) => scheduleSurpriseSave(s.id, { reveal_on: e.target.value || null })}
-                        className="rounded border border-line bg-paper px-2 py-1"
-                      />
-                    </label>
-                    {s.revealed ? (
-                      <span className="font-semibold text-sage-deep">✓ Revealed</span>
-                    ) : (
-                      <button onClick={() => reveal(s.id)} className="font-semibold text-sage-deep underline underline-offset-2">Reveal now</button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div role="tabpanel" id={`ppanel-${tab}`} aria-labelledby={`ptab-${tab}`}>
+          {tab === "space" && <PrivateNotes notes={notes} setNotes={setNotes} userId={userId} onError={setError} />}
+          {tab === "surprises" && <PrivateSurprises surprises={surprises} setSurprises={setSurprises} userName={userName} userId={userId} partner={partner} events={events} weddingDate={weddingDate} onError={setError} />}
+          {tab === "revealed" && <PrivateRevealed teasers={teasers} revealed={revealed} userName={userName} />}
         </div>
 
-        <div className="mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">
-          <h3 className="mb-3 font-semibold">Revealed to you</h3>
-          {partnerSurprises.length === 0 ? (
-            <p className="text-sm text-ink-2">Nothing revealed yet — any surprise the other person hasn&apos;t shared stays hidden.</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {partnerSurprises.map((s) => (
-                <div key={s.id} className="flex flex-col rounded-2xl border border-gold bg-[color-mix(in_srgb,var(--gold)_15%,var(--paper))] p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-serif text-lg font-medium">🎉 {s.title}</p>
-                    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[s.status]}`}>
-                      {SURPRISE_STATUSES[s.status]}
-                    </span>
-                  </div>
-                  <p className="text-sm text-ink-2">from {s.owner_name}</p>
-                  {s.details && <p className="mt-2 text-sm text-ink-2">{s.details}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <p className="mt-14 text-center font-script text-2xl leading-snug text-sage-deep">Some things are worth keeping secret<br />for a little while. ♡</p>
       </div>
     </div>
   );
