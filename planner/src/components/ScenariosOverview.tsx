@@ -7,6 +7,7 @@ import { ArchiveRestore, Archive, ArrowRight, Copy, Heart, Plus, Scale } from "l
 import ScenarioDialog, { type ScenarioDialogMode } from "@/components/ScenarioDialog";
 import { BTN, BTN_PRIMARY, FOCUS_RING } from "@/components/VendorUi";
 import { createClient } from "@/lib/supabase/client";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { computeScenario, money, setupOf, type ChoiceRow, type ScenarioRow, type World } from "@/lib/wedding-scenarios";
 
 export default function ScenariosOverview({
@@ -23,6 +24,7 @@ export default function ScenariosOverview({
   needsMigration: boolean;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [scenarios, setScenarios] = useState(initialScenarios);
   const [choices, setChoices] = useState(initialChoices);
   const [dialog, setDialog] = useState<{ mode: ScenarioDialogMode; scenario?: ScenarioRow } | null>(null);
@@ -35,6 +37,16 @@ export default function ScenariosOverview({
   const live = scenarios.filter((s) => !s.archived).sort((a, b) => Number(Boolean(b.is_active)) - Number(Boolean(a.is_active)));
   const archived = scenarios.filter((s) => s.archived);
   const blank = useMemo(() => setupOf({ adults: null, kids: null, invited: null, expected: null, target_budget: null, contingency_pct: null } as ScenarioRow, world), [world]);
+
+  // Only archived scenarios can be deleted, and the choices and snapshots inside go with them.
+  async function deleteScenario(s: ScenarioRow) {
+    if (!(await confirm(`Delete “${s.name}” for good? Its choices and snapshots go with it. Your venues and vendors are not touched.`, "Delete"))) return;
+    setError("");
+    const { error: err } = await createClient().from("wedding_scenarios").delete().eq("id", s.id);
+    if (err) return setError(err.message);
+    setScenarios((cur) => cur.filter((x) => x.id !== s.id));
+    setChoices((cur) => cur.filter((c) => c.scenario_id !== s.id));
+  }
 
   async function setArchived(s: ScenarioRow, value: boolean) {
     setError("");
@@ -175,9 +187,12 @@ export default function ScenariosOverview({
                     <span className="font-serif text-xl">{s.name}</span>
                     <span className="ml-2 text-sm text-ink-2">{money(results.get(s.id)!.projected)}</span>
                   </span>
-                  <button onClick={() => setArchived(s, false)} className={BTN}>
-                    <ArchiveRestore className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /> Restore
-                  </button>
+                  <span className="flex gap-2">
+                    <button onClick={() => setArchived(s, false)} className={BTN}>
+                      <ArchiveRestore className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /> Restore
+                    </button>
+                    <button onClick={() => deleteScenario(s)} aria-label={`Delete ${s.name} permanently`} className={`${BTN} text-wine`}>Delete</button>
+                  </span>
                 </li>
               ))}
             </ul>

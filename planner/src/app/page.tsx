@@ -20,26 +20,19 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Two waves of queries instead of six: first what everything else depends on, then everything else at once.
+  const [
+    {
+      data: { user },
+    },
+    { data: venues },
+    { assumptions, sharedVals, settings, guests },
+  ] = await Promise.all([supabase.auth.getUser(), supabase.from("venues").select("*").order("sort_order", { ascending: true }), getBudgetContext(supabase)]);
   const userName = displayName(user?.email);
-
-  const { data: venues } = await supabase
-    .from("venues")
-    .select("*")
-    .order("sort_order", { ascending: true });
 
   const coverPaths = (venues ?? [])
     .map((v) => v.photos?.[0]?.path)
     .filter((p): p is string => Boolean(p));
-  let photoUrls: Record<string, string> = {};
-  if (coverPaths.length) {
-    const { data } = await supabase.storage.from("venue-photos").createSignedUrls(coverPaths, 3600);
-    photoUrls = Object.fromEntries((data ?? []).map((d) => [d.path ?? "", d.signedUrl ?? ""]));
-  }
-
-  const { assumptions, sharedVals, settings, guests } = await getBudgetContext(supabase);
   const guestTarget = settings.guest_target ?? DEFAULT_GUEST_TARGET;
   const capacitySummary = guestSummary(guests, guestTarget);
 
@@ -60,6 +53,8 @@ export default async function DashboardPage() {
     { data: paymentRows },
     plan,
     honeymoon,
+    { data: allReactions },
+    signed,
   ] = await Promise.all([
     user ? supabase.from("venue_ratings").select("*").eq("rater_id", user.id) : Promise.resolve({ data: [] as Rating[] }),
     supabase.from("idea_pins").select("id, title, image_url, category").eq("visibility", "shared").order("sort_order", { ascending: true }),
@@ -76,7 +71,10 @@ export default async function DashboardPage() {
     supabase.from("payments").select("*"),
     loadActivePlan(supabase),
     loadHoneymoonSummary(supabase),
+    supabase.from("idea_reactions").select("idea_id, rater_id"),
+    coverPaths.length ? supabase.storage.from("venue-photos").createSignedUrls(coverPaths, 3600) : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
   ]);
+  const photoUrls: Record<string, string> = Object.fromEntries((signed.data ?? []).map((d) => [d.path ?? "", d.signedUrl ?? ""]));
   const followUpsDue = (vendorComms ?? []).filter((c) => c.follow_up_date && !c.follow_up_done && c.follow_up_date <= todayStr);
   const followUpVendor = followUpsDue.length ? (vendors ?? []).find((v) => v.id === followUpsDue[0].vendor_id)?.name ?? "" : "";
 
@@ -111,11 +109,10 @@ export default async function DashboardPage() {
   });
 
   const ideas = sharedIdeas ?? [];
-  const { data: ideaReactions } = ideas.length
-    ? await supabase.from("idea_reactions").select("idea_id, rater_id").in("idea_id", ideas.map((i) => i.id))
-    : { data: [] as { idea_id: string; rater_id: string }[] };
+  const ideaIds = new Set(ideas.map((i) => i.id));
+  const ideaReactions = (allReactions ?? []).filter((r) => ideaIds.has(r.idea_id));
   const votersByIdea = new Map<string, Set<string>>();
-  for (const r of ideaReactions ?? []) {
+  for (const r of ideaReactions) {
     if (!votersByIdea.has(r.idea_id)) votersByIdea.set(r.idea_id, new Set());
     votersByIdea.get(r.idea_id)!.add(r.rater_id);
   }
