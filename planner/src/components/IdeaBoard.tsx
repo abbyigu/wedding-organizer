@@ -4,7 +4,7 @@ import { useDialog } from "@/lib/use-dialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import Link from "next/link";
 import { useRef, useState, type ReactNode } from "react";
-import { Bookmark, Ellipsis, Folder, Hammer, Heart, Images, Lock, Pencil, Plus, SquareCheckBig, Sparkles, Users, Vote, X } from "lucide-react";
+import { Bookmark, Ellipsis, Folder, Hammer, Heart, Images, Lock, Pencil, Plane, Plus, SquareCheckBig, Sparkles, Users, Vote, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import DashboardTopBar, { type SearchItem } from "@/components/DashboardTopBar";
@@ -50,17 +50,20 @@ export default function IdeaBoard({
   userName,
   userId,
   linkedDiyIdeaIds,
+  linkedHoneymoonIdeaIds,
 }: {
   initialIdeas: IdeaPin[];
   initialReactions: IdeaReaction[];
   userName: string;
   userId: string;
   linkedDiyIdeaIds: string[];
+  linkedHoneymoonIdeaIds: string[];
 }) {
   const confirm = useConfirm();
   const [ideas, setIdeas] = useState(initialIdeas);
   const [reactions, setReactions] = useState(initialReactions);
   const [diyLinked, setDiyLinked] = useState(new Set(linkedDiyIdeaIds));
+  const [honeymoonLinked, setHoneymoonLinked] = useState(new Set(linkedHoneymoonIdeaIds));
   const [error, setError] = useState("");
   const [notice, setNotice] = useState<{ msg: string; href?: string; cta?: string } | null>(null);
   const [view, setView] = useState<"ideas" | "mood">("ideas");
@@ -143,6 +146,17 @@ export default function IdeaBoard({
     if (data) setReactions((rs) => [...rs.filter((r) => r.idea_id !== ideaId), ...(data as IdeaReaction[])]);
   }
 
+  // The place joins the honeymoon shortlist and keeps pointing at this pin for its photo, so nothing is copied.
+  async function addToHoneymoon(idea: IdeaPin) {
+    setError("");
+    const { error } = await supabase.from("honeymoon_destinations").insert({ name: idea.title, photo: `idea:${idea.id}`, est_cost: idea.price, pros: idea.note, sort_order: honeymoonLinked.size });
+    if (error) setError(`${error.message} Has migration 051 been run?`);
+    else {
+      setHoneymoonLinked((s) => new Set(s).add(idea.id));
+      flash(`${idea.title} is on the honeymoon shortlist.`, "/honeymoon", "Open the shortlist");
+    }
+  }
+
   async function addToDiyProjects(idea: IdeaPin) {
     setError("");
     const { error } = await supabase.from("diy_projects").insert({
@@ -205,6 +219,9 @@ export default function IdeaBoard({
       diyLinked.has(idea.id)
         ? { key: "diy", label: "View DIY project", Icon: Hammer, on: true, href: "/diy" }
         : { key: "diy", label: "Create DIY project", Icon: Hammer, on: false, run: () => addToDiyProjects(idea) },
+      honeymoonLinked.has(idea.id)
+        ? { key: "honeymoon", label: "On the honeymoon shortlist", Icon: Plane, on: true, href: "/honeymoon" }
+        : { key: "honeymoon", label: "Add to honeymoon shortlist", Icon: Plane, on: false, run: () => addToHoneymoon(idea) },
       { key: "decision", label: "Create decision", Icon: Vote, on: false, run: () => createDecision(idea) },
       { key: "board", label: "Add to Planning Board", Icon: SquareCheckBig, on: false, run: () => addToPlanningBoard(idea) },
     ] as { key: string; label: string; Icon: typeof Images; on: boolean; run?: () => void; href?: string }[];
