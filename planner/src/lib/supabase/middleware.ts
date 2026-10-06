@@ -30,7 +30,9 @@ export async function updateSession(request: NextRequest) {
 
   const isAuthRoute =
     request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/auth");
+    request.nextUrl.pathname.startsWith("/auth") ||
+    // The scheduled reminder job has no session; the route itself checks a secret.
+    request.nextUrl.pathname.startsWith("/api/cron");
   // The guest-facing registry page (/<couple-slug>/registry) is the one public page.
   const isPublicRegistry = /^\/[^/]+\/registry\/?$/.test(request.nextUrl.pathname);
   if (!user && !isAuthRoute && !isPublicRegistry) {

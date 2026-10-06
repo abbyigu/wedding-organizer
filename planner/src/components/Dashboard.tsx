@@ -120,6 +120,7 @@ export default function Dashboard({
   actionItems,
   attention,
   plan,
+  reminders,
   initialCustomTasks,
   initialEvents,
   searchItems,
@@ -144,6 +145,7 @@ export default function Dashboard({
   weddingDate: string;
   actionItems: ActionItem[];
   attention: AttentionItem[];
+  reminders: { frequency: string; ready: boolean };
   plan: Parameters<typeof NeedsAttention>[0]["plan"];
   initialCustomTasks: CustomTask[];
   initialEvents: UpcomingEvent[];
@@ -558,7 +560,7 @@ export default function Dashboard({
           </div>
         </section>
 
-        <NeedsAttention items={attention} plan={plan} />
+        <NeedsAttention items={attention} plan={plan} reminders={reminders} />
 
         <section id="manage" className="mt-9 grid scroll-mt-6 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <div id="next-actions" className="scroll-mt-6 rounded-2xl border border-line bg-paper p-5 shadow-sm">

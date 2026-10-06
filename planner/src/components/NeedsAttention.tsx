@@ -5,12 +5,13 @@ import Link from "next/link";
 import { ArrowRight, Heart } from "lucide-react";
 import type { AttentionItem } from "@/lib/needs-attention";
 import type { PlanSummary } from "@/lib/plan";
+import ReminderSettings from "@/components/ReminderSettings";
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 const DOT = { urgent: "bg-wine", soon: "bg-gold", info: "bg-sage" } as const;
 const TONE_WORD = { urgent: "Urgent", soon: "Soon", info: "Good to know" } as const;
 
-export default function NeedsAttention({ items, plan }: { items: AttentionItem[]; plan: Pick<PlanSummary, "id" | "name" | "projected" | "unknownCount" | "venueName"> | null }) {
+export default function NeedsAttention({ items, plan, reminders }: { items: AttentionItem[]; reminders: { frequency: string; ready: boolean }; plan: Pick<PlanSummary, "id" | "name" | "projected" | "unknownCount" | "venueName"> | null }) {
   const [all, setAll] = useState(false);
   const shown = all ? items : items.slice(0, 5);
   return (
@@ -43,6 +44,7 @@ export default function NeedsAttention({ items, plan }: { items: AttentionItem[]
             )}
           </>
         )}
+        <ReminderSettings frequency={reminders.frequency} ready={reminders.ready} />
       </div>
 
       <div className="flex flex-col justify-center rounded-2xl border border-wine/25 bg-[color-mix(in_srgb,var(--wine)_5%,var(--paper))] p-5 shadow-sm">
