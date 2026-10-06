@@ -52,8 +52,8 @@ export function renderDigest(row: DigestRow, siteUrl: string) {
 
 // Sends through your own Gmail (an app password, no domain needed). GMAIL_USER and GMAIL_APP_PASSWORD live in Vercel.
 export async function sendEmail(to: string, mail: { subject: string; html: string; text: string }): Promise<{ ok: boolean; error?: string }> {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD;
+  const user = process.env.GMAIL_USER?.trim();
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, ""); // Google shows app passwords in groups of four
   if (!user || !pass) return { ok: false, error: "Email isn't set up yet." };
   try {
     const tx = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
