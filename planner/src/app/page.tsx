@@ -174,7 +174,7 @@ export default async function DashboardPage() {
       initialEvents={upcomingEvents ?? []}
       searchItems={searchItems}
       attention={attention}
-      reminders={{ frequency: reminderPref?.frequency ?? "weekly", ready: Boolean(process.env.RESEND_API_KEY && process.env.CRON_SECRET) }}
+      reminders={{ frequency: reminderPref?.frequency ?? "weekly", ready: Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD && process.env.CRON_SECRET) }}
       plan={plan ? { id: plan.id, name: plan.name, projected: plan.projected, unknownCount: plan.unknownCount, venueName: plan.venueName } : null}
     />
   );

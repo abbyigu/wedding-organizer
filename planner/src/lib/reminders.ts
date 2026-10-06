@@ -1,3 +1,4 @@
+import nodemailer from "nodemailer";
 import { createClient } from "@supabase/supabase-js";
 import { displayName, firstName } from "@/lib/auth-names";
 
@@ -47,11 +48,18 @@ export function renderDigest(row: DigestRow, siteUrl: string) {
   return { subject, html, text };
 }
 
+// Sends through your own Gmail (an app password, no domain needed). GMAIL_USER and GMAIL_APP_PASSWORD live in Vercel.
+
+// Sends through your own Gmail (an app password, no domain needed). GMAIL_USER and GMAIL_APP_PASSWORD live in Vercel.
 export async function sendEmail(to: string, mail: { subject: string; html: string; text: string }): Promise<{ ok: boolean; error?: string }> {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return { ok: false, error: "Email isn't set up yet (no RESEND_API_KEY)." };
-  const from = process.env.REMINDER_FROM || "The Wedding Room <onboarding@resend.dev>";
-  const res = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [to], ...mail }) });
-  if (!res.ok) return { ok: false, error: `Email service said: ${(await res.text()).slice(0, 200)}` };
-  return { ok: true };
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
+  if (!user || !pass) return { ok: false, error: "Email isn't set up yet." };
+  try {
+    const tx = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
+    await tx.sendMail({ from: `The Wedding Room <${user}>`, to, ...mail });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: `Gmail said: ${e instanceof Error ? e.message.slice(0, 160) : "couldn't send"}` };
+  }
 }
