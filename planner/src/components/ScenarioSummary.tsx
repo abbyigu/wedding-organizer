@@ -59,6 +59,31 @@ export default function ScenarioSummary({ name, r, onJump }: { name: string; r: 
         </ul>
       </section>
 
+      <section aria-label="With the honeymoon" className="rounded-3xl border border-line bg-paper p-5 sm:p-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-2">With the honeymoon</h3>
+        {r.honeymoon.lines.length === 0 ? (
+          <p className="mt-2 text-[15px] text-ink-2">
+            No honeymoon in this scenario yet.{" "}
+            <button type="button" onClick={() => onJump("honeymoon")} className={`rounded font-medium text-green underline underline-offset-2 ${FOCUS_RING}`}>Choose a destination</button> to see what wedding and honeymoon cost together.
+          </p>
+        ) : (
+          <>
+            <dl className="mt-3 grid gap-1.5">
+              <div className="flex items-baseline justify-between gap-3"><dt className="text-ink-2">Wedding</dt><dd className="tabular-nums">{r.unknownCount > 0 && "≥ "}{money(r.projected)}</dd></div>
+              <div className="flex items-baseline justify-between gap-3"><dt className="text-ink-2">Honeymoon</dt><dd className="tabular-nums">{r.honeymoon.unknown > 0 && "≥ "}{money(r.honeymoon.total)}</dd></div>
+              <div className="flex items-baseline justify-between gap-3 border-t border-line pt-2"><dt className="font-medium">Together</dt><dd className="font-serif text-2xl font-light tabular-nums">{(r.unknownCount > 0 || r.honeymoon.unknown > 0) && <span className="text-ink-2">≥ </span>}{money(r.combined)}</dd></div>
+            </dl>
+            {r.combinedRemaining != null && r.combinedTarget != null ? (
+              <p className={`mt-2 text-sm ${r.combinedRemaining < 0 ? "font-medium text-wine" : "text-sage-deep"}`}>
+                {r.combinedRemaining < 0 ? `${money(-r.combinedRemaining)} over` : `${money(r.combinedRemaining)} under`} your combined {money(r.combinedTarget)} (wedding target plus trip target).
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-ink-2">Set a trip target on the <Link href="/honeymoon" className={`rounded underline underline-offset-2 ${FOCUS_RING}`}>Honeymoon page</Link> to see whether both fit.</p>
+            )}
+          </>
+        )}
+      </section>
+
       <section aria-label="Pricing confidence" className="rounded-3xl border border-line bg-paper p-5 sm:p-6">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-2">Pricing confidence</h3>
         <p className="mt-2 font-serif text-3xl font-light leading-tight">

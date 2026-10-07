@@ -203,6 +203,16 @@ export default function ScenarioBuilder({
     router.refresh();
   }
 
+  // A scenario has one honeymoon: choosing another destination replaces the current one.
+  async function pickHoneymoon(id: string) {
+    const old = choices.filter((c) => c.category === "honeymoon" && c.role === "selected").map((c) => c.id);
+    if (old.length) {
+      await supabase.from("scenario_choices").delete().in("id", old);
+      setChoices((cur) => cur.filter((c) => !old.includes(c.id)));
+    }
+    await addChoices([{ category: "honeymoon", ref_type: "honeymoon", ref_id: id }], "honeymoon");
+  }
+
   function jump(key: string) {
     setOpen((o) => ({ ...o, [key]: true }));
     requestAnimationFrame(() => {
@@ -242,11 +252,12 @@ export default function ScenarioBuilder({
       : type === "event" ? world.events.map((x) => ({ id: x.id, label: x.title }))
       : type === "party" ? world.party.map((x) => ({ id: x.id, label: x.name }))
       : type === "expense" ? world.expenses.filter((e) => !venue || expenseAppliesTo(e, venue.id)).map((x) => ({ id: x.id, label: x.label }))
+      : type === "honeymoon" ? world.honeymoon.destinations.map((d) => ({ id: d.id, label: `${d.name}${d.country ? `, ${d.country}` : ""} — ${d.est_cost != null ? `about ${fmtMoney(d.est_cost)}` : "no estimate yet"}` }))
       : [];
     return all.filter((o) => !taken.has(o.id));
   }
 
-  const REF_NOUN: Record<string, string> = { vendor: "vendor", diy: "project", event: "event", party: "member", expense: "expense" };
+  const REF_NOUN: Record<string, string> = { vendor: "vendor", diy: "project", event: "event", party: "member", expense: "expense", honeymoon: "destination" };
 
   function renderChoiceRow(def: CategoryDef, line: ScenarioLine, choice: ChoiceRow) {
     const v = choice.ref_type === "vendor" ? vendorOf(choice.ref_id) : undefined;
@@ -267,12 +278,13 @@ export default function ScenarioBuilder({
         </li>
       );
     }
+    const hd = choice.ref_type === "honeymoon" ? world.honeymoon.destinations.find((d) => d.id === choice.ref_id) : undefined;
     const hourly = v?.price_unit === "hour" && v.contracted_total == null && v.quoted_total == null;
     return (
       <LineRow
         key={line.id}
         line={line}
-        photo={v ? photoSrc(v.photos[0], ideaMap) : undefined}
+        photo={v ? photoSrc(v.photos[0], ideaMap) : hd ? photoSrc(hd.photo, ideaMap) : undefined}
         facts={v ? vendorFacts(v) : undefined}
         warning={r.duplicates[choice.id]}
         controls={hourly ? <NumField id={`hours-${choice.id}`} label="Hours" value={choice.quantity} onCommit={(n) => patchChoice(choice.id, { quantity: n })} /> : undefined}
@@ -405,12 +417,12 @@ export default function ScenarioBuilder({
                   )}
                 </>
               )}
-              {(["diy", "event", "party", "expense"] as const).filter((t) => def.picks.includes(t)).map((t) => {
+              {(["diy", "event", "party", "expense", "honeymoon"] as const).filter((t) => def.picks.includes(t)).map((t) => {
                 const options = recordGroups(def, t);
                 return (
                   <div key={t} className="flex flex-wrap items-center gap-2">
-                    <RecordSelect id={`add-${t}-${def.key}`} label={`Add a ${REF_NOUN[t]}`} placeholder={`+ Add a ${REF_NOUN[t]}…`} groups={[{ options }]} onPick={(id) => addChoices([{ category: def.key, ref_type: t, ref_id: id }], def.key)} />
-                    {options.length > 1 && t !== "expense" && (
+                    <RecordSelect id={`add-${t}-${def.key}`} label={`Add a ${REF_NOUN[t]}`} placeholder={`+ Add a ${REF_NOUN[t]}…`} groups={[{ options }]} onPick={(id) => (t === "honeymoon" ? pickHoneymoon(id) : addChoices([{ category: def.key, ref_type: t, ref_id: id }], def.key))} />
+                    {options.length > 1 && t !== "expense" && t !== "honeymoon" && (
                       <button onClick={() => addChoices(options.map((o) => ({ category: def.key, ref_type: t, ref_id: o.id })), def.key)} className={BTN}>Add all {options.length}</button>
                     )}
                   </div>
@@ -488,7 +500,7 @@ export default function ScenarioBuilder({
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
-          {CATEGORIES.map(renderCategory)}
+          {CATEGORIES.filter((c) => c.key !== "honeymoon").map(renderCategory)}
 
           <section id="cat-contingency" className="scroll-mt-4 rounded-3xl border border-line bg-paper">
             <h3>
@@ -511,6 +523,9 @@ export default function ScenarioBuilder({
               </div>
             )}
           </section>
+
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-2">Beyond the wedding</p>
+          {CATEGORIES.filter((c) => c.key === "honeymoon").map(renderCategory)}
 
           <ScenarioSnapshots scenarioId={scenario.id} current={r} initial={snapshots} needsMigration={snapshotsMissing} />
         </div>

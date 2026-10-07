@@ -136,6 +136,14 @@ export default function ScenariosOverview({
                     </p>
                   </div>
 
+                  {r.honeymoon.lines.length > 0 && (
+                    <p className="text-[15px]">
+                      <span className="text-ink-2">Honeymoon </span>{r.honeymoon.lines[0].label}: {r.honeymoon.unknown > 0 && "≥ "}{money(r.honeymoon.total)}
+                      <span className="text-ink-2"> · together </span><b className="font-medium">{(r.unknownCount > 0 || r.honeymoon.unknown > 0) && "≥ "}{money(r.combined)}</b>
+                      {r.combinedRemaining != null && <span className={r.combinedRemaining < 0 ? "text-wine" : "text-sage-deep"}> · {r.combinedRemaining < 0 ? `${money(-r.combinedRemaining)} over` : "fits"}</span>}
+                    </p>
+                  )}
+
                   <div>
                     <div className="flex h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--gold)_22%,var(--line))]" role="img" aria-label={hasPrices ? `${c.pct}% of the projected spending is based on confirmed pricing` : "No prices yet"}>
                       <div className="bg-sage-deep" style={{ width: `${c.pct}%` }} />

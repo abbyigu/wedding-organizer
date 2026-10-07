@@ -107,6 +107,10 @@ export default function WeddingScenarioCompare({ world, scenarios, choices, phot
             {band("Service charges", (i) => <span className="tabular-nums">{money(fees[i].service)}</span>)}
             {band("Taxes", (i) => <span className="tabular-nums">{money(fees[i].tax)}</span>)}
             {band("Contingency", (i) => <span className="tabular-nums">{money(cols[i].r.contingency)}{" "}<span className="text-sm text-ink-2">({cols[i].r.setup.contPct}%)</span></span>)}
+            {band("Honeymoon", (i) => {
+              const h = cols[i].r.honeymoon;
+              return h.lines.length === 0 ? <span className="text-sm text-ink-2">Not added</span> : <span className="tabular-nums">{h.unknown > 0 && "≥ "}{money(h.total)} <span className="text-sm text-ink-2">{h.lines[0].label}</span></span>;
+            })}
             {band("Projected total", (i) => {
               const r = cols[i].r;
               return (
@@ -114,6 +118,19 @@ export default function WeddingScenarioCompare({ world, scenarios, choices, phot
                   <span className={`font-serif text-3xl font-light ${lowest === r.projected ? "text-sage-deep" : ""}`}>{r.unknownCount > 0 ? "≥ " : ""}{money(r.projected)}</span>
                   {lowest === r.projected && <span className="block text-sm font-medium text-sage-deep">{r.unknownCount > 0 ? "Lowest so far, not complete" : "Lowest total"}</span>}
                   <span className={`block text-sm ${r.remaining < 0 ? "text-wine" : "text-ink-2"}`}>{r.remaining < 0 ? `${money(-r.remaining)} over` : `${money(r.remaining)} under`} the {money(r.setup.target)} target</span>
+                </>
+              );
+            })}
+            {cols.some((c) => c.r.honeymoon.lines.length > 0) && band("Wedding + honeymoon", (i) => {
+              const r = cols[i].r;
+              const together = cols.map((c) => c.r.combined);
+              const low = Math.min(...together);
+              const open = r.unknownCount > 0 || r.honeymoon.unknown > 0;
+              return (
+                <>
+                  <span className={`font-serif text-3xl font-light ${together.length > 1 && r.combined === low ? "text-sage-deep" : ""}`}>{open ? "≥ " : ""}{money(r.combined)}</span>
+                  {together.length > 1 && r.combined === low && <span className="block text-sm font-medium text-sage-deep">{open ? "Lowest so far, not complete" : "Lowest together"}</span>}
+                  {r.combinedRemaining != null && r.combinedTarget != null && <span className={`block text-sm ${r.combinedRemaining < 0 ? "text-wine" : "text-ink-2"}`}>{r.combinedRemaining < 0 ? `${money(-r.combinedRemaining)} over` : `${money(r.combinedRemaining)} under`} the combined {money(r.combinedTarget)}</span>}
                 </>
               );
             })}

@@ -10,7 +10,7 @@ import { vendorPrice, WORKS_WITH_VENUE_LABELS, type PriceSource, type Vendor } f
 // nothing goes stale.
 
 export type ChoiceRole = "selected" | "alternative" | "not_needed" | "tbd";
-export type RefType = "vendor" | "diy" | "event" | "party" | "expense";
+export type RefType = "vendor" | "diy" | "event" | "party" | "expense" | "honeymoon";
 export type CostState = "included" | "na" | "unknown" | "zero";
 
 export type ScenarioRow = {
@@ -55,7 +55,7 @@ export const SUMMARY_GROUPS: SummaryGroup[] = ["Venue & catering", "Vendors", "D
 export type CategoryDef = {
   key: string;
   label: string;
-  group: SummaryGroup;
+  group: SummaryGroup | "Honeymoon";
   blurb: string;
   singular: string;
   picks: RefType[];
@@ -84,6 +84,8 @@ export const CATEGORIES: CategoryDef[] = [
   { key: "events", label: "Wedding weekend & events", group: "Wedding weekend", blurb: "Welcome party, rehearsal dinner, brunch. Budgets come from each event.", singular: "events", picks: ["event"], vendorCats: [] },
   { key: "travel", label: "Travel & accommodation", group: "Other", blurb: "Rooms, the couple's suite, getting people there.", singular: "accommodation", picks: [], vendorCats: [], custom: true },
   { key: "other", label: "Other", group: "Other", blurb: "Anything else, including expenses already in your Budget.", singular: "other cost", picks: ["vendor", "expense"], vendorCats: ["Other"], anyVendor: true, custom: true },
+  // Kept apart from the wedding: it never changes the wedding total, contingency or confidence, only the "together" figures.
+  { key: "honeymoon", label: "Honeymoon", group: "Honeymoon", blurb: "Where you'd go afterwards, from your honeymoon shortlist. Its cost is read from the Honeymoon page, never retyped.", singular: "destination", picks: ["honeymoon"], vendorCats: [] },
 ];
 export const CATEGORY_BY_KEY = Object.fromEntries(CATEGORIES.map((c) => [c.key, c])) as Record<string, CategoryDef>;
 
@@ -97,6 +99,7 @@ export type World = {
   eventExpenses: EventExpense[];
   party: { id: string; name: string; cost: number | null }[];
   expenses: BudgetExpense[];
+  honeymoon: { destinations: { id: string; name: string; country: string; photo: string; est_cost: number | null; is_selected: boolean }[]; planEstimate: number | null; planUnknown: number; tripTarget: number | null };
   base: Assumptions;
   guests: { invited: number; expected: number };
 };
@@ -305,7 +308,22 @@ function customLine(choice: ChoiceRow, as: Assumptions): ScenarioLine {
   return blankLine({ ...lead, state: base === 0 ? "zero" : "amount", base, tax, total: base + tax, confidence: "rough_estimate", sub: [how || unit, choice.plus_tax ? "+ taxes" : ""].filter(Boolean).join(" · ") });
 }
 
+function honeymoonLine(choice: ChoiceRow, w: World): ScenarioLine {
+  const d = w.honeymoon.destinations.find((x) => x.id === choice.ref_id);
+  const common = { id: `c-${choice.id}`, category: choice.category, source: "Honeymoon", choiceId: choice.id, refId: choice.ref_id, refType: "honeymoon" as const };
+  if (!d) return blankLine({ ...common, label: "Removed destination", missing: true });
+  const lead = { ...common, label: d.country ? `${d.name}, ${d.country}` : d.name, href: "/honeymoon" };
+  // Once a destination is chosen and its trip is being planned, the trip plan's own total wins over the rough estimate.
+  if (d.is_selected && w.honeymoon.planEstimate != null) {
+    const n = w.honeymoon.planEstimate;
+    return blankLine({ ...lead, state: n === 0 ? "zero" : "amount", base: n, total: n, confidence: "rough_estimate", partial: w.honeymoon.planUnknown > 0, sub: "From our trip plan" });
+  }
+  if (d.est_cost != null) return blankLine({ ...lead, state: d.est_cost === 0 ? "zero" : "amount", base: d.est_cost, total: d.est_cost, confidence: "rough_estimate", sub: "Destination estimate" });
+  return blankLine({ ...lead, state: "unknown", sub: "No cost estimate yet", missing: true });
+}
+
 export function lineForChoice(choice: ChoiceRow, w: World, as: Assumptions): ScenarioLine {
+  if (choice.ref_type === "honeymoon") return honeymoonLine(choice, w);
   if (choice.ref_type === "vendor") return vendorLine(choice, w.vendors.find((v) => v.id === choice.ref_id), as);
   if (choice.ref_type === "diy") return diyLine(choice, w);
   if (choice.ref_type === "event") return eventLine(choice, w);
@@ -432,6 +450,10 @@ export type ScenarioResult = {
   alternatives: Record<string, ScenarioLine>;
   byCategory: Record<string, { lines: ScenarioLine[]; total: number; unknown: number }>;
   groups: Record<SummaryGroup, number>;
+  honeymoon: { lines: ScenarioLine[]; total: number; unknown: number; tripTarget: number | null };
+  combined: number;
+  combinedTarget: number | null;
+  combinedRemaining: number | null;
   subtotal: number;
   contingency: number;
   projected: number;
@@ -451,14 +473,15 @@ export function computeScenario(s: ScenarioRow, choices: ChoiceRow[], w: World):
   const notes = venue ? venueNotes(venue) : {};
 
   const lines: ScenarioLine[] = venue ? venueLines(venue, setup) : [];
+  const honeymoonLines: ScenarioLine[] = [];
   const alternatives: Record<string, ScenarioLine> = {};
   for (const c of mine) {
-    if (c.role === "selected") lines.push(lineForChoice(c, w, setup));
+    if (c.role === "selected") (c.category === "honeymoon" ? honeymoonLines : lines).push(lineForChoice(c, w, setup));
     else if (c.role === "alternative") alternatives[c.id] = lineForChoice(c, w, setup);
   }
 
   const byCategory: ScenarioResult["byCategory"] = {};
-  for (const l of lines) {
+  for (const l of [...lines, ...honeymoonLines]) {
     const c = (byCategory[l.category] ??= { lines: [], total: 0, unknown: 0 });
     c.lines.push(l);
     if (priced(l.state)) c.total += l.total;
@@ -466,7 +489,7 @@ export function computeScenario(s: ScenarioRow, choices: ChoiceRow[], w: World):
   }
 
   const groups = Object.fromEntries(SUMMARY_GROUPS.map((g) => [g, 0])) as Record<SummaryGroup, number>;
-  for (const l of lines) if (priced(l.state)) groups[CATEGORY_BY_KEY[l.category]?.group ?? "Other"] += l.total;
+  for (const l of lines) if (priced(l.state)) groups[(CATEGORY_BY_KEY[l.category]?.group as SummaryGroup | undefined) ?? "Other"] += l.total;
   const subtotal = SUMMARY_GROUPS.reduce((t, g) => t + groups[g], 0);
   const contingency = subtotal * (setup.contPct / 100);
   const projected = subtotal + contingency;
@@ -491,7 +514,7 @@ export function computeScenario(s: ScenarioRow, choices: ChoiceRow[], w: World):
   const isOpenUnknown = (l: ScenarioLine) => l.state === "unknown" || l.partial;
   const partyUnknown = lines.filter((l) => l.source === "Wedding party" && isOpenUnknown(l)).length;
   // Wedding-party members without a cost read as one gap, not one per person.
-  const unknownCount = lines.filter((l) => l.source !== "Wedding party" && isOpenUnknown(l)).length + (partyUnknown > 0 ? 1 : 0) + mine.filter((c) => c.role === "tbd").length;
+  const unknownCount = lines.filter((l) => l.source !== "Wedding party" && isOpenUnknown(l)).length + (partyUnknown > 0 ? 1 : 0) + mine.filter((c) => c.role === "tbd" && c.category !== "honeymoon").length;
 
   const missing: MissingItem[] = [];
   const back = (key: string) => `#cat-${key}`;
@@ -506,6 +529,7 @@ export function computeScenario(s: ScenarioRow, choices: ChoiceRow[], w: World):
     else if (l.source === "Event") missing.push({ text: `${l.label} has no budget`, href, kind: "unknown" });
     else missing.push({ text: `${l.label}: ${l.sub.toLowerCase() || "cost unknown"}`, href, kind: "unknown" });
   }
+  for (const l of honeymoonLines) if (isOpenUnknown(l) && l.state === "unknown") missing.push({ text: `Honeymoon: ${l.label} has no cost estimate yet`, href: l.href ?? back("honeymoon"), kind: "unknown" });
   for (const c of mine) if (c.role === "tbd") missing.push({ text: `${CATEGORY_BY_KEY[c.category]?.label ?? c.category} still to decide`, href: back(c.category), kind: "unknown" });
 
   // A vendor the venue already covers, or won't let in.
@@ -525,6 +549,12 @@ export function computeScenario(s: ScenarioRow, choices: ChoiceRow[], w: World):
     missing.push({ text: `${l.label}: ${text}`, href: back(l.category), kind: "warning" });
   }
 
+  const hmTotal = honeymoonLines.filter((l) => priced(l.state)).reduce((t, l) => t + l.total, 0);
+  const hmUnknown = honeymoonLines.filter(isOpenUnknown).length + mine.filter((c) => c.role === "tbd" && c.category === "honeymoon").length;
+  const tripTarget = w.honeymoon.tripTarget;
+  const combined = projected + hmTotal;
+  const combinedTarget = tripTarget != null ? setup.target + tripTarget : null;
+
   const known = confirmed + estimated;
   return {
     setup,
@@ -533,6 +563,10 @@ export function computeScenario(s: ScenarioRow, choices: ChoiceRow[], w: World):
     alternatives,
     byCategory,
     groups,
+    honeymoon: { lines: honeymoonLines, total: hmTotal, unknown: hmUnknown, tripTarget },
+    combined,
+    combinedTarget,
+    combinedRemaining: combinedTarget != null ? combinedTarget - combined : null,
     subtotal,
     contingency,
     projected,

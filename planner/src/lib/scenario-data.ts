@@ -7,11 +7,12 @@ import type { BudgetExpense } from "@/lib/budget-extras";
 import type { Venue } from "@/lib/venues";
 import type { ChoiceRow, ScenarioRow, World } from "@/lib/wedding-scenarios";
 import type { IdeaImage } from "@/lib/registry";
+import { tripBudget, type HoneymoonItem } from "@/lib/honeymoon";
 
 // Everything a scenario page needs, read once. Scenarios only store choices, so the records they point at
 // (venues, vendors, DIY, events, wedding party, Budget expenses) are loaded here and priced live.
 export async function loadScenarioWorld(supabase: SupabaseClient) {
-  const [{ data: scenarios, error }, { data: choices }, { data: venues }, { data: diy }, { data: materials }, { data: events }, { data: eventExpenses }, { data: party }, { data: expenses }, ctx, { data: vendorRows }, { data: pins }] = await Promise.all([
+  const [{ data: scenarios, error }, { data: choices }, { data: venues }, { data: diy }, { data: materials }, { data: events }, { data: eventExpenses }, { data: party }, { data: expenses }, ctx, { data: vendorRows }, { data: pins }, { data: hmDest }, { data: hmItems }, { data: hmSettings }] = await Promise.all([
     supabase.from("wedding_scenarios").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: true }),
     supabase.from("scenario_choices").select("*"),
     supabase.from("venues").select("*").order("sort_order", { ascending: true }),
@@ -24,6 +25,9 @@ export async function loadScenarioWorld(supabase: SupabaseClient) {
     getBudgetContext(supabase),
     supabase.from("vendors").select("*").order("sort_order", { ascending: true }),
     supabase.from("idea_pins").select("id, title, image_url").neq("image_url", "").order("sort_order", { ascending: true }),
+    supabase.from("honeymoon_destinations").select("id, name, country, photo, est_cost, is_selected").order("sort_order", { ascending: true }),
+    supabase.from("honeymoon_items").select("*"),
+    supabase.from("honeymoon_settings").select("budget_target").eq("id", true).maybeSingle(),
   ]);
 
   const venueRows = ((venues ?? []) as Venue[]).map((v) => ({ ...v, budget_lines: v.budget_lines ?? [], photos: v.photos ?? [] }));
@@ -34,6 +38,8 @@ export async function loadScenarioWorld(supabase: SupabaseClient) {
     photoUrls = Object.fromEntries((data ?? []).map((d) => [d.path ?? "", d.signedUrl ?? ""]));
   }
 
+  // The chosen destination's trip plan, if it has any priced items yet. Same arithmetic as the Honeymoon page.
+  const plan = tripBudget((hmItems ?? []) as HoneymoonItem[], null, null, 0, false);
   const gs = ctx.guestSummary;
   const world: World = {
     venues: venueRows,
@@ -44,6 +50,7 @@ export async function loadScenarioWorld(supabase: SupabaseClient) {
     eventExpenses: (eventExpenses ?? []) as EventExpense[],
     party: party ?? [],
     expenses: (expenses ?? []) as BudgetExpense[],
+    honeymoon: { destinations: hmDest ?? [], planEstimate: plan.basis === "items" ? plan.estimated : null, planUnknown: plan.unknown, tripTarget: hmSettings?.budget_target ?? null },
     base: ctx.assumptions,
     guests: { invited: gs.totalWithKids, expected: gs.confirmed > 0 ? gs.confirmed : gs.totalWithKids },
   };
