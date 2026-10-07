@@ -51,14 +51,16 @@ export function renderDigest(row: DigestRow, siteUrl: string) {
 // Sends through your own Gmail (an app password, no domain needed). GMAIL_USER and GMAIL_APP_PASSWORD live in Vercel.
 
 // Sends through your own Gmail (an app password, no domain needed). GMAIL_USER and GMAIL_APP_PASSWORD live in Vercel.
-export async function sendEmail(to: string, mail: { subject: string; html: string; text: string }): Promise<{ ok: boolean; error?: string }> {
+export async function sendEmail(to: string, mail: { subject: string; html: string; text: string }): Promise<{ ok: boolean; error?: string; detail?: string }> {
   const user = process.env.GMAIL_USER?.trim();
   const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, ""); // Google shows app passwords in groups of four
   if (!user || !pass) return { ok: false, error: "Email isn't set up yet." };
   try {
     const tx = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
-    await tx.sendMail({ from: `The Wedding Room <${user}>`, to, ...mail });
-    return { ok: true };
+    const info = await tx.sendMail({ from: `The Wedding Room <${user}>`, to, ...mail });
+    const mask = (a: string) => `${a.slice(0, 2)}…@${a.split("@")[1] ?? ""}`;
+    if (info.rejected.length) return { ok: false, error: `Gmail rejected the address ${mask(to)}.` };
+    return { ok: true, detail: `from ${mask(user)} to ${mask(to)}` };
   } catch (e) {
     return { ok: false, error: `Gmail said: ${e instanceof Error ? e.message.slice(0, 160) : "couldn't send"}` };
   }

@@ -31,5 +31,5 @@ export async function sendMeATest(): Promise<Result> {
   const mine = rows.find((r) => r.user_id === user.id);
   if (!mine) return { ok: false, message: "Reminders are turned off. Pick Weekly or Daily first." };
   const out = await sendEmail(mine.email, renderDigest(mine, process.env.NEXT_PUBLIC_SITE_URL || "https://the-wedding-room.vercel.app"));
-  return out.ok ? { ok: true, message: "Sent. Check your inbox." } : { ok: false, message: out.error ?? "Couldn't send." };
+  return out.ok ? { ok: true, message: `Sent ${out.detail ?? ""}. Check your inbox, Spam and All Mail.` } : { ok: false, message: out.error ?? "Couldn't send." };
 }
