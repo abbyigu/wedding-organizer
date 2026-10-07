@@ -11,7 +11,7 @@ const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visibl
 const DOT = { urgent: "bg-wine", soon: "bg-gold", info: "bg-sage" } as const;
 const TONE_WORD = { urgent: "Urgent", soon: "Soon", info: "Good to know" } as const;
 
-export default function NeedsAttention({ items, plan, reminders }: { items: AttentionItem[]; reminders: { frequency: string; ready: boolean }; plan: Pick<PlanSummary, "id" | "name" | "projected" | "unknownCount" | "venueName"> | null }) {
+export default function NeedsAttention({ items, plan, reminders }: { items: AttentionItem[]; reminders: { frequency: string; sendTo: string; ready: boolean }; plan: Pick<PlanSummary, "id" | "name" | "projected" | "unknownCount" | "venueName"> | null }) {
   const [all, setAll] = useState(false);
   const shown = all ? items : items.slice(0, 5);
   return (
@@ -44,7 +44,7 @@ export default function NeedsAttention({ items, plan, reminders }: { items: Atte
             )}
           </>
         )}
-        <ReminderSettings frequency={reminders.frequency} ready={reminders.ready} />
+        <ReminderSettings frequency={reminders.frequency} sendTo={reminders.sendTo} ready={reminders.ready} />
       </div>
 
       <div className="flex flex-col justify-center rounded-2xl border border-wine/25 bg-[color-mix(in_srgb,var(--wine)_5%,var(--paper))] p-5 shadow-sm">

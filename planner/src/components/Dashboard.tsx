@@ -145,7 +145,7 @@ export default function Dashboard({
   weddingDate: string;
   actionItems: ActionItem[];
   attention: AttentionItem[];
-  reminders: { frequency: string; ready: boolean };
+  reminders: { frequency: string; sendTo: string; ready: boolean };
   plan: Parameters<typeof NeedsAttention>[0]["plan"];
   initialCustomTasks: CustomTask[];
   initialEvents: UpcomingEvent[];

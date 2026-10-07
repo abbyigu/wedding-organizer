@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { Mail } from "lucide-react";
-import { sendMeATest, setReminderFrequency } from "@/app/reminders/actions";
+import { sendMeATest, setReminderAddress, setReminderFrequency } from "@/app/reminders/actions";
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-deep focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
-export default function ReminderSettings({ frequency, ready }: { frequency: string; ready: boolean }) {
+export default function ReminderSettings({ frequency, sendTo, ready }: { frequency: string; sendTo: string; ready: boolean }) {
   const [freq, setFreq] = useState(frequency);
+  const [addr, setAddr] = useState(sendTo);
   const [msg, setMsg] = useState("");
   const [pending, start] = useTransition();
   const run = (fn: () => Promise<{ ok: boolean; message: string }>) => start(async () => setMsg((await fn()).message));
@@ -26,6 +27,11 @@ export default function ReminderSettings({ frequency, ready }: { frequency: stri
       ) : (
         <span className="text-ink-2">Sending isn&apos;t switched on yet.</span>
       )}
+      <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); run(() => setReminderAddress(addr)); }}>
+        <label htmlFor="reminder-to" className="text-ink-2">Send to</label>
+        <input id="reminder-to" type="email" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="your login address" className="h-11 w-56 rounded-lg border border-line bg-bg px-3 text-sm" />
+        <button type="submit" disabled={pending} className={`min-h-11 rounded px-1 font-medium text-green underline underline-offset-2 disabled:opacity-50 ${FOCUS_RING}`}>Save</button>
+      </form>
       <span role="status" className="text-ink-2">{pending ? "…" : msg}</span>
     </div>
   );

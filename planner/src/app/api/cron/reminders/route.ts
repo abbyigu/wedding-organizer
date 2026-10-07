@@ -1,4 +1,4 @@
-import { loadDigest, renderDigest, sendEmail, shouldSend } from "@/lib/reminders";
+import { loadDigest, loadTargets, renderDigest, sendEmail, shouldSend } from "@/lib/reminders";
 
 export const dynamic = "force-dynamic";
 
@@ -10,12 +10,13 @@ export async function GET(req: Request) {
   const { rows, error } = await loadDigest(secret);
   if (error) return Response.json({ error }, { status: 500 });
 
+  const targets = await loadTargets(secret);
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://the-wedding-room.vercel.app";
   const dry = new URL(req.url).searchParams.has("dry");
   const results = [];
   for (const row of rows) {
     const send = shouldSend(row);
-    const out = !send || dry ? null : await sendEmail(row.email, renderDigest(row, site));
+    const out = !send || dry ? null : await sendEmail(targets.get(row.user_id) ?? row.email, renderDigest(row, site));
     results.push({ user: row.user_id, frequency: row.frequency, items: row.items.length, send, ...(out ? { sent: out.ok, error: out.error } : {}) });
   }
   return Response.json({ dry, results });

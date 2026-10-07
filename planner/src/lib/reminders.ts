@@ -7,6 +7,13 @@ import { displayName, firstName } from "@/lib/auth-names";
 export type DigestItem = { tone: "urgent" | "soon" | "info"; text: string; path: string };
 export type DigestRow = { user_id: string; email: string; frequency: "weekly" | "daily"; items: DigestItem[] };
 
+// Where each person has asked for their reminders to go, if not their login address (migration 054).
+export async function loadTargets(secret: string): Promise<Map<string, string>> {
+  const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
+  const { data } = await db.rpc("reminder_targets", { p_secret: secret });
+  return new Map(((data ?? []) as { user_id: string; send_to: string }[]).map((r) => [r.user_id, r.send_to]));
+}
+
 export async function loadDigest(secret: string): Promise<{ rows: DigestRow[]; error?: string }> {
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
   const { data, error } = await db.rpc("reminder_digest", { p_secret: secret });

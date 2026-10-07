@@ -74,7 +74,7 @@ export default async function DashboardPage() {
     loadHoneymoonSummary(supabase),
     supabase.from("idea_reactions").select("idea_id, rater_id"),
     coverPaths.length ? supabase.storage.from("venue-photos").createSignedUrls(coverPaths, 3600) : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
-    user ? supabase.from("reminder_prefs").select("frequency").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }), // once migration 053 has run
+    user ? supabase.from("reminder_prefs").select("frequency, send_to").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }), // once migration 053 has run
   ]);
   const photoUrls: Record<string, string> = Object.fromEntries((signed.data ?? []).map((d) => [d.path ?? "", d.signedUrl ?? ""]));
   const followUpsDue = (vendorComms ?? []).filter((c) => c.follow_up_date && !c.follow_up_done && c.follow_up_date <= todayStr);
@@ -174,7 +174,7 @@ export default async function DashboardPage() {
       initialEvents={upcomingEvents ?? []}
       searchItems={searchItems}
       attention={attention}
-      reminders={{ frequency: reminderPref?.frequency ?? "weekly", ready: Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD && process.env.CRON_SECRET) }}
+      reminders={{ frequency: reminderPref?.frequency ?? "weekly", sendTo: reminderPref?.send_to ?? "", ready: Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD && process.env.CRON_SECRET) }}
       plan={plan ? { id: plan.id, name: plan.name, projected: plan.projected, unknownCount: plan.unknownCount, venueName: plan.venueName } : null}
     />
   );
