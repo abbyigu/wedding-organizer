@@ -61,13 +61,22 @@ export default function VenueVideos({ venueId, files, update }: { venueId: strin
   }
 
   return (
-    <section aria-labelledby="venue-videos" className="rounded-2xl border border-line bg-paper p-5 shadow-sm sm:p-6 lg:col-span-2">
-      <h2 id="venue-videos" className="font-serif text-2xl font-medium">Videos</h2>
-      <p className="text-sm text-ink-2">Tours and walkthroughs, kept with this venue. Up to about {MAX_VIDEO_MB} MB each. For longer ones, paste a YouTube link under Links.</p>
+    <section aria-labelledby="venue-videos" className="mt-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div>
+          <h2 id="venue-videos" className="font-serif text-2xl font-medium">Videos</h2>
+          <p className="text-sm text-ink-2">Tours and walkthroughs of this place. Up to about {MAX_VIDEO_MB} MB each; for longer ones, paste a YouTube link under Files &amp; Links.</p>
+        </div>
+        <label className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-surface-olive px-5 text-sm font-medium text-white has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage-deep has-[:focus-visible]:ring-offset-2`}>
+          <Film className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+          {busy || (videos.length ? "Add a video" : "Add your first video")}
+          <input type="file" accept="video/*" multiple disabled={Boolean(busy)} className="sr-only" onChange={(e) => { const f = e.target.files; upload(f); e.target.value = ""; }} />
+        </label>
+      </div>
       {videos.length > 0 && (
-        <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+        <ul className="mt-3 flex snap-x gap-3 overflow-x-auto pb-2">
           {videos.map((f) => (
-            <li key={f.path}>
+            <li key={f.path} className="w-72 shrink-0 snap-start sm:w-[26rem]">
               {urls[f.path] ? <video src={urls[f.path]} controls playsInline preload="metadata" className="aspect-video w-full rounded-xl bg-black" /> : <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-bg text-sm text-ink-2">Loading…</div>}
               <div className="mt-1 flex items-center gap-2">
                 <span className="min-w-0 flex-1 truncate text-sm">{f.name}</span>
@@ -77,11 +86,6 @@ export default function VenueVideos({ venueId, files, update }: { venueId: strin
           ))}
         </ul>
       )}
-      <label className={`mt-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-line bg-paper px-5 text-sm font-medium hover:border-sage-deep has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage-deep`}>
-        <Film className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-        {busy || "Upload a video"}
-        <input type="file" accept="video/*" multiple disabled={Boolean(busy)} className="sr-only" onChange={(e) => { const f = e.target.files; upload(f); e.target.value = ""; }} />
-      </label>
       {error && <p role="alert" className="mt-2 text-sm text-wine">{error}</p>}
     </section>
   );

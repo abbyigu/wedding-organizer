@@ -428,6 +428,8 @@ export default function VenueProfile({
           </ul>
         </section>
 
+        <VenueVideos venueId={v.id} files={files} update={update} />
+
         <div role="tablist" aria-label="Venue sections" className="mt-4 flex gap-x-7 overflow-x-auto border-b border-line">
           {TABS.map(([k, label]) => (
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`shrink-0 border-b-2 pb-3 text-base ${tab === k ? "border-ink font-medium text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}>{label}</button>
@@ -481,7 +483,6 @@ export default function VenueProfile({
           {tab === "contact" && <VenueComms venueId={v.id} defaultContact={contact.name ?? ""} initial={comms} missing={commsMissing} />}
           {tab === "files" && (
             <div className="grid items-start gap-6 lg:grid-cols-2">
-              <VenueVideos venueId={v.id} files={files} update={update} />
               <section className={PANEL} aria-label="Files">
                 <h2 className="font-serif text-2xl font-medium">Files</h2>
                 <p className="text-sm text-ink-2">Quotes, contracts, floor plans, menus.</p>
