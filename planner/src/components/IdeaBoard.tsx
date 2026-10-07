@@ -8,6 +8,7 @@ import { Play, Bookmark, Ellipsis, Folder, Hammer, Heart, Images, Lock, Pencil, 
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
 import IdeaVideo from "@/components/IdeaVideo";
+import { safeName, uploadMessage } from "@/lib/video";
 import DashboardTopBar, { type SearchItem } from "@/components/DashboardTopBar";
 import { blankTask } from "@/lib/planning-tasks";
 import { fmt } from "@/lib/venues";
@@ -75,7 +76,8 @@ export default function IdeaBoard({
   const [sort, setSort] = useState<"recent" | "oldest" | "shortlisted">("recent");
   const [shortlistOnly, setShortlistOnly] = useState(false);
   const [draft, setDraft] = useState<{ category: string; title: string; image_url: string; video_url: string; note: string; price: string } | null>(null);
-  const draftDialogRef = useDialog(Boolean(draft), () => setDraft(null));
+  const [draftVideo, setDraftVideo] = useState<File | null>(null); // a video file chosen on the new-idea form, uploaded once the idea exists
+  const draftDialogRef = useDialog(Boolean(draft), () => { setDraft(null); setDraftVideo(null); });
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
   const partner = partnerName(userName);
@@ -254,9 +256,21 @@ export default function IdeaBoard({
     const { data, error } = await supabase.from("idea_pins").insert(idea).select().single();
     if (error) setError(error.message);
     else if (data) {
-      setIdeas((is) => [data as IdeaPin, ...is]);
+      let created = data as IdeaPin;
+      if (draftVideo) {
+        const dest = `ideas/${created.id}/${crypto.randomUUID()}-${safeName(draftVideo.name)}`;
+        const up = await supabase.storage.from("venue-photos").upload(dest, draftVideo, { contentType: draftVideo.type || undefined });
+        if (up.error) flash(`The idea was added, but the video didn't upload: ${uploadMessage(up.error.message)}`);
+        else {
+          const { error: upErr } = await supabase.from("idea_pins").update({ video_path: dest }).eq("id", created.id);
+          if (upErr) flash(`The idea was added, but the video couldn't be attached: ${upErr.message}`);
+          else created = { ...created, video_path: dest };
+        }
+      }
+      setIdeas((is) => [created, ...is]);
       setActiveTab(draft.category);
       setDraft(null);
+      setDraftVideo(null);
     }
   }
 
@@ -717,7 +731,7 @@ export default function IdeaBoard({
 
       {draft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <button aria-label="Close" tabIndex={-1} onClick={() => setDraft(null)} className="absolute inset-0" />
+          <button aria-label="Close" tabIndex={-1} onClick={() => { setDraft(null); setDraftVideo(null); }} className="absolute inset-0" />
           <div ref={draftDialogRef} role="dialog" aria-modal="true" aria-label="New idea" tabIndex={-1} className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-paper shadow-lg sm:flex-row">
             <button
               onClick={() => setDraft(null)}
@@ -789,6 +803,18 @@ export default function IdeaBoard({
                 placeholder="Paste a TikTok link"
                 className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm"
               />
+              <div className="mx-1 mt-2">
+                <label className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-line bg-paper px-4 text-sm font-medium hover:border-sage-deep has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sage-deep`}>
+                  {draftVideo ? "Change the video file" : "Or upload a video file"}
+                  <input type="file" accept="video/*" className="sr-only" onChange={(e) => { setDraftVideo(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+                </label>
+                {draftVideo && (
+                  <p className="mt-1 flex items-center gap-2 text-sm text-ink-2">
+                    <span className="min-w-0 truncate">{draftVideo.name}</span>
+                    <button type="button" onClick={() => setDraftVideo(null)} className={`min-h-11 shrink-0 rounded px-1 font-medium text-green underline underline-offset-2 ${FOCUS_RING}`}>Remove</button>
+                  </p>
+                )}
+              </div>
 
               <label htmlFor="idea-board-f10" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
               <textarea id="idea-board-f10"
@@ -807,7 +833,7 @@ export default function IdeaBoard({
                 >
                   Add to board
                 </button>
-                <button onClick={() => setDraft(null)} className={`rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink-2 hover:text-ink ${FOCUS_RING}`}>
+                <button onClick={() => { setDraft(null); setDraftVideo(null); }} className={`rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink-2 hover:text-ink ${FOCUS_RING}`}>
                   Cancel
                 </button>
               </div>
