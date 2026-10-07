@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useConfirm } from "@/components/ConfirmProvider";
 import NavBar from "@/components/NavBar";
 import type { Guest } from "@/lib/guests";
-import type { Vendor } from "@/lib/vendors";
+import { isBooked, type Vendor } from "@/lib/vendors";
 import { blankTask, type PlanningTask } from "@/lib/planning-tasks";
 import {
   EVENT_EXPENSE_CATEGORIES,
@@ -340,7 +340,11 @@ export default function EventDetail({
                 <label className="mt-4 block"><span className={LABEL}>Linked vendor</span>
                   <select value={event.vendor_id ?? ""} onChange={(e) => scheduleSave({ vendor_id: e.target.value || null })} className={FIELD}>
                     <option value="">No vendor linked</option>
-                    {vendors.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.category}</option>)}
+                    {[["Booked", vendors.filter((v) => isBooked(v))], ["Still considering", vendors.filter((v) => !isBooked(v))]].map(([label, list]) => (list as Vendor[]).length > 0 && (
+                      <optgroup key={label as string} label={label as string}>
+                        {(list as Vendor[]).map((v) => <option key={v.id} value={v.id}>{v.name} — {v.category}</option>)}
+                      </optgroup>
+                    ))}
                   </select>
                 </label>
                 {vendor && <p className="mt-3 text-sm text-ink-2">{[vendor.contact_name, vendor.phone, vendor.email].filter(Boolean).join(" · ") || "No contact details saved for this vendor."}</p>}

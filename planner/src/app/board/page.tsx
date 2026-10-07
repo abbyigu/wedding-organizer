@@ -27,8 +27,8 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
       initialView={view === "timeline" || view === "list" ? view : "board"}
       daysToGo={daysUntil(weddingDate)}
       weddingDate={weddingDate}
-      // Tasks can be assigned to booked vendors, or to whoever they already point at.
-      vendors={(vendors ?? []).filter((v) => v.status === "booked" || v.status === "confirmed" || (tasks ?? []).some((t) => t.vendor_id === v.id)).map((v) => ({ id: v.id, name: v.name }))}
+      // Any vendor can be linked to a task, whether booked yet or not.
+      vendors={(vendors ?? []).map((v) => ({ id: v.id, name: v.name }))}
     />
   );
 }
