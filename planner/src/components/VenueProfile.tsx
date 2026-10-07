@@ -11,6 +11,7 @@ import TagField from "@/components/TagField";
 import VenueActions from "@/components/VenueActions";
 import VenueAmenities from "@/components/VenueAmenities";
 import { FILE_KIND_LABELS, FILE_KINDS } from "@/lib/vendors";
+import VenueVideos from "@/components/VenueVideos";
 import VenueComms, { type VenueComm } from "@/components/VenueComms";
 import VenueCosts from "@/components/VenueCosts";
 import { geocodeVenue } from "@/lib/geocode";
@@ -480,12 +481,13 @@ export default function VenueProfile({
           {tab === "contact" && <VenueComms venueId={v.id} defaultContact={contact.name ?? ""} initial={comms} missing={commsMissing} />}
           {tab === "files" && (
             <div className="grid items-start gap-6 lg:grid-cols-2">
+              <VenueVideos venueId={v.id} files={files} update={update} />
               <section className={PANEL} aria-label="Files">
                 <h2 className="font-serif text-2xl font-medium">Files</h2>
                 <p className="text-sm text-ink-2">Quotes, contracts, floor plans, menus.</p>
                 <ul className="mt-3 divide-y divide-line">
-                  {files.length === 0 && <li className="py-3 text-sm text-ink-2">No files yet.</li>}
-                  {files.map((f) => (
+                  {files.filter((f) => f.kind !== "video").length === 0 && <li className="py-3 text-sm text-ink-2">No files yet.</li>}
+                  {files.filter((f) => f.kind !== "video").map((f) => (
                     <li key={f.path} className="flex items-center gap-3 py-2 text-sm">
                       <Paperclip className="h-4 w-4 shrink-0 text-ink-2" strokeWidth={1.5} aria-hidden />
                       <button onClick={() => openFile(f.path)} className="min-w-0 flex-1 truncate text-left font-semibold underline-offset-2 hover:underline">{f.name}</button>

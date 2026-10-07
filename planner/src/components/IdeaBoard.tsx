@@ -4,9 +4,10 @@ import { useDialog } from "@/lib/use-dialog";
 import { useConfirm } from "@/components/ConfirmProvider";
 import Link from "next/link";
 import { useRef, useState, type ReactNode } from "react";
-import { Bookmark, Ellipsis, Folder, Hammer, Heart, Images, Lock, Pencil, Plane, Plus, SquareCheckBig, Sparkles, Users, Vote, X } from "lucide-react";
+import { Play, Bookmark, Ellipsis, Folder, Hammer, Heart, Images, Lock, Pencil, Plane, Plus, SquareCheckBig, Sparkles, Users, Vote, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import NavBar from "@/components/NavBar";
+import IdeaVideo from "@/components/IdeaVideo";
 import DashboardTopBar, { type SearchItem } from "@/components/DashboardTopBar";
 import { blankTask } from "@/lib/planning-tasks";
 import { fmt } from "@/lib/venues";
@@ -73,7 +74,7 @@ export default function IdeaBoard({
   const [menu, setMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [sort, setSort] = useState<"recent" | "oldest" | "shortlisted">("recent");
   const [shortlistOnly, setShortlistOnly] = useState(false);
-  const [draft, setDraft] = useState<{ category: string; title: string; image_url: string; note: string; price: string } | null>(null);
+  const [draft, setDraft] = useState<{ category: string; title: string; image_url: string; video_url: string; note: string; price: string } | null>(null);
   const draftDialogRef = useDialog(Boolean(draft), () => setDraft(null));
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const supabase = createClient();
@@ -229,7 +230,7 @@ export default function IdeaBoard({
 
   function startDraft(category: string) {
     setError("");
-    setDraft({ category, title: "", image_url: "", note: "", price: "" });
+    setDraft({ category, title: "", image_url: "", video_url: "", note: "", price: "" });
   }
 
   function addIdeaToCurrentTab() {
@@ -246,6 +247,7 @@ export default function IdeaBoard({
     const idea = {
       ...blankIdea(ideas.length, draft.category, draft.title.trim()),
       image_url: draft.image_url.trim(),
+      video_url: draft.video_url.trim(),
       note: draft.note.trim(),
       price: draft.price.trim() ? +draft.price : null,
     };
@@ -437,7 +439,7 @@ export default function IdeaBoard({
               return (
                 <div key={idea.id} className={`group mb-4 flex flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-sm break-inside-avoid ${CARD_TRANSITION}`}>
                   <div className="relative w-full overflow-hidden bg-bg">
-                    <button onClick={() => setOpenId(idea.id)} className={`block w-full text-left ${FOCUS_RING}`} aria-label={`Open ${idea.title}`}>
+                    <button onClick={() => setOpenId(idea.id)} className={`block w-full text-left ${FOCUS_RING}`} aria-label={`Open ${idea.title}${idea.video_url || idea.video_path ? " (has a video)" : ""}`}>
                       {idea.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={normalizeUrl(idea.image_url)} alt={idea.title} loading="lazy" className="w-full object-cover" />
@@ -447,6 +449,11 @@ export default function IdeaBoard({
                         </div>
                       )}
                     </button>
+                    {(idea.video_url || idea.video_path) && (
+                      <span aria-hidden className="pointer-events-none absolute bottom-2.5 left-2.5 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white">
+                        <Play className="h-3 w-3 fill-white" strokeWidth={0} />Video
+                      </span>
+                    )}
                     <button
                       onClick={() => editable && toggleFavourite(idea)}
                       disabled={!editable}
@@ -639,6 +646,10 @@ export default function IdeaBoard({
                       </a>
                     )}
 
+                    <div className="mt-4">
+                      <IdeaVideo key={open.id} idea={open} editable={editable} onPatch={(p) => saveNow(open.id, p)} />
+                    </div>
+
                     <label htmlFor="idea-board-f5" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">Notes</label>
                     <textarea id="idea-board-f5"
                       defaultValue={open.note}
@@ -768,6 +779,14 @@ export default function IdeaBoard({
                 value={draft.image_url}
                 onChange={(e) => setDraft((d) => d && { ...d, image_url: e.target.value })}
                 placeholder="Paste an image address"
+                className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm"
+              />
+
+              <label htmlFor="idea-board-f9v" className="mt-4 block px-1 text-xs font-semibold uppercase tracking-wide text-ink-2">TikTok link <span className="font-normal normal-case">(optional)</span></label>
+              <input id="idea-board-f9v"
+                value={draft.video_url}
+                onChange={(e) => setDraft((d) => d && { ...d, video_url: e.target.value })}
+                placeholder="Paste a TikTok link"
                 className="mx-1 mt-1 w-[calc(100%-0.5rem)] rounded border border-line bg-bg px-2 py-1 text-sm"
               />
 

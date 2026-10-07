@@ -27,7 +27,7 @@ export default async function BudgetFilesPage() {
       added: f.created_at,
     })),
     ...(venues ?? []).flatMap((v) =>
-      ((v.files ?? []) as { path: string; name: string; addedAt: string; kind?: string }[]).map((f) => ({
+      ((v.files ?? []) as { path: string; name: string; addedAt: string; kind?: string }[]).filter((f) => f.kind !== "video").map((f) => ({
         key: `venue-${v.id}-${f.path}`,
         kind: f.kind ?? "other",
         name: f.name,

@@ -11,6 +11,8 @@ export type IdeaPin = {
   visibility: IdeaVisibility;
   is_favourite: boolean; // shown as a heart: "shortlisted for the wedding"
   on_mood_board?: boolean; // absent until migration 032 has been run
+  video_url?: string; // a TikTok link (migration 056)
+  video_path?: string | null; // an uploaded video file in the venue-photos bucket (migration 056)
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -69,6 +71,7 @@ export function blankIdea(sortOrder: number, category: string, title: string): P
     category,
     title,
     image_url: "",
+    video_url: "",
     note: "",
     price: null,
     visibility: "shared",
